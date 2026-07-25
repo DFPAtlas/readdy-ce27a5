@@ -1,26 +1,27 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { motion, AnimatePresence } from '@/components/motion';
+import { AnimatePresence, motion } from '@/components/motion';
 import {
-  LayoutDashboard,
-  FolderKanban,
-  Settings,
-  LogOut,
-  User,
-  Menu,
-  X,
+  Bell,
   ChevronDown,
-  MessageSquare,
-  FolderOpen,
   FileText,
+  Fingerprint,
+  FolderKanban,
+  FolderOpen,
+  Headphones,
+  LayoutDashboard,
+  LogOut,
   Map,
+  Menu,
+  MessageSquare,
+  Settings,
+  User,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
-
-
+import { usePathname, useRouter } from 'next/navigation';
 
 interface PortalShellProps {
   children: React.ReactNode;
@@ -29,12 +30,12 @@ interface PortalShellProps {
 export default function PortalShell({ children }: PortalShellProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const menuRef = useRef<HTMLDivElement>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>('');
+  const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -46,11 +47,16 @@ export default function PortalShell({ children }: PortalShellProps) {
         setTimeout(() => router.replace('/portal/login'), 0);
         return;
       }
+
+      const name =
+        session.user.user_metadata?.full_name ||
+        session.user.email?.split('@')[0] ||
+        'Client';
+
       setUserEmail(session.user.email ?? null);
-      const name = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Client';
       setUserName(name);
       setLoading(false);
-      fetchUnread(session.user.id, name);
+      fetchUnread();
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -66,24 +72,29 @@ export default function PortalShell({ children }: PortalShellProps) {
     };
   }, [router]);
 
-  async function fetchUnread(uid: string, name: string) {
+  async function fetchUnread() {
     const { data: projectsData } = await supabase.from('projects').select('id');
-    if (!projectsData || projectsData.length === 0) return;
-    const projectIds = projectsData.map(p => p.id);
+    if (!projectsData?.length) {
+      setUnreadCount(0);
+      return;
+    }
+
     const { count } = await supabase
       .from('project_messages')
       .select('*', { count: 'exact', head: true })
-      .in('project_id', projectIds)
+      .in('project_id', projectsData.map(project => project.id))
       .eq('read', false);
-    if (count !== null) setUnreadCount(count);
+
+    setUnreadCount(count ?? 0);
   }
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setMenuOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -98,7 +109,7 @@ export default function PortalShell({ children }: PortalShellProps) {
   };
 
   const navItems = [
-    { href: '/portal/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/portal/dashboard', label: 'Overview', icon: LayoutDashboard },
     { href: '/portal/projects', label: 'Projects', icon: FolderKanban },
     { href: '/portal/messages', label: 'Messages', icon: MessageSquare, badge: unreadCount },
     { href: '/portal/files', label: 'Files', icon: FolderOpen },
@@ -107,169 +118,218 @@ export default function PortalShell({ children }: PortalShellProps) {
     { href: '/portal/settings', label: 'Settings', icon: Settings },
   ];
 
+  const initials = userName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join('') || 'C';
+
+  const sidebar = (
+    <div className="flex h-full flex-col bg-[#071221]">
+      <div className="flex h-16 items-center gap-3 border-b border-white/[0.07] px-5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#06B6D4]/10">
+          <Fingerprint className="h-6 w-6 text-[#22D3EE]" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-base font-semibold text-white">Digital Footprint</p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
+            Client portal
+          </p>
+        </div>
+      </div>
+
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
+        {navItems.map(item => {
+          const Icon = item.icon;
+          const isActive =
+            pathname === item.href ||
+            (item.href !== '/portal/dashboard' && pathname.startsWith(`${item.href}/`));
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`group flex min-h-11 items-center gap-3 rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-all ${
+                isActive
+                  ? 'border-[#22D3EE]/55 bg-[#0891B2]/15 text-[#67E8F9] shadow-[0_0_24px_rgba(6,182,212,0.08)]'
+                  : 'border-transparent text-slate-400 hover:bg-white/[0.045] hover:text-white'
+              }`}
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              <span className="truncate">{item.label}</span>
+              {'badge' in item && item.badge > 0 && (
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[#7C3AED]/25 px-1.5 text-[10px] font-bold text-[#C4B5FD]">
+                  {item.badge > 99 ? '99+' : item.badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="p-4">
+        <div className="rounded-2xl border border-white/[0.09] bg-white/[0.025] p-4">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#06B6D4]/10">
+              <Headphones className="h-5 w-5 text-[#67E8F9]" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">Need help?</p>
+              <p className="text-xs text-slate-500">Our team is here</p>
+            </div>
+          </div>
+          <Link
+            href="/support"
+            className="inline-flex items-center text-xs font-semibold text-[#22D3EE] transition-colors hover:text-[#67E8F9]"
+          >
+            Contact support
+            <span className="ml-1.5" aria-hidden="true">→</span>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-[#081321]">
         <div className="text-center">
-          <div className="w-12 h-12 border-3 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-slate-400 text-sm">Loading your portal...</p>
+          <div className="mx-auto mb-3 h-12 w-12 animate-spin rounded-full border-2 border-[#06B6D4]/25 border-t-[#22D3EE]" />
+          <p className="text-sm text-slate-400">Loading your portal...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0F172A]">
-      <header className="sticky top-0 z-20 bg-[#0F172A]/95 backdrop-blur-sm border-b border-[rgba(255,255,255,0.08)]">
-        <div className="flex items-center justify-between px-4 lg:px-8 h-16">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/5"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <span className="hidden sm:block text-xs text-slate-500 font-medium tracking-wide">
-              RESHAPING YOUR DIGITAL WORLD
-            </span>
-          </div>
+    <div className="min-h-screen bg-[#081321] text-slate-100">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-white/[0.08] lg:block">
+        {sidebar}
+      </aside>
 
-          <div className="flex items-center gap-4">
-            <div className="relative" ref={menuRef}>
+      <div className="min-h-screen lg:pl-64">
+        <header className="sticky top-0 z-20 h-16 border-b border-white/[0.08] bg-[#081321]/95 backdrop-blur-xl">
+          <div className="flex h-full items-center justify-between px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-white/5 hover:text-white lg:hidden"
+                aria-label="Open portal navigation"
               >
-                <div className="w-8 h-8 bg-[#06B6D4]/10 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-[#06B6D4]" />
-                </div>
-                <span className="hidden sm:block text-sm font-medium text-slate-300 max-w-[120px] truncate">
-                  {userName}
-                </span>
-                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+                <Menu className="h-5 w-5" />
               </button>
+              <span className="hidden text-[11px] font-semibold tracking-[0.17em] text-slate-500 sm:block">
+                RESHAPING YOUR DIGITAL WORLD
+              </span>
+            </div>
 
-              <AnimatePresence>
-                {menuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-2 w-56 bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-xl shadow-xl overflow-hidden"
-                  >
-                    <div className="p-3 border-b border-[rgba(255,255,255,0.08)]">
-                      <p className="text-sm font-medium text-white truncate">{userName}</p>
-                      <p className="text-xs text-slate-400 truncate">{userEmail}</p>
-                    </div>
-                    <div className="p-1.5">
-                      <Link
-                        href="/portal/settings"
-                        onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-white/5 transition-colors cursor-pointer"
-                      >
-                        <User className="w-4 h-4" />
-                        Profile
-                      </Link>
-                      <Link
-                        href="/portal/settings"
-                        onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-white/5 transition-colors cursor-pointer"
-                      >
-                        <Settings className="w-4 h-4" />
-                        Settings
-                      </Link>
-                      <button
-                        onClick={() => { setMenuOpen(false); handleLogout(); }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Logout
-                      </button>
-                    </div>
-                  </motion.div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link
+                href="/portal/messages"
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
+                aria-label={`${unreadCount} unread messages`}
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#8B5CF6] ring-2 ring-[#081321]" />
                 )}
-              </AnimatePresence>
+              </Link>
+
+              <div className="relative" ref={menuRef}>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(value => !value)}
+                  className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-white/5"
+                  aria-expanded={menuOpen}
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[#22D3EE]/30 bg-[#06B6D4]/10 text-xs font-bold text-[#67E8F9]">
+                    {initials}
+                  </div>
+                  <div className="hidden max-w-36 text-left sm:block">
+                    <p className="truncate text-sm font-semibold text-slate-200">{userName}</p>
+                    <p className="text-[11px] text-slate-500">Client</p>
+                  </div>
+                  <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {menuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 w-60 overflow-hidden rounded-2xl border border-white/[0.1] bg-[#111E30] shadow-2xl"
+                    >
+                      <div className="border-b border-white/[0.08] p-4">
+                        <p className="truncate text-sm font-semibold text-white">{userName}</p>
+                        <p className="truncate text-xs text-slate-400">{userEmail}</p>
+                      </div>
+                      <div className="p-2">
+                        <Link
+                          href="/portal/settings"
+                          onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
+                        >
+                          <User className="h-4 w-4" />
+                          Account settings
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            handleLogout();
+                          }}
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-400 transition-colors hover:bg-red-500/10"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          Sign out
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main id="main-content" className="p-4 lg:p-8">
-        {children}
-      </main>
+        <main id="main-content" className="px-4 py-6 sm:px-6 lg:px-8 lg:py-7">
+          {children}
+        </main>
+      </div>
 
       <AnimatePresence>
         {sidebarOpen && (
           <>
-            <motion.div
+            <motion.button
+              type="button"
+              aria-label="Close portal navigation"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40"
+              className="fixed inset-0 z-40 bg-black/65 lg:hidden"
               onClick={() => setSidebarOpen(false)}
             />
-            <motion.div
+            <motion.aside
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'tween', duration: 0.2 }}
-              className="fixed inset-y-0 left-0 w-72 bg-[#1E293B] border-r border-[rgba(255,255,255,0.08)] z-50 shadow-2xl"
+              className="fixed inset-y-0 left-0 z-50 w-72 border-r border-white/[0.08] shadow-2xl lg:hidden"
             >
-              <div className="flex items-center justify-between p-6 border-b border-[rgba(255,255,255,0.08)]">
-                <Link href="/" className="cursor-pointer" onClick={() => setSidebarOpen(false)}>
-                  <span className="text-xl font-bold tracking-tight text-white">
-                    Digital<span className="text-[#06B6D4]"> Footprint</span>
-                  </span>
-                </Link>
-                <button
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white cursor-pointer rounded-lg hover:bg-white/5"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <p className="px-6 pt-4 text-xs text-slate-500 uppercase tracking-wider">Client Portal</p>
-
-              <nav className="p-4 space-y-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href;
-                  const badge = (item as any).badge as number | undefined;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer whitespace-nowrap ${
-                        isActive
-                          ? 'bg-[#06B6D4]/10 text-[#06B6D4]'
-                          : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      {item.label}
-                      {badge && badge > 0 ? (
-                        <span className="ml-auto w-5 h-5 bg-[#06B6D4] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                          {badge > 99 ? '99+' : badge}
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
-                })}
-              </nav>
-
-              <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-[rgba(255,255,255,0.08)]">
-                <p className="text-xs text-slate-500 text-center mb-4">Reshaping Your Digital World</p>
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Logout
-                </button>
-              </div>
-            </motion.div>
+              {sidebar}
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
+                aria-label="Close portal navigation"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </motion.aside>
           </>
         )}
       </AnimatePresence>

@@ -1,29 +1,36 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { motion } from '@/components/motion';
 import {
-  FolderKanban,
-  CheckCircle,
+  ArrowRight,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  Clock3,
   FileText,
+  FolderKanban,
   MessageSquare,
+  ReceiptText,
+  Sparkles,
   TrendingUp,
-  Clock,
-  FolderOpen,
+  UserRound,
 } from 'lucide-react';
 import Link from 'next/link';
 import PortalShell from '../PortalShell';
 
-
-
 interface Project {
   id: string;
   name: string;
+  description?: string | null;
   status: string;
   budget: number;
   end_date: string | null;
-  progress?: number;
+  start_date?: string | null;
+  project_lead?: string | null;
+  progress?: number | null;
+  created_at?: string;
 }
 
 interface Invoice {
@@ -32,6 +39,7 @@ interface Invoice {
   amount: number;
   status: string;
   due_date: string | null;
+  created_at?: string;
 }
 
 interface Message {
@@ -42,22 +50,37 @@ interface Message {
   created_at: string;
 }
 
-interface ProjectFile {
+type ActivityItem = {
   id: string;
-  name: string;
-  file_size: number;
-  file_type: string;
-  category: string;
-  project_id: number;
-  created_at: string;
+  title: string;
+  meta: string;
+  date: string | undefined;
+  icon: typeof MessageSquare;
+  color: string;
+};
+
+const phases = ['Discovery', 'Planning', 'Design', 'Development', 'Testing', 'Launch'];
+
+function formatDate(value: string | null | undefined, includeYear = true) {
+  if (!value) return null;
+  return new Date(value).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    ...(includeYear ? { year: 'numeric' } : {}),
+  });
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function safeProgress(project: Project | undefined) {
+  if (!project) return 0;
+  const value = Number(project.progress ?? 0);
+  return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0;
 }
 
 export default function DashboardPage() {
@@ -66,64 +89,203 @@ export default function DashboardPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [recentFiles, setRecentFiles] = useState<ProjectFile[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchData() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session || cancelled) return;
 
-      const name = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Client';
+      const name =
+        session.user.user_metadata?.full_name ||
+        session.user.email?.split('@')[0] ||
+        'Client';
+
       setUserName(name);
 
-      const { data: projectsData } = await supabase.from('projects').select('id');
-      const projectIds = projectsData ? projectsData.map(p => p.id) : [];
-      const messagesQuery = projectIds.length > 0
-        ? supabase.from('project_messages').select('*').in('project_id', projectIds).order('created_at', { ascending: false }).limit(5)
+      const { data: projectScope } = await supabase
+        .from('projects')
+        .select('id');
+
+      const projectIds = projectScope?.map(project => project.id) ?? [];
+      const messagesQuery = projectIds.length
+        ? supabase
+            .from('project_messages')
+            .select('*')
+            .in('project_id', projectIds)
+            .order('created_at', { ascending: false })
+            .limit(10)
         : Promise.resolve({ data: [] });
 
-      const filesQuery = projectIds.length > 0
-        ? supabase.from('project_files').select('*').in('project_id', projectIds).order('created_at', { ascending: false }).limit(4)
-        : Promise.resolve({ data: [] });
-
-      const [projectsRes, invoicesRes, messagesRes, filesRes] = await Promise.all([
+      const [projectsRes, invoicesRes, messagesRes] = await Promise.all([
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('invoices').select('*').order('created_at', { ascending: false }),
         messagesQuery,
-        filesQuery,
       ]);
 
-      if (projectsRes.data) setProjects(projectsRes.data);
-      if (invoicesRes.data) setInvoices(invoicesRes.data);
-      if (messagesRes.data) setMessages(messagesRes.data);
-      if (filesRes.data) setRecentFiles(filesRes.data);
+      if (cancelled) return;
+      setProjects((projectsRes.data ?? []) as Project[]);
+      setInvoices((invoicesRes.data ?? []) as Invoice[]);
+      setMessages((messagesRes.data ?? []) as Message[]);
       setLoading(false);
     }
 
     fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const activeProjects = projects.filter(p => p.status === 'active');
-  const completedProjects = projects.filter(p => p.status === 'completed');
-  const outstandingInvoices = invoices.filter(i => i.status === 'pending' || i.status === 'overdue');
-  const outstandingTotal = outstandingInvoices.reduce((sum, i) => sum + Number(i.amount), 0);
-  const unreadMessages = messages.filter(m => !m.read).length;
+  const activeProjects = projects.filter(project => project.status === 'active');
+  const completedProjects = projects.filter(project => project.status === 'completed');
+  const outstandingInvoices = invoices.filter(
+    invoice => invoice.status === 'pending' || invoice.status === 'overdue',
+  );
+  const unreadMessages = messages.filter(message => !message.read);
+  const outstandingTotal = outstandingInvoices.reduce(
+    (total, invoice) => total + Number(invoice.amount || 0),
+    0,
+  );
 
-  const recentMessages = messages.slice(0, 3);
-  const upcomingProjects = projects.filter(p => p.status === 'active').slice(0, 3);
+  const featuredProject =
+    activeProjects[0] ||
+    projects.find(project => project.status === 'planning') ||
+    projects.find(project => project.status !== 'completed') ||
+    projects[0];
 
-  const cardData = [
-    { label: 'Active Projects', value: activeProjects.length, icon: FolderKanban, color: '#06B6D4', href: '/portal/projects' },
-    { label: 'Completed Projects', value: completedProjects.length, icon: CheckCircle, color: '#10B981', href: '/portal/projects' },
-    { label: 'Outstanding', value: `£${outstandingTotal.toLocaleString()}`, icon: FileText, color: '#F59E0B', href: '/portal/invoices' },
-    { label: 'Unread Messages', value: unreadMessages, icon: MessageSquare, color: '#7C3AED', href: '/portal/messages' },
+  const progress = safeProgress(featuredProject);
+  const phaseIndex = Math.min(phases.length - 1, Math.floor(progress / 20));
+  const currentPhase = phases[phaseIndex];
+
+  const summaryCards = [
+    {
+      label: 'Active Projects',
+      value: activeProjects.length,
+      href: '/portal/projects',
+      link: 'View all projects',
+      icon: FolderKanban,
+      color: '#22D3EE',
+    },
+    {
+      label: 'Completed Projects',
+      value: completedProjects.length,
+      href: '/portal/projects',
+      link: 'View all projects',
+      icon: CheckCircle2,
+      color: '#4ADE80',
+    },
+    {
+      label: 'Outstanding',
+      value: `£${outstandingTotal.toLocaleString('en-GB')}`,
+      href: '/portal/invoices',
+      link: 'View invoices',
+      icon: ReceiptText,
+      color: '#F59E0B',
+    },
+    {
+      label: 'Unread Messages',
+      value: unreadMessages.length,
+      href: '/portal/messages',
+      link: 'View messages',
+      icon: MessageSquare,
+      color: '#A78BFA',
+    },
   ];
+
+  const actions = useMemo(() => {
+    const result: Array<{
+      id: string;
+      title: string;
+      detail: string;
+      value?: string;
+      href: string;
+      icon: typeof MessageSquare;
+      color: string;
+    }> = [];
+
+    if (outstandingInvoices[0]) {
+      const invoice = outstandingInvoices[0];
+      result.push({
+        id: `invoice-${invoice.id}`,
+        title: invoice.status === 'overdue' ? 'Invoice overdue' : 'Invoice outstanding',
+        detail: `Invoice #${invoice.invoice_number}`,
+        value: `£${Number(invoice.amount || 0).toLocaleString('en-GB')}`,
+        href: '/portal/invoices',
+        icon: ReceiptText,
+        color: '#F59E0B',
+      });
+    }
+
+    if (unreadMessages.length) {
+      result.push({
+        id: 'unread-messages',
+        title: `${unreadMessages.length} unread ${unreadMessages.length === 1 ? 'message' : 'messages'}`,
+        detail: `Latest from ${unreadMessages[0].sender_name}`,
+        value: `${unreadMessages.length} new`,
+        href: '/portal/messages',
+        icon: MessageSquare,
+        color: '#22D3EE',
+      });
+    }
+
+    if (featuredProject && progress < 100) {
+      result.push({
+        id: `project-${featuredProject.id}`,
+        title: 'Project in progress',
+        detail: `${featuredProject.name} · ${currentPhase}`,
+        value: `${progress}%`,
+        href: `/portal/projects/${featuredProject.id}`,
+        icon: FolderKanban,
+        color: '#A78BFA',
+      });
+    }
+
+    return result.slice(0, 3);
+  }, [currentPhase, featuredProject, outstandingInvoices, progress, unreadMessages]);
+
+  const activity = useMemo<ActivityItem[]>(() => {
+    const messageActivity: ActivityItem[] = messages.slice(0, 4).map(message => ({
+      id: `message-${message.id}`,
+      title: message.read ? 'Project message received' : 'New project message',
+      meta: message.sender_name,
+      date: message.created_at,
+      icon: MessageSquare,
+      color: '#22D3EE',
+    }));
+
+    const invoiceActivity: ActivityItem[] = invoices.slice(0, 3).map(invoice => ({
+      id: `invoice-${invoice.id}`,
+      title: `Invoice #${invoice.invoice_number} ${invoice.status}`,
+      meta: 'Digital Footprint',
+      date: invoice.created_at ?? invoice.due_date ?? undefined,
+      icon: ReceiptText,
+      color: invoice.status === 'paid' ? '#4ADE80' : '#F59E0B',
+    }));
+
+    const projectActivity: ActivityItem[] = projects.slice(0, 3).map(project => ({
+      id: `project-${project.id}`,
+      title: `${project.name} · ${project.status.replaceAll('_', ' ')}`,
+      meta: project.project_lead || 'Digital Footprint team',
+      date: project.created_at,
+      icon: FolderKanban,
+      color: '#A78BFA',
+    }));
+
+    return [...messageActivity, ...invoiceActivity, ...projectActivity]
+      .sort((a, b) => {
+        const aTime = a.date ? new Date(a.date).getTime() : 0;
+        const bTime = b.date ? new Date(b.date).getTime() : 0;
+        return bTime - aTime;
+      })
+      .slice(0, 4);
+  }, [invoices, messages, projects]);
 
   if (loading) {
     return (
       <PortalShell>
-        <div className="flex items-center justify-center py-20">
-          <div className="w-10 h-10 border-3 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin" />
+        <div className="flex min-h-[55vh] items-center justify-center">
+          <div className="h-11 w-11 animate-spin rounded-full border-2 border-[#06B6D4]/25 border-t-[#22D3EE]" />
         </div>
       </PortalShell>
     );
@@ -131,140 +293,346 @@ export default function DashboardPage() {
 
   return (
     <PortalShell>
-      <div className="max-w-6xl mx-auto space-y-6">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white">
-            Welcome back, <span className="text-[#06B6D4]">{userName}</span>
+      <div className="mx-auto max-w-[1460px] space-y-5">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="pb-1"
+        >
+          <h1 className="text-3xl font-bold tracking-tight text-white lg:text-[34px]">
+            {greeting()}, {userName}
           </h1>
-          <p className="text-slate-400 mt-1">Here&apos;s your project overview</p>
+          <p className="mt-1 text-sm text-slate-400 sm:text-base">
+            Here&apos;s what&apos;s happening across your Digital Footprint projects.
+          </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {cardData.map((card, i) => {
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {summaryCards.map((card, index) => {
             const Icon = card.icon;
             return (
               <motion.div
                 key={card.label}
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.08 }}
-                className="bg-[#1E293B] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5"
+                transition={{ delay: index * 0.05 }}
+                className="rounded-2xl border border-white/[0.09] bg-[#111F32] p-4 shadow-[0_18px_45px_rgba(0,0,0,0.13)]"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-slate-400 font-medium">{card.label}</span>
-                  <div className="w-10 h-10 flex items-center justify-center rounded-xl" style={{ backgroundColor: `${card.color}15` }}>
-                    <Icon className="w-5 h-5" style={{ color: card.color }} />
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-xl"
+                    style={{ backgroundColor: `${card.color}14` }}
+                  >
+                    <Icon className="h-5 w-5" style={{ color: card.color }} />
                   </div>
+                  <p className="text-sm font-medium text-slate-300">{card.label}</p>
                 </div>
-                <p className="text-2xl lg:text-3xl font-bold text-white">{card.value}</p>
-                <Link href={card.href} className="inline-block mt-3 text-xs text-[#06B6D4] hover:underline cursor-pointer font-medium">
-                  View details
+                <p className="mt-3 text-3xl font-bold tracking-tight text-white">{card.value}</p>
+                <Link
+                  href={card.href}
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#22D3EE] transition-colors hover:text-[#67E8F9]"
+                >
+                  {card.link}
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </motion.div>
             );
           })}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="bg-[#1E293B] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-white">Recent Messages</h3>
-              <MessageSquare className="w-5 h-5 text-slate-400" />
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.75fr)_minmax(340px,0.95fr)]">
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111F32]"
+          >
+            <div className="flex items-center gap-2 border-b border-white/[0.07] px-5 py-4">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#22D3EE]" />
+              <h2 className="font-semibold text-white">Active Project</h2>
             </div>
-            {recentMessages.length > 0 ? (
-              <div className="space-y-3">
-                {recentMessages.map((msg) => (
-                  <Link key={msg.id} href="/portal/messages"
-                    className={`block p-4 rounded-xl transition-colors cursor-pointer ${!msg.read ? 'bg-[#06B6D4]/5 border border-[#06B6D4]/10' : 'bg-white/5 hover:bg-white/10'}`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      {!msg.read && <span className="w-2 h-2 bg-[#06B6D4] rounded-full flex-shrink-0" />}
-                      <p className="font-medium text-sm text-white">{msg.sender_name}</p>
-                    </div>
-                    <p className="text-sm text-slate-400 line-clamp-2">{msg.content}</p>
-                    <p className="text-xs text-slate-500 mt-1">{new Date(msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-10 text-slate-500">
-                <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-40" />
-                <p className="text-sm">No messages yet</p>
-              </div>
-            )}
-            <Link href="/portal/messages" className="inline-flex items-center gap-1 mt-4 text-sm text-[#06B6D4] hover:underline cursor-pointer font-medium">View all messages</Link>
-          </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-[#1E293B] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-white">Active Projects</h3>
-              <TrendingUp className="w-5 h-5 text-slate-400" />
-            </div>
-            {upcomingProjects.length > 0 ? (
-              <div className="space-y-3">
-                {upcomingProjects.map((project) => {
-                  const prog = project.progress || 0;
-                  return (
-                    <Link key={project.id} href={`/portal/projects/${project.id}`}
-                      className="flex items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-8 h-8 bg-[#06B6D4]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <FolderKanban className="w-4 h-4 text-[#06B6D4]" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium text-sm text-white truncate">{project.name}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[#10B981]/10 text-[#10B981] font-medium">{project.status}</span>
-                            {project.end_date && <span className="text-xs text-slate-400">Due {new Date(project.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
-                          </div>
-                          <div className="mt-2 flex items-center gap-2">
-                            <div className="w-20 h-1 bg-white/10 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full ${prog === 100 ? 'bg-[#10B981]' : 'bg-[#06B6D4]'}`} style={{ width: `${prog}%` }} />
+            {featuredProject ? (
+              <div className="grid gap-5 p-5 md:grid-cols-[230px_minmax(0,1fr)]">
+                <div className="flex min-h-52 flex-col justify-between overflow-hidden rounded-xl border border-white/[0.13] bg-[radial-gradient(circle_at_80%_18%,rgba(34,211,238,0.22),transparent_30%),linear-gradient(145deg,#0B1727,#101F33)] p-5">
+                  <div>
+                    <div className="mb-8 flex items-center gap-2 text-[10px] font-semibold tracking-[0.17em] text-[#67E8F9]">
+                      <Sparkles className="h-4 w-4" />
+                      DIGITAL FOOTPRINT
+                    </div>
+                    <p className="text-xl font-bold leading-tight text-white">{featuredProject.name}</p>
+                    {featuredProject.description && (
+                      <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-400">
+                        {featuredProject.description}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Project workspace
+                  </span>
+                </div>
+
+                <div className="flex min-w-0 flex-col">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-2xl font-bold text-white">{featuredProject.name}</h3>
+                      <p className="mt-1 text-sm text-slate-400">
+                        Current phase: <span className="font-semibold text-[#22D3EE]">{currentPhase}</span>
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-[#4ADE80]/20 bg-[#4ADE80]/10 px-3 py-1 text-xs font-semibold capitalize text-[#86EFAC]">
+                      {featuredProject.status.replaceAll('_', ' ')}
+                    </span>
+                  </div>
+
+                  <div className="mt-7 overflow-x-auto pb-2">
+                    <div className="flex min-w-[530px] items-start">
+                      {phases.map((phase, index) => {
+                        const complete = index < phaseIndex;
+                        const current = index === phaseIndex;
+                        return (
+                          <div key={phase} className="flex flex-1 items-start last:flex-none">
+                            <div className="flex w-14 shrink-0 flex-col items-center">
+                              <div className={`flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-bold ${
+                                complete
+                                  ? 'border-[#4ADE80] bg-[#4ADE80] text-[#071221]'
+                                  : current
+                                    ? 'border-[#22D3EE] bg-[#22D3EE] text-[#071221] shadow-[0_0_22px_rgba(34,211,238,0.28)]'
+                                    : 'border-slate-500 bg-[#0D1929] text-slate-400'
+                              }`}>
+                                {complete ? <Check className="h-4 w-4" /> : index + 1}
+                              </div>
+                              <span className={`mt-2 text-[10px] ${current ? 'font-semibold text-[#67E8F9]' : 'text-slate-500'}`}>
+                                {phase}
+                              </span>
                             </div>
-                            <span className="text-xs text-slate-400">{prog}%</span>
+                            {index < phases.length - 1 && (
+                              <div className={`mt-3.5 h-px flex-1 ${index < phaseIndex ? 'bg-[#4ADE80]' : 'bg-slate-700'}`} />
+                            )}
                           </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Next milestone</p>
+                      <div className="mt-1.5 flex items-start gap-2">
+                        <CalendarDays className="mt-0.5 h-4 w-4 text-slate-400" />
+                        <div>
+                          <p className="text-sm font-semibold text-slate-200">
+                            {phaseIndex < phases.length - 1 ? `${phases[phaseIndex + 1]} review` : 'Launch review'}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {formatDate(featuredProject.end_date) || 'Date to be confirmed'}
+                          </p>
                         </div>
                       </div>
-                      {project.budget > 0 && <span className="text-sm font-semibold text-slate-300 whitespace-nowrap ml-4">£{Number(project.budget).toLocaleString()}</span>}
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Project lead</p>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5">
+                          <UserRound className="h-4 w-4 text-slate-300" />
+                        </div>
+                        <p className="text-sm font-semibold text-slate-200">
+                          {featuredProject.project_lead || 'Digital Footprint team'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto flex flex-wrap items-center justify-between gap-4 pt-6">
+                    <div className="min-w-44 flex-1">
+                      <div className="mb-1.5 flex items-center justify-between text-xs">
+                        <span className="text-slate-500">Overall progress</span>
+                        <span className="font-semibold text-slate-300">{progress}%</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[#06B6D4] to-[#67E8F9]"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                    <Link
+                      href={`/portal/projects/${featuredProject.id}`}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#22D3EE] px-5 text-sm font-bold text-[#071221] transition-colors hover:bg-[#67E8F9]"
+                    >
+                      View project
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex min-h-80 flex-col items-center justify-center px-6 py-12 text-center">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#06B6D4]/10">
+                  <FolderKanban className="h-7 w-7 text-[#22D3EE]" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Your project workspace is ready</h3>
+                <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
+                  Your first project will appear here as soon as the Digital Footprint team completes setup.
+                </p>
+              </div>
+            )}
+          </motion.section>
+
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="rounded-2xl border border-white/[0.09] bg-[#111F32] p-4"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-semibold text-white">Action needed</h2>
+              {actions.length > 0 && (
+                <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-[#7C3AED]/20 px-2 text-xs font-bold text-[#C4B5FD]">
+                  {actions.length}
+                </span>
+              )}
+            </div>
+
+            {actions.length ? (
+              <div className="space-y-2.5">
+                {actions.map(action => {
+                  const Icon = action.icon;
+                  return (
+                    <Link
+                      key={action.id}
+                      href={action.href}
+                      className="group flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[#0D1929]/65 p-3.5 transition-colors hover:border-white/[0.14] hover:bg-[#132238]"
+                    >
+                      <div
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                        style={{ backgroundColor: `${action.color}14` }}
+                      >
+                        <Icon className="h-5 w-5" style={{ color: action.color }} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-200">{action.title}</p>
+                        <p className="truncate text-xs text-slate-500">{action.detail}</p>
+                      </div>
+                      {action.value && (
+                        <span className="text-xs font-semibold" style={{ color: action.color }}>
+                          {action.value}
+                        </span>
+                      )}
+                      <ArrowRight className="h-4 w-4 shrink-0 text-slate-600 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-300" />
                     </Link>
                   );
                 })}
               </div>
             ) : (
-              <div className="text-center py-10 text-slate-500">
-                <FolderKanban className="w-8 h-8 mx-auto mb-3 opacity-40" />
-                <p className="text-sm">No active projects</p>
+              <div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-white/[0.07] bg-[#0D1929]/45 p-6 text-center">
+                <CheckCircle2 className="mb-3 h-9 w-9 text-[#4ADE80]" />
+                <p className="text-sm font-semibold text-white">You&apos;re all caught up</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  We&apos;ll let you know when something needs your attention.
+                </p>
               </div>
             )}
-            <Link href="/portal/projects" className="inline-flex items-center gap-1 mt-4 text-sm text-[#06B6D4] hover:underline cursor-pointer font-medium">View all projects</Link>
-          </motion.div>
+          </motion.section>
         </div>
 
-        {recentFiles.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="bg-[#1E293B] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-white">Recent Files</h3>
-              <FolderOpen className="w-5 h-5 text-slate-400" />
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="rounded-2xl border border-white/[0.09] bg-[#111F32] p-4"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-[#22D3EE]" />
+                <h2 className="font-semibold text-white">Recent Activity</h2>
+              </div>
+              <Link href="/portal/projects" className="text-xs font-semibold text-[#22D3EE] hover:text-[#67E8F9]">
+                View projects
+              </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {recentFiles.map((file) => (
-                <Link key={file.id} href="/portal/files"
-                  className="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
-                >
-                  <div className="w-9 h-9 bg-[#06B6D4]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-4 h-4 text-[#06B6D4]" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{file.name}</p>
-                    <p className="text-xs text-slate-400">{formatBytes(file.file_size)} · {new Date(file.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</p>
-                  </div>
-                </Link>
-              ))}
+
+            {activity.length ? (
+              <div className="divide-y divide-white/[0.07] overflow-hidden rounded-xl border border-white/[0.08] bg-[#0D1929]/55">
+                {activity.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.id} className="flex items-center gap-3 px-3.5 py-3">
+                      <div
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                        style={{ backgroundColor: `${item.color}14` }}
+                      >
+                        <Icon className="h-3.5 w-3.5" style={{ color: item.color }} />
+                      </div>
+                      <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-200">{item.title}</p>
+                      <span className="hidden max-w-36 truncate text-xs text-slate-500 sm:block">{item.meta}</span>
+                      <span className="shrink-0 text-[11px] text-slate-600">{formatDate(item.date, false) || 'Recent'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-white/[0.07] bg-[#0D1929]/45 text-center">
+                <Clock3 className="mb-2 h-7 w-7 text-slate-600" />
+                <p className="text-sm font-medium text-slate-300">No recent activity</p>
+                <p className="mt-1 text-xs text-slate-500">Project updates will appear here.</p>
+              </div>
+            )}
+          </motion.section>
+
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="rounded-2xl border border-white/[0.09] bg-[#111F32] p-4"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-[#A78BFA]" />
+                <h2 className="font-semibold text-white">Messages</h2>
+              </div>
+              <Link href="/portal/messages" className="inline-flex items-center gap-1 text-xs font-semibold text-[#22D3EE] hover:text-[#67E8F9]">
+                View all messages
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
-            <Link href="/portal/files" className="inline-flex items-center gap-1 mt-4 text-sm text-[#06B6D4] hover:underline cursor-pointer font-medium">View all files</Link>
-          </motion.div>
-        )}
+
+            {messages.length ? (
+              <div className="space-y-2.5">
+                {messages.slice(0, 3).map(message => (
+                  <Link
+                    key={message.id}
+                    href="/portal/messages"
+                    className="flex items-start gap-3 rounded-xl border border-white/[0.08] bg-[#0D1929]/55 p-3.5 transition-colors hover:bg-[#132238]"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7C3AED]/15 text-xs font-bold text-[#C4B5FD]">
+                      {message.sender_name?.[0]?.toUpperCase() || 'D'}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-semibold text-slate-200">{message.sender_name}</p>
+                        {!message.read && <span className="h-2 w-2 shrink-0 rounded-full bg-[#A78BFA]" />}
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">{message.content}</p>
+                    </div>
+                    <span className="shrink-0 text-[11px] text-slate-600">
+                      {formatDate(message.created_at, false)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-white/[0.07] bg-[#0D1929]/45 p-5 text-center">
+                <MessageSquare className="mb-2 h-8 w-8 text-slate-600" />
+                <p className="text-sm font-semibold text-white">No new messages</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  You&apos;re all caught up. We&apos;ll notify you when there&apos;s an update.
+                </p>
+              </div>
+            )}
+          </motion.section>
+        </div>
       </div>
     </PortalShell>
   );
