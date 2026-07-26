@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { WorkflowRecord } from '@/hooks/useAutomationData';
 import { HEALTH_STATUS_STYLES, OPERATIONAL_STATUS_STYLES, ENVIRONMENT_STYLES } from '@/lib/automation-definitions';
-import { Search } from 'lucide-react';
+import { Search, Workflow } from 'lucide-react';
 
 interface Props {
   workflows: WorkflowRecord[];
@@ -152,4 +152,3 @@ export default function WorkflowsTable({ workflows, loading, refetch, onSelect }
   );
 }
 
-function WorkflowIcon(props: any) { return <Activity {...props} />; }
