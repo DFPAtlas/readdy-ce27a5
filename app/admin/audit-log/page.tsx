@@ -261,7 +261,7 @@ export default function AuditLog() {
                   <span className="text-xs text-slate-300">{new Date(selectedDetail.created_at).toLocaleString('en-GB')}</span>
                 </div>
 
-                {selectedDetail.before_summary && (
+                {selectedDetail.before_summary != null && (
                   <div className="pt-2 border-t border-[rgba(255,255,255,0.06)]">
                     <span className="text-xs text-slate-500 block mb-1">Before (redacted)</span>
                     <pre className="text-xs text-slate-400 bg-black/20 rounded-lg p-2 overflow-x-auto max-h-32">
@@ -269,7 +269,7 @@ export default function AuditLog() {
                     </pre>
                   </div>
                 )}
-                {selectedDetail.after_summary && (
+                {selectedDetail.after_summary != null && (
                   <div className="pt-2 border-t border-[rgba(255,255,255,0.06)]">
                     <span className="text-xs text-slate-500 block mb-1">After (redacted)</span>
                     <pre className="text-xs text-slate-400 bg-black/20 rounded-lg p-2 overflow-x-auto max-h-32">
