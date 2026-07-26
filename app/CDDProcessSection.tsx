@@ -132,7 +132,7 @@ export default function CDDProcessSection() {
         backgroundSize: '40px 40px',
       }} />
 
-      <div className="relative z-10 max-w-7xl mx-auto">
+      <div id="cdd-process" className="relative z-10 max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

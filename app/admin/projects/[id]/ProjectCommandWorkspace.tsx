@@ -11,11 +11,23 @@ import {
   FolderKanban, Calendar, Clock, Target, Users, AlertTriangle,
   Bug, FileText, MessageSquare, DollarSign, Shield, Settings,
   GitBranch, Activity, Rocket, ChevronDown, Plus, CheckCircle,
-  X, Loader2, ExternalLink, Edit2, Trash2,
+  X, Loader2, ExternalLink, Edit2, Trash2, Eye, Globe, Headphones,
 } from 'lucide-react';
+import ClientPortalDeliveryPanel from './ClientPortalDeliveryPanel';
+import ApprovalsTab from './ApprovalsTab';
+import WebsitesTab from './WebsitesTab';
+import FilesAssetsTab from './FilesAssetsTab';
+import ContentRequestsTab from './ContentRequestsTab';
+import MessagesTab from './MessagesTab';
+import SupportTicketsTab from './SupportTicketsTab';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: FolderKanban },
+  { id: 'client-portal', label: 'Client Portal', icon: Eye },
+  { id: 'approvals', label: 'Approvals', icon: CheckCircle },
+  { id: 'websites', label: 'Websites', icon: Globe },
+  { id: 'files-assets', label: 'Files & Assets', icon: FileText },
+  { id: 'content-requests', label: 'Content Requests', icon: MessageSquare },
   { id: 'plan', label: 'Plan', icon: Target },
   { id: 'milestones', label: 'Milestones', icon: Calendar },
   { id: 'tasks', label: 'Tasks', icon: CheckCircle },
@@ -25,6 +37,7 @@ const TABS = [
   { id: 'changes', label: 'Changes', icon: GitBranch },
   { id: 'files', label: 'Files', icon: FileText },
   { id: 'messages', label: 'Messages', icon: MessageSquare },
+  { id: 'support-tickets', label: 'Support Tickets', icon: Headphones },
   { id: 'finance', label: 'Finance', icon: DollarSign },
   { id: 'uat', label: 'UAT', icon: Bug },
   { id: 'deployments', label: 'Deployments', icon: Rocket },
@@ -704,6 +717,9 @@ export default function ProjectCommandWorkspace({ projectId }: { projectId: stri
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview': return renderOverviewTab();
+      case 'client-portal': return <ClientPortalDeliveryPanel project={project as any} onProjectUpdated={refresh} />;
+      case 'approvals': return <ApprovalsTab project={project as any} onProjectUpdated={refresh} />;
+      case 'websites': return <WebsitesTab project={project as any} onProjectUpdated={refresh} />;
       case 'plan': return renderPhasesTab();
       case 'milestones': return renderMilestonesTab();
       case 'tasks': return renderTasksTab();
@@ -711,8 +727,11 @@ export default function ProjectCommandWorkspace({ projectId }: { projectId: stri
       case 'risks': return renderRisksIssuesTab();
       case 'decisions': return renderDecisionsTab();
       case 'changes': return renderChangesTab();
+      case 'files-assets': return <FilesAssetsTab project={project as any} onProjectUpdated={refresh} />;
+      case 'content-requests': return <ContentRequestsTab project={project as any} onProjectUpdated={refresh} />;
       case 'files': return renderFilesTab();
-      case 'messages': return renderMessagesTab();
+      case 'messages': return <MessagesTab project={project as any} onProjectUpdated={refresh} />;
+      case 'support-tickets': return <SupportTicketsTab project={project as any} onProjectUpdated={refresh} />;
       case 'finance': return <div className="text-center py-12 text-slate-400">Finance — linked invoices and budget tracking</div>;
       case 'uat': return <div className="text-center py-12 text-slate-400">UAT — linked testing jobs and feedback</div>;
       case 'deployments': return renderDeploymentsTab();

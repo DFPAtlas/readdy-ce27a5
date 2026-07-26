@@ -6,6 +6,43 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import HeroLightLines from '@/components/HeroLightLines';
 
+const serviceRoutes = [
+  {
+    id: 'digital-launch',
+    title: 'Digital Launch',
+    audience: 'New and smaller businesses',
+    description: 'Build the professional foundation your business needs to be found, trusted and contacted.',
+    outcomes: ['Brand direction', 'Business website', 'Professional email', 'Lead capture', 'Launch support'],
+    cta: 'Discuss this route',
+    href: '/contact?need=website&need_label=Digital%20Launch',
+    icon: 'ri-rocket-line',
+    color: '#06B6D4',
+  },
+  {
+    id: 'digital-growth',
+    title: 'Digital Growth',
+    audience: 'Established businesses',
+    description: 'Improve how customers reach you and how your team manages enquiries, bookings and everyday work.',
+    outcomes: ['Website improvement', 'CRM and lead flow', 'Bookings and quotations', 'Client portals', 'Business automation'],
+    cta: 'Discuss this route',
+    href: '/contact?need=automation&need_label=Digital%20Growth',
+    icon: 'ri-line-chart-line',
+    color: '#A855F7',
+    popular: true,
+  },
+  {
+    id: 'digital-transformation',
+    title: 'Digital Transformation',
+    audience: 'Growing companies',
+    description: 'Design a connected operating system around the way your business actually works.',
+    outcomes: ['Bespoke software', 'Staff dashboards', 'System integrations', 'AI agents', 'Ongoing management'],
+    cta: 'Discuss this route',
+    href: '/contact?need=saas&need_label=Digital%20Transformation',
+    icon: 'ri-settings-3-line',
+    color: '#F97316',
+  },
+];
+
 const allServices = [
   { icon: 'ri-code-s-slash-line', title: 'Website Design & Development', desc: 'Beautiful, high-performance websites built with modern technology stacks. Responsive, accessible, and conversion-optimised.', color: '#06B6D4', features: ['Custom Design', 'Next.js & React', 'E-Commerce', 'CMS Integration', 'SEO Optimised', 'Mobile-First'] },
   { icon: 'ri-robot-line', title: 'AI Agent Development', desc: 'Custom AI agents that automate customer service, lead qualification, scheduling and intelligent workflows.', color: '#7C3AED', features: ['Chatbots', 'Voice Assistants', 'Lead Qualification', 'Custom Training', 'API Integration', 'Analytics'] },
@@ -33,10 +70,76 @@ export default function ServicesPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#06B6D4]/10 border border-[#06B6D4]/20 text-[#06B6D4] text-sm font-medium mb-6">
                 <i className="ri-tools-line w-4 h-4 flex items-center justify-center" />
-                What We Offer
+                Ways to work with DFP
               </div>
-              <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-4">Our Services</h1>
-              <p className="text-xl text-slate-500 max-w-2xl mx-auto">Complete technology services to help your business modernise, automate and grow.</p>
+              <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-4">A clear route for every stage</h1>
+              <p className="text-xl text-slate-500 max-w-2xl mx-auto">Start with what you need today. Each route is shaped around your business, not a fixed package.</p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-20">
+              {serviceRoutes.map((route, i) => (
+                <motion.div
+                  key={route.id}
+                  id={route.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.08 }}
+                  className={`group relative rounded-2xl border p-6 flex flex-col transition-all duration-300 hover:-translate-y-1 scroll-mt-28 ${
+                    route.popular
+                      ? 'border-[#A855F7]/30 bg-[#A855F7]/[0.02] hover:border-[#A855F7]/50 shadow-lg shadow-[#A855F7]/5'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-lg'
+                  }`}
+                >
+                  {route.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#A855F7] text-white text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
+                      Most popular
+                    </div>
+                  )}
+
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-colors group-hover:scale-105"
+                    style={{ backgroundColor: `${route.color}12` }}
+                  >
+                    <i className={`${route.icon} text-xl w-6 h-6 flex items-center justify-center`} style={{ color: route.color }} />
+                  </div>
+
+                  <h3 className="text-xl font-bold text-slate-800 mb-1">{route.title}</h3>
+                  <p className="text-xs font-semibold mb-4" style={{ color: route.color }}>{route.audience}</p>
+                  <p className="text-sm text-slate-500 leading-relaxed mb-5">{route.description}</p>
+
+                  <ul className="space-y-2 mb-6 flex-1">
+                    {route.outcomes.map((item) => (
+                      <li key={item} className="flex items-center gap-2.5 text-sm text-slate-600">
+                        <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: `${route.color}60` }} />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    href={route.href}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-300 cursor-pointer whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[#06B6D4]"
+                    style={{ backgroundColor: `${route.color}20`, border: `1px solid ${route.color}30` }}
+                  >
+                    {route.cta}
+                    <i className="ri-arrow-right-line w-4 h-4 flex items-center justify-center group-hover:translate-x-0.5 transition-transform duration-200" />
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-12"
+            >
+              <p className="text-[#06B6D4] text-xs sm:text-sm uppercase tracking-[0.14em] font-semibold mb-4">
+                Individual capabilities
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 mb-4">
+                Everything we can bring into your solution
+              </h2>
             </motion.div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

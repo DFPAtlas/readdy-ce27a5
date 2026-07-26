@@ -7,14 +7,42 @@ import Footer from '@/components/Footer';
 import HeroLightLines from '@/components/HeroLightLines';
 
 const industries = [
-  { icon: 'ri-building-3-line', name: 'Construction', desc: 'Project management platforms, workforce scheduling, site monitoring and compliance tools for construction firms.' },
-  { icon: 'ri-home-4-line', name: 'Property & Lettings', desc: 'Property management systems, tenant portals, maintenance tracking and automated communications.' },
-  { icon: 'ri-shield-line', name: 'Security Industry', desc: 'Rostering, patrol tracking, incident reporting, compliance management and mobile workforce apps.' },
-  { icon: 'ri-shopping-bag-3-line', name: 'Retail', desc: 'E-commerce platforms, inventory management, POS integration and omnichannel customer experiences.' },
-  { icon: 'ri-restaurant-line', name: 'Hospitality', desc: 'Booking systems, online ordering, customer engagement platforms and operational management tools.' },
-  { icon: 'ri-heart-pulse-line', name: 'Healthcare', desc: 'Patient portals, appointment scheduling, secure communications and practice management systems.' },
-  { icon: 'ri-briefcase-4-line', name: 'Professional Services', desc: 'Client portals, document management, workflow automation and CRM integration for service firms.' },
-  { icon: 'ri-store-2-line', name: 'Small Business', desc: 'Affordable websites, booking systems, email automation and business tools built for smaller budgets.' },
+  {
+    icon: 'ri-car-line',
+    name: 'Independent Car Dealerships',
+    desc: 'Vehicle stock workflows, listing distribution, enquiry handling, customer follow-up and dealership automation.',
+    color: '#06B6D4',
+  },
+  {
+    icon: 'ri-home-4-line',
+    name: 'Property & Lettings',
+    desc: 'Property management systems, tenant portals, maintenance tracking and automated communications.',
+    color: '#0891B2',
+  },
+  {
+    icon: 'ri-shield-line',
+    name: 'Security Companies',
+    desc: 'Rostering, patrol tracking, incident reporting, compliance management and mobile workforce apps.',
+    color: '#6366F1',
+  },
+  {
+    icon: 'ri-tools-line',
+    name: 'Trades & Home Services',
+    desc: 'Professional websites, quotation journeys, bookings, job tracking and automated customer communications.',
+    color: '#F97316',
+  },
+  {
+    icon: 'ri-heart-line',
+    name: 'Wedding & Event Businesses',
+    desc: 'Booking journeys, client portals, planning tools, supplier workflows and guest communications.',
+    color: '#EC4899',
+  },
+  {
+    icon: 'ri-briefcase-4-line',
+    name: 'Professional Services',
+    desc: 'Client portals, document management, workflow automation and CRM integration for service firms.',
+    color: '#10B981',
+  },
 ];
 
 export default function IndustriesPage() {
@@ -29,10 +57,12 @@ export default function IndustriesPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#06B6D4]/10 border border-[#06B6D4]/20 text-[#06B6D4] text-sm font-medium mb-6">
                 <i className="ri-global-line w-4 h-4 flex items-center justify-center" />
-                Across Sectors
+                Industries
               </div>
               <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-4">Industries We Serve</h1>
-              <p className="text-xl text-slate-500 max-w-2xl mx-auto">Deep expertise across diverse sectors means technology solutions that truly understand your business.</p>
+              <p className="text-xl text-slate-500 max-w-2xl mx-auto">
+                We focus first on independent UK service businesses where better digital systems can make an immediate commercial difference.
+              </p>
             </motion.div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -44,8 +74,11 @@ export default function IndustriesPage() {
                   transition={{ delay: index * 0.06 }}
                   className="glass-card rounded-2xl p-8 cursor-pointer flex gap-6 group"
                 >
-                  <div className="w-14 h-14 rounded-2xl bg-[#06B6D4]/10 flex items-center justify-center shrink-0 group-hover:bg-[#06B6D4]/20 transition-colors">
-                    <i className={`${industry.icon} text-2xl text-[#06B6D4] w-7 h-7 flex items-center justify-center`} />
+                  <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform"
+                    style={{ backgroundColor: `${industry.color}12` }}
+                  >
+                    <i className={`${industry.icon} text-2xl w-7 h-7 flex items-center justify-center`} style={{ color: industry.color }} />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold mb-2 text-slate-800">{industry.name}</h3>

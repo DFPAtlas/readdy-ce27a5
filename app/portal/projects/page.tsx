@@ -44,7 +44,23 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     async function fetchData() {
-      const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setLoading(false); return; }
+
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (!clientData) { setLoading(false); return; }
+
+      const { data } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('client_id', clientData.id)
+        .order('created_at', { ascending: false });
+
       if (data) setProjects(data);
       setLoading(false);
     }

@@ -14,6 +14,9 @@ import InfrastructureManagementSection from './InfrastructureManagementSection';
 import FounderSection from './FounderSection';
 import WaysToWorkSection from './WaysToWorkSection';
 import CTASection from './CTASection';
+import WhoWeHelpSection from './WhoWeHelpSection';
+import WhereAreYouNowSection from './WhereAreYouNowSection';
+import ServiceRoutesSection from './ServiceRoutesSection';
 
 const organizationSchema = {
   '@context': 'https://schema.org',
@@ -21,7 +24,7 @@ const organizationSchema = {
   name: 'Digital Footprint',
   url: 'https://digital-footprint.uk',
   logo: 'https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/eee9f9ba-b907-488b-a1a8-f6d02534a71b_compressed_Remove-Background-Keep-Foot-Logo.webp',
-  description: 'Digital Footprint conceives, develops, deploys and manages connected digital businesses, SaaS platforms, AI agents, automation, operational portals and secure infrastructure.',
+  description: 'Websites, client portals, automation and AI-powered tools that help independent UK businesses launch, grow and operate more efficiently.',
   address: {
     '@type': 'PostalAddress',
     addressLocality: 'Hertfordshire',
@@ -37,8 +40,8 @@ const organizationSchema = {
 const webPageSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
-  name: 'Digital Footprint | SaaS, AI Automation and Digital Business Systems',
-  description: 'Digital Footprint conceives, develops, deploys and manages connected digital businesses, SaaS platforms, AI agents, automation, operational portals and secure infrastructure.',
+  name: 'Digital Footprint | Digital Systems for Independent UK Businesses',
+  description: 'Websites, client portals, automation and AI-powered tools that help independent UK businesses launch, grow and operate more efficiently.',
   url: 'https://digital-footprint.uk',
   publisher: {
     '@type': 'Organization',
@@ -62,6 +65,9 @@ export default function HomePage() {
           <Header />
           <VideoHeroSection />
           <FirstContentSection />
+          <WhoWeHelpSection />
+          <WhereAreYouNowSection />
+          <ServiceRoutesSection />
           <FeaturedProjectsSection />
           <CDDProcessSection />
           <IntelligentBusinessSystemsSection />

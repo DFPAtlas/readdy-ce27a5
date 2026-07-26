@@ -12,10 +12,10 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'sw
 export const metadata: Metadata = {
   metadataBase: new URL('https://digital-footprint.uk'),
   title: {
-    default: "Digital Footprint | SaaS, AI Automation and Digital Business Systems",
+    default: "Digital Footprint | Digital Systems for Independent UK Businesses",
     template: "%s | Digital Footprint"
   },
-  description: "Digital Footprint conceives, develops, deploys and manages connected digital businesses, SaaS platforms, AI agents, automation, operational portals and secure infrastructure.",
+  description: "Websites, client portals, automation and AI-powered tools that help independent UK businesses launch, grow and operate more efficiently.",
   keywords: ["digital business", "SaaS platform", "AI agents", "business automation", "technology venture studio", "operational portals", "secure infrastructure", "digital transformation", "UK tech company"],
   authors: [{ name: "Digital Footprint", url: "https://digital-footprint.uk" }],
   creator: "Digital Footprint",
@@ -30,14 +30,14 @@ export const metadata: Metadata = {
     locale: "en_GB",
     url: "/",
     siteName: "Digital Footprint",
-    title: "Digital Footprint | SaaS, AI Automation and Digital Business Systems",
-    description: "Digital Footprint conceives, develops, deploys and manages connected digital businesses, SaaS platforms, AI agents, automation, operational portals and secure infrastructure.",
+    title: "Digital Footprint | Digital Systems for Independent UK Businesses",
+    description: "Websites, client portals, automation and AI-powered tools that help independent UK businesses launch, grow and operate more efficiently.",
     images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Digital Footprint — SaaS, AI Automation and Digital Business Systems" }]
   },
   twitter: {
     card: "summary_large_image",
-    title: "Digital Footprint | SaaS, AI Automation and Digital Business Systems",
-    description: "Digital Footprint conceives, develops, deploys and manages connected digital businesses, SaaS platforms, AI agents, automation, operational portals and secure infrastructure.",
+    title: "Digital Footprint | Digital Systems for Independent UK Businesses",
+    description: "Websites, client portals, automation and AI-powered tools that help independent UK businesses launch, grow and operate more efficiently.",
     images: ["/og-image.jpg"],
     creator: "@digitalfootprint"
   },
@@ -85,8 +85,8 @@ export default function RootLayout({
           data-voice-show-transcript="true"
           data-theme="light"
           data-size="compact"
-          data-accent-color="#F97316"
-          data-button-base-color="#0F172A"
+          data-accent-color="#06B6D4"
+          data-button-base-color="#F97316"
           data-button-accent-color="#FFFFFF"
         />
       </body>

@@ -1,18 +1,56 @@
 'use client';
 
 import { motion } from '@/components/motion';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { trackConversion } from '@/lib/analytics';
+
+const needLabelMap: Record<string, string> = {
+  website: 'I need a new website',
+  'website-improvement': 'My current website needs improving',
+  'lead-generation': 'I need more enquiries',
+  automation: 'I want to automate my business',
+  portal: 'I need a client or staff portal',
+  saas: 'I have a software or SaaS idea',
+  discovery: 'I\'m not sure what I need',
+};
+
+const needServiceMap: Record<string, string> = {
+  website: 'Website Development',
+  'website-improvement': 'Website Development',
+  'lead-generation': 'Business Process Automation',
+  automation: 'Business Process Automation',
+  portal: 'Customer Portals',
+  saas: 'Website Development',
+  discovery: '',
+};
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({ name: '', email: '', company: '', phone: '', service: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [selectedNeed, setSelectedNeed] = useState<{ value: string; label: string } | null>(null);
   const lastSubmitRef = useRef(0);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const needValue = params.get('need');
+    const needLabel = params.get('need_label');
+    if (needValue && needLabel && needLabelMap[needValue]) {
+      setSelectedNeed({ value: needValue, label: needLabelMap[needValue] });
+      const service = needServiceMap[needValue] || '';
+      setFormData(prev => ({
+        ...prev,
+        service: service || prev.service,
+        message: service
+          ? `I selected: "${needLabelMap[needValue]}". I'd like to discuss this with the team.`
+          : `I selected: "${needLabelMap[needValue]}". I'm looking for guidance on the best next step.`,
+      }));
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -39,11 +77,16 @@ export default function ContactPage() {
     setSubmitting(true);
     setErrorMsg('');
 
+    const payload: Record<string, string> = { ...formData };
+    if (selectedNeed) {
+      payload.message = `[Starting point: ${selectedNeed.label}]\n\n${payload.message}`;
+    }
+
     try {
       const response = await fetch('https://readdy.ai/api/form/d8k4kau0gbrp57rm5irg', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(formData).toString()
+        body: new URLSearchParams(payload).toString()
       });
 
       const responseText = await response.text();
@@ -67,7 +110,7 @@ export default function ContactPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData]);
+  }, [formData, selectedNeed]);
 
   return (
     <>
@@ -305,6 +348,13 @@ export default function ContactPage() {
                         readOnly
                         className="absolute opacity-0 w-0 h-0 pointer-events-none"
                       />
+
+                      {selectedNeed && (
+                        <div className="mb-6 p-4 rounded-xl bg-[#06B6D4]/5 border border-[#06B6D4]/15">
+                          <p className="text-xs text-[#06B6D4] font-semibold uppercase tracking-wider mb-1">You selected</p>
+                          <p className="text-sm text-slate-700 font-medium">{selectedNeed.label}</p>
+                        </div>
+                      )}
 
                       {errorMsg && (
                         <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">

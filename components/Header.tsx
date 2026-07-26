@@ -240,15 +240,15 @@ export default function Header() {
 
   const navItemClass = transparent
     ? (headerBgLight
-      ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-      : 'text-white/85 hover:text-white hover:bg-white/[0.06]')
-    : 'text-[#7DD3FC] hover:text-white hover:bg-white/[0.06]';
+      ? 'text-slate-600 hover:text-[#F97316] hover:bg-orange-50'
+      : 'text-white/85 hover:text-[#F97316] hover:bg-white/[0.06]')
+    : 'text-[#7DD3FC] hover:text-[#F97316] hover:bg-white/[0.06]';
 
   const subtleLinkClass = transparent
     ? (headerBgLight
-      ? 'text-slate-500 hover:text-slate-800'
-      : 'text-white/65 hover:text-white')
-    : 'text-[#67E8F9] hover:text-white';
+      ? 'text-slate-500 hover:text-[#F97316]'
+      : 'text-white/65 hover:text-[#F97316]')
+    : 'text-[#67E8F9] hover:text-[#F97316]';
 
   const logoTextClass = transparent
     ? (headerBgLight ? 'text-slate-800' : 'text-white')
@@ -256,9 +256,9 @@ export default function Header() {
 
   const mobileToggleClass = transparent
     ? (headerBgLight
-      ? 'text-slate-600 hover:text-slate-800'
-      : 'text-white/70 hover:text-white')
-    : 'text-[#67E8F9] hover:text-white';
+      ? 'text-slate-600 hover:text-[#F97316]'
+      : 'text-white/70 hover:text-[#F97316]')
+    : 'text-[#67E8F9] hover:text-[#F97316]';
 
   const headerBgClass = scrolled
     ? 'bg-[#0A1628]/94 backdrop-blur-xl shadow-lg shadow-black/20 border-b border-white/[0.06]'
@@ -273,8 +273,8 @@ export default function Header() {
     : 'shadow-xl shadow-black/30';
 
   const dropdownTextClass = transparent && headerBgLight
-    ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-    : 'text-[#7DD3FC] hover:text-white hover:bg-white/[0.08]';
+    ? 'text-slate-600 hover:text-[#F97316] hover:bg-orange-50'
+    : 'text-[#7DD3FC] hover:text-[#F97316] hover:bg-white/[0.08]';
 
   const dropdownIconClass = transparent && headerBgLight
     ? 'text-slate-400'
@@ -300,7 +300,7 @@ export default function Header() {
       >
         <div className="px-6 flex items-center justify-between">
           <Link
-            href="/"
+            href="https://digital-footprint.uk/#first-content-section"
             className={`flex items-center gap-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] focus:ring-offset-2 focus:ring-offset-[#0A1628] rounded-lg transition-all duration-500 ${
               scrolled ? 'scale-90' : 'scale-100'
             }`}
@@ -316,7 +316,9 @@ export default function Header() {
                 scrolled ? 'w-8 h-8' : 'w-10 h-10'
               }`}
             />
-            <span className={`font-bold tracking-tight hidden sm:block transition-all duration-500 ${
+            <span className={`font-bold tracking-tight transition-all duration-500 whitespace-nowrap overflow-hidden -ml-[3px] ${
+              scrolled ? 'opacity-0 max-w-0' : 'opacity-100 max-w-[200px] hidden sm:block'
+            } ${
               scrolled ? 'text-base' : 'text-lg'
             } ${logoTextClass}`} suppressHydrationWarning={true}>
               Digital<span className="text-[#06B6D4]"> Footprint</span>
@@ -427,6 +429,13 @@ export default function Header() {
               How We Work
             </Link>
 
+            <Link
+              href="/who-we-help"
+              className={`inline-flex items-center text-[13px] font-medium transition-all duration-200 cursor-pointer px-3 py-2 rounded-lg whitespace-nowrap justify-center leading-none ${navItemClass}`}
+            >
+              Who We Help
+            </Link>
+
             <div
               ref={aboutRef}
               className="relative"
@@ -526,9 +535,28 @@ export default function Header() {
           <div className="hidden lg:flex items-center gap-2">
             <Link
               href="/contact"
-              className="group relative px-5 py-2.5 rounded-[13px] font-semibold text-[13px] text-white overflow-hidden whitespace-nowrap cursor-pointer transition-all duration-300 bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] hover:to-[#C2410C] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#F97316]/25 focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:ring-offset-2 focus:ring-offset-[#050D1C]"
+              title="Discuss a Project"
+              className={`group relative rounded-[13px] font-semibold text-[13px] text-white overflow-hidden whitespace-nowrap cursor-pointer transition-all duration-500 bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] hover:to-[#C2410C] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#F97316]/25 focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:ring-offset-2 focus:ring-offset-[#050D1C] ${
+                scrolled ? 'p-2 w-9 h-9 flex items-center justify-center' : 'px-5 py-2.5'
+              }`}
             >
-              <span className="relative z-10">Discuss a Project</span>
+              <span className={`relative z-10 transition-all duration-500 overflow-hidden whitespace-nowrap ${
+                scrolled ? 'opacity-0 max-w-0' : 'opacity-100 max-w-[200px]'
+              }`}>
+                Start Your Project
+              </span>
+              <span className={`relative z-10 transition-all duration-500 ${
+                scrolled ? 'opacity-100 w-4 flex items-center justify-center' : 'opacity-0 w-0'
+              }`}
+              >
+                <i className="ri-chat-3-line w-4 h-4 flex items-center justify-center" />
+              </span>
+              <span className={`absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-[#0A1628] border border-white/10 text-[11px] font-medium text-white whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg shadow-black/30 ${
+                scrolled ? '' : 'hidden'
+              }`}>
+                Start Your Project
+                <span className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-l-transparent border-r-transparent border-t-[#0A1628]" />
+              </span>
               <span className="absolute inset-0 rounded-[13px] bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
             </Link>
           </div>
@@ -536,9 +564,21 @@ export default function Header() {
           <div className="flex lg:hidden items-center gap-2">
             <Link
               href="/contact"
-              className="px-4 py-2 rounded-lg font-semibold text-xs text-white bg-[#F97316] whitespace-nowrap cursor-pointer"
+              title="Discuss a Project"
+              className={`group relative rounded-lg font-semibold text-xs text-white bg-[#F97316] whitespace-nowrap cursor-pointer transition-all duration-500 overflow-hidden flex items-center justify-center ${
+                scrolled ? 'p-2 w-8 h-8' : 'px-4 py-2'
+              }`}
             >
-              Discuss a Project
+              <span className={`transition-all duration-500 overflow-hidden whitespace-nowrap ${
+                scrolled ? 'opacity-0 max-w-0' : 'opacity-100 max-w-[200px]'
+              }`}>
+                Start Your Project
+              </span>
+              <span className={`transition-all duration-500 flex items-center justify-center ${
+                scrolled ? 'opacity-100 w-4' : 'opacity-0 w-0'
+              }`}>
+                <i className="ri-chat-3-line w-4 h-4 flex items-center justify-center" />
+              </span>
             </Link>
             <button
               ref={menuButtonRef}
@@ -593,7 +633,7 @@ export default function Header() {
                     onClick={() => { setMobileServicesOpen(!mobileServicesOpen); setMobilePortfolioOpen(false); setMobileClientLoginOpen(false); setMobileMoreOpen(false); }}
                     aria-expanded={mobileServicesOpen}
                     aria-controls="mobile-services-submenu"
-                    className="w-full flex items-center justify-between text-lg font-medium text-white hover:text-[#06B6D4] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
+                    className="w-full flex items-center justify-between text-lg font-medium text-white hover:text-[#F97316] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
                   >
                     <span>Services</span>
                     <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileServicesOpen ? 'rotate-180' : ''}`} />
@@ -630,7 +670,7 @@ export default function Header() {
                     onClick={() => { setMobilePortfolioOpen(!mobilePortfolioOpen); setMobileServicesOpen(false); setMobileClientLoginOpen(false); setMobileMoreOpen(false); }}
                     aria-expanded={mobilePortfolioOpen}
                     aria-controls="mobile-portfolio-submenu"
-                    className="w-full flex items-center justify-between text-lg font-medium text-white hover:text-[#06B6D4] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
+                    className="w-full flex items-center justify-between text-lg font-medium text-white hover:text-[#F97316] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
                   >
                     <span>Portfolio</span>
                     <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobilePortfolioOpen ? 'rotate-180' : ''}`} />
@@ -664,9 +704,17 @@ export default function Header() {
                 <Link
                   href="/#how-we-work"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-lg font-medium text-white hover:text-[#06B6D4] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
+                  className="text-lg font-medium text-white hover:text-[#F97316] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
                 >
                   How We Work
+                </Link>
+
+                <Link
+                  href="/who-we-help"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-lg font-medium text-white hover:text-[#F97316] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
+                >
+                  Who We Help
                 </Link>
 
                 <div>
@@ -674,7 +722,7 @@ export default function Header() {
                     onClick={() => { setMobileAboutOpen(!mobileAboutOpen); setMobileServicesOpen(false); setMobilePortfolioOpen(false); setMobileClientLoginOpen(false); setMobileMoreOpen(false); }}
                     aria-expanded={mobileAboutOpen}
                     aria-controls="mobile-about-submenu"
-                    className="w-full flex items-center justify-between text-lg font-medium text-white hover:text-[#06B6D4] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
+                    className="w-full flex items-center justify-between text-lg font-medium text-white hover:text-[#F97316] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
                   >
                     <span>About</span>
                     <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileAboutOpen ? 'rotate-180' : ''}`} />
@@ -710,7 +758,7 @@ export default function Header() {
                     onClick={() => { setMobileClientLoginOpen(!mobileClientLoginOpen); setMobileServicesOpen(false); setMobilePortfolioOpen(false); setMobileMoreOpen(false); }}
                     aria-expanded={mobileClientLoginOpen}
                     aria-controls="mobile-login-submenu"
-                    className="w-full flex items-center justify-between text-lg font-medium text-white hover:text-[#06B6D4] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
+                    className="w-full flex items-center justify-between text-lg font-medium text-white hover:text-[#F97316] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
                   >
                     <span>Client Login</span>
                     <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileClientLoginOpen ? 'rotate-180' : ''}`} />
@@ -746,7 +794,7 @@ export default function Header() {
                     onClick={() => { setMobileMoreOpen(!mobileMoreOpen); setMobileServicesOpen(false); setMobilePortfolioOpen(false); setMobileClientLoginOpen(false); }}
                     aria-expanded={mobileMoreOpen}
                     aria-controls="mobile-more-submenu"
-                    className="w-full flex items-center justify-between text-lg font-medium text-white hover:text-[#06B6D4] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
+                    className="w-full flex items-center justify-between text-lg font-medium text-white hover:text-[#F97316] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] rounded px-2 py-3"
                   >
                     <span>More</span>
                     <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileMoreOpen ? 'rotate-180' : ''}`} />
@@ -784,7 +832,7 @@ export default function Header() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="block text-center px-6 py-3 rounded-xl font-semibold text-white bg-[#F97316] transition-all cursor-pointer"
                   >
-                    Discuss a Project
+                    Start Your Project
                   </Link>
                 </div>
               </nav>

@@ -6,6 +6,18 @@ export async function generateStaticParams() {
     { slug: 'guardianhub' },
     { slug: 'synqoro' },
     { slug: 'lethub' },
+    { slug: 'the-forge' },
+    { slug: 'wedora' },
+    { slug: 'corevia-ai' },
+    { slug: 'homaura' },
+    { slug: 'dataharbour' },
+    { slug: 'fisheryhub' },
+    { slug: 'homvia' },
+    { slug: 'hotdesk-hub' },
+    { slug: 'bivvybox' },
+    { slug: 'rackflow' },
+    { slug: 'chairdock-ai' },
+    { slug: 'drivedrop-ai' },
   ];
 }
 

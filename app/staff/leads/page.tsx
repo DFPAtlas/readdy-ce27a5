@@ -1,18 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from '@/components/motion';
 import {
-  Search, Filter, RefreshCw, Eye, Trash2, ChevronDown,
-  UserCheck, X, Mail, Phone, Building2, MapPin, Globe,
-  Calendar, ArrowUpRight, Loader2, CheckCircle, UserPlus, DollarSign,
+  Search, RefreshCw, ChevronDown, X, Eye, Trash2,
+  UserCheck, Loader2, UserPlus, ArrowUpRight,
+  Building2, Calendar,
+  AlertTriangle, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import StaffShell from '../../../components/staff/StaffShell';
-
-
+import LeadsSkeleton from '../../../components/staff/LeadsSkeleton';
+import LeadDetailDrawer from '../../../components/staff/LeadDetailDrawer';
+import LeadConversionDialog from '../../../components/staff/LeadConversionDialog';
+import LeadDeleteDialog from '../../../components/staff/LeadDeleteDialog';
 
 interface Lead {
   id: string;
@@ -26,174 +30,360 @@ interface Lead {
   budget_range: string | null;
   location: string | null;
   status: string;
-  assigned_to: string | null;
+  stage: string;
+  priority: string;
+  estimated_value: number | null;
+  contact_role: string | null;
+  contact_phone: string | null;
+  industry: string | null;
   source: string;
+  campaign: string | null;
+  assigned_to: string | null;
   created_at: string;
+  updated_at: string;
+  converted_to_client: string | null;
+  converted_at: string | null;
 }
 
-interface StaffProfile {
+interface StaffInfo {
   id: string;
   full_name: string | null;
   role: string;
 }
 
-export default function StaffLeadsPage() {
+interface LeadStats {
+  total: number;
+  newCount: number;
+  contacted: number;
+  qualified: number;
+  converted: number;
+}
+
+const VALID_STATUSES = ['new', 'contacted', 'qualified', 'converted', 'closed'];
+const PAGE_SIZE = 20;
+
+function getStatusStyle(status: string) {
+  switch (status) {
+    case 'new': return { color: '#06B6D4', bg: 'bg-[#06B6D4]/10' };
+    case 'contacted': return { color: '#F59E0B', bg: 'bg-[#F59E0B]/10' };
+    case 'qualified': return { color: '#10B981', bg: 'bg-[#10B981]/10' };
+    case 'converted': return { color: '#8B5CF6', bg: 'bg-[#8B5CF6]/10' };
+    case 'closed': return { color: '#9CA3AF', bg: 'bg-white/5' };
+    default: return { color: '#94A3B8', bg: 'bg-white/5' };
+  }
+}
+
+function getPriorityStyle(priority: string) {
+  switch (priority) {
+    case 'urgent': return { color: '#EF4444', bg: 'bg-[#EF4444]/10' };
+    case 'high': return { color: '#F59E0B', bg: 'bg-[#F59E0B]/10' };
+    case 'medium': return { color: '#06B6D4', bg: 'bg-[#06B6D4]/10' };
+    case 'low': return { color: '#10B981', bg: 'bg-[#10B981]/10' };
+    default: return { color: '#94A3B8', bg: 'bg-white/5' };
+  }
+}
+
+function formatDate(d: string | null) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function formatShortDate(d: string | null) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+const METADATA_COLS = 'id,name,email,phone,company_name,website,service_interest,budget_range,location,status,stage,priority,estimated_value,contact_role,contact_phone,industry,source,campaign,assigned_to,created_at,updated_at,converted_to_client,converted_at';
+
+function LeadsContent() {
   const router = useRouter();
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
-  const [staff, setStaff] = useState<StaffProfile[]>([]);
+  const searchParams = useSearchParams();
+
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [profile, setProfile] = useState<{ id: string; full_name: string | null; role: string } | null>(null);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [staff, setStaff] = useState<StaffInfo[]>([]);
+  const [stats, setStats] = useState<LeadStats>({ total: 0, newCount: 0, contacted: 0, qualified: 0, converted: 0 });
+  const [refreshing, setRefreshing] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(0);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [refreshing, setRefreshing] = useState(false);
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
+  const [sortMode, setSortMode] = useState('newest');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [converting, setConverting] = useState(false);
-  const [convertSuccess, setConvertSuccess] = useState(false);
-  const [convertError, setConvertError] = useState('');
+  const [convertingLead, setConvertingLead] = useState<Lead | null>(null);
+  const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
+
+  const [statusUpdating, setStatusUpdating] = useState<Record<string, boolean>>({});
+  const [assignUpdating, setAssignUpdating] = useState<Record<string, boolean>>({});
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+  const isPrivileged = isAdmin || profile?.role === 'project_lead';
+  const canDelete = isAdmin;
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3500);
+  };
 
   useEffect(() => {
+    const urlStatus = searchParams.get('status');
+    if (urlStatus && VALID_STATUSES.includes(urlStatus)) setStatusFilter(urlStatus);
+    const urlAssignee = searchParams.get('assignee');
+    if (urlAssignee) setAssigneeFilter(urlAssignee);
+    const urlSearch = searchParams.get('search');
+    if (urlSearch) setSearchQuery(urlSearch);
+    const urlSort = searchParams.get('sort');
+    if (urlSort === 'newest' || urlSort === 'oldest' || urlSort === 'name' || urlSort === 'company') setSortMode(urlSort);
+    const urlPage = searchParams.get('page');
+    if (urlPage) setPage(Math.max(0, parseInt(urlPage) || 0));
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams();
+    if (statusFilter !== 'all') params.set('status', statusFilter);
+    if (assigneeFilter !== 'all') params.set('assignee', assigneeFilter);
+    if (searchQuery) params.set('search', searchQuery);
+    if (sortMode !== 'newest') params.set('sort', sortMode);
+    if (page > 0) params.set('page', String(page));
+    const newUrl = params.toString() ? `/staff/leads?${params.toString()}` : '/staff/leads';
+    window.history.replaceState(null, '', newUrl);
+  }, [statusFilter, assigneeFilter, searchQuery, sortMode, page]);
+
+  useEffect(() => {
+    let cancelled = false;
     async function init() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setTimeout(() => router.replace('/staff/login'), 0); return; }
-      const { data: sp } = await supabase.from('staff_profiles').select('id').eq('id', session.user.id).maybeSingle();
+      const { data: sp } = await supabase.from('staff_profiles').select('id, full_name, role').eq('id', session.user.id).maybeSingle();
       if (!sp) { setTimeout(() => router.replace('/staff/login'), 0); return; }
-      await fetchData();
+      if (cancelled) return;
+      setProfile(sp);
+
+      const [staffRes] = await Promise.all([
+        supabase.from('staff_profiles').select('id, full_name, role').order('full_name'),
+      ]);
+      if (cancelled) return;
+      if (staffRes.data) setStaff(staffRes.data);
+
+      await fetchLeads(() => cancelled);
     }
     init();
+    return () => { cancelled = true; };
   }, [router]);
 
-  const fetchData = async () => {
-    const [leadsRes, staffRes] = await Promise.all([
-      supabase.from('leads').select('*').order('created_at', { ascending: false }),
-      supabase.from('staff_profiles').select('id, full_name, role'),
-    ]);
-    if (leadsRes.data) { setLeads(leadsRes.data); setFilteredLeads(leadsRes.data); }
-    if (staffRes.data) setStaff(staffRes.data);
+  const buildQuery = useCallback(() => {
+    let q = supabase.from('leads').select(METADATA_COLS, { count: 'exact', head: false });
+
+    if (searchQuery) {
+      const qLower = searchQuery.toLowerCase();
+      q = q.or(`name.ilike.%${qLower}%,email.ilike.%${qLower}%,company_name.ilike.%${qLower}%,service_interest.ilike.%${qLower}%`);
+    }
+
+    if (statusFilter !== 'all') {
+      q = q.eq('status', statusFilter);
+    }
+
+    if (assigneeFilter === 'mine' && profile) {
+      q = q.eq('assigned_to', profile.id);
+    } else if (assigneeFilter === 'unassigned') {
+      q = q.is('assigned_to', null);
+    } else if (assigneeFilter !== 'all' && assigneeFilter !== 'mine' && assigneeFilter !== 'unassigned') {
+      q = q.eq('assigned_to', assigneeFilter);
+    }
+
+    switch (sortMode) {
+      case 'oldest': q = q.order('created_at', { ascending: true }); break;
+      case 'name': q = q.order('name', { ascending: true }); break;
+      case 'company': q = q.order('company_name', { ascending: true, nullsFirst: false }); break;
+      default: q = q.order('created_at', { ascending: false }); break;
+    }
+
+    q = q.order('id', { ascending: true });
+    q = q.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+    return q;
+  }, [searchQuery, statusFilter, assigneeFilter, sortMode, page, profile]);
+
+  const fetchLeads = async (cancelled: () => boolean) => {
+    setLoadError('');
+    const q = buildQuery();
+    const { data, error, count } = await q;
+    if (cancelled()) return;
+    if (error) {
+      setLoadError(error.message);
+      setLoading(false);
+      return;
+    }
+    setLeads(data || []);
+    setTotalCount(count || 0);
     setLoading(false);
     setRefreshing(false);
   };
 
+  const fetchStats = async () => {
+    const counts = await Promise.all([
+      supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'new'),
+      supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'contacted'),
+      supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'qualified'),
+      supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'converted'),
+      supabase.from('leads').select('id', { count: 'exact', head: true }),
+    ]);
+
+    setStats({
+      newCount: counts[0].count || 0,
+      contacted: counts[1].count || 0,
+      qualified: counts[2].count || 0,
+      converted: counts[3].count || 0,
+      total: counts[4].count || 0,
+    });
+  };
+
   useEffect(() => {
-    let filtered = leads;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(l =>
-        l.name.toLowerCase().includes(q) ||
-        l.email.toLowerCase().includes(q) ||
-        (l.company_name?.toLowerCase().includes(q)) ||
-        (l.service_interest?.toLowerCase().includes(q))
-      );
-    }
-    if (statusFilter !== 'all') filtered = filtered.filter(l => l.status === statusFilter);
-    setFilteredLeads(filtered);
-  }, [searchQuery, statusFilter, leads]);
+    if (!profile) return;
+    let cancelled = false;
+    fetchLeads(() => cancelled);
+    fetchStats();
+    return () => { cancelled = true; };
+  }, [searchQuery, statusFilter, assigneeFilter, sortMode, page, profile]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchLeads(() => false);
+    await fetchStats();
+    setRefreshing(false);
+  };
 
   const handleStatusChange = async (id: string, status: string) => {
-    const { error } = await supabase.from('leads').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
-    if (!error) setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l));
+    setStatusUpdating(p => ({ ...p, [id]: true }));
+    const { error } = await supabase.from('leads').update({
+      status,
+      stage: status,
+      updated_at: new Date().toISOString(),
+      stage_changed_at: new Date().toISOString(),
+      last_activity_at: new Date().toISOString(),
+    }).eq('id', id);
+
+    if (error) {
+      showToast('Failed to update status: ' + error.message, 'error');
+      setStatusUpdating(p => ({ ...p, [id]: false }));
+      return;
+    }
+
+    if (status !== 'closed' && status !== 'converted') {
+      const { data: historyData } = await supabase.from('lead_stage_history').select('stage').eq('lead_id', id).order('created_at', { ascending: false }).limit(1);
+      const fromStage = historyData?.[0]?.stage || 'new';
+      await supabase.from('lead_stage_history').insert({
+        lead_id: id,
+        from_stage: fromStage,
+        to_stage: status,
+        changed_by: profile?.id,
+      });
+    }
+
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, status, stage: status } : l));
+    setStatusUpdating(p => ({ ...p, [id]: false }));
+    fetchStats();
+    showToast(`Lead marked as ${status}`, 'success');
   };
 
   const handleAssign = async (id: string, staffId: string) => {
-    const { error } = await supabase.from('leads').update({ assigned_to: staffId || null, updated_at: new Date().toISOString() }).eq('id', id);
-    if (!error) setLeads(prev => prev.map(l => l.id === id ? { ...l, assigned_to: staffId || null } : l));
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this lead permanently?')) return;
-    const { error } = await supabase.from('leads').delete().eq('id', id);
-    if (!error) setLeads(prev => prev.filter(l => l.id !== id));
-  };
-
-  const handleConvertToClient = async (lead: Lead) => {
-    setConverting(true);
-    setConvertError('');
-
-    const clientId = crypto.randomUUID();
-
-    const { error: clientErr } = await supabase.from('clients').insert({
-      id: clientId,
-      company_name: lead.company_name || lead.name,
-      contact_name: lead.name,
-      email: lead.email,
-      phone: lead.phone,
-      website: lead.website,
-      industry: lead.service_interest || null,
-      status: 'active',
-      lead_id: lead.id,
-      notes: lead.message || null,
-    });
-
-    if (clientErr) {
-      setConvertError('Failed to create client: ' + clientErr.message);
-      setConverting(false);
-      return;
-    }
-
-    const projectId = Date.now();
-    const { error: projectErr } = await supabase.from('projects').insert({
-      id: projectId,
-      client_id: clientId,
-      name: `${lead.company_name || lead.name} — ${lead.service_interest || 'New Project'}`,
-      description: lead.message || 'Project created from lead conversion.',
-      status: 'planning',
-      budget: 0,
-      project_lead: lead.assigned_to || null,
-    });
-
-    if (projectErr) {
-      setConvertError('Client created but project failed: ' + projectErr.message);
-      setConverting(false);
-      return;
-    }
-
-    const { error: accessErr } = await supabase.from('project_access').insert({
-      project_id: projectId,
-      client_id: clientId,
-      access_level: 'full',
-    });
-
-    const { error: activityErr } = await supabase.from('project_activity').insert({
-      project_id: projectId,
-      description: 'Project created from lead conversion',
-      activity_type: 'project_created',
-    });
-
-    await supabase.from('leads').update({
-      status: 'converted',
+    setAssignUpdating(p => ({ ...p, [id]: true }));
+    const { error } = await supabase.from('leads').update({
+      assigned_to: staffId || null,
       updated_at: new Date().toISOString(),
-    }).eq('id', lead.id);
+      last_activity_at: new Date().toISOString(),
+    }).eq('id', id);
 
-    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'converted' } : l));
-    setConvertSuccess(true);
-    setConverting(false);
-
-    setTimeout(() => { setConvertSuccess(false); setSelectedLead(null); }, 2500);
-  };
-
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'new': return 'bg-blue-50 text-blue-600 border-blue-100';
-      case 'contacted': return 'bg-amber-50 text-amber-600 border-amber-100';
-      case 'qualified': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-      case 'converted': return 'bg-violet-50 text-violet-600 border-violet-100';
-      case 'closed': return 'bg-gray-50 text-gray-500 border-gray-100';
-      default: return 'bg-blue-50 text-blue-600 border-blue-100';
+    if (error) {
+      showToast('Failed to reassign: ' + error.message, 'error');
+      setAssignUpdating(p => ({ ...p, [id]: false }));
+      return;
     }
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, assigned_to: staffId || null } : l));
+    setAssignUpdating(p => ({ ...p, [id]: false }));
+    showToast(staffId ? 'Lead assigned' : 'Lead unassigned', 'success');
   };
 
-  const stats = {
-    total: leads.length,
-    newCount: leads.filter(l => l.status === 'new').length,
-    contacted: leads.filter(l => l.status === 'contacted').length,
-    qualified: leads.filter(l => l.status === 'qualified').length,
-    converted: leads.filter(l => l.status === 'converted').length,
+  const handleCloseLead = async (lead: Lead) => {
+    setSelectedLead(null);
+    await handleStatusChange(lead.id, 'closed');
   };
+
+  const handleDelete = async () => {
+    if (!deletingLead) return;
+    const { error } = await supabase.from('leads').delete().eq('id', deletingLead.id);
+    if (error) {
+      showToast('Failed to delete: ' + error.message, 'error');
+      setDeletingLead(null);
+      return;
+    }
+    setLeads(prev => prev.filter(l => l.id !== deletingLead.id));
+    setDeletingLead(null);
+    fetchStats();
+    showToast('Lead deleted', 'success');
+  };
+
+  const handleConverted = (clientId: string) => {
+    setLeads(prev => prev.map(l => l.id === convertingLead?.id ? { ...l, status: 'converted', stage: 'converted', converted_to_client: clientId } : l));
+    setConvertingLead(null);
+    fetchStats();
+  };
+
+  const handleCardFilter = (status: string) => {
+    setStatusFilter(statusFilter === status ? 'all' : status);
+    setPage(0);
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setAssigneeFilter('all');
+    setSortMode('newest');
+    setPage(0);
+  };
+
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || assigneeFilter !== 'all' || sortMode !== 'newest';
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const kpiCards = [
+    { label: 'Active Leads', value: stats.total - stats.converted, color: '#94A3B8', status: null },
+    { label: 'New', value: stats.newCount, color: '#06B6D4', status: 'new' },
+    { label: 'Contacted', value: stats.contacted, color: '#F59E0B', status: 'contacted' },
+    { label: 'Qualified', value: stats.qualified, color: '#10B981', status: 'qualified' },
+    { label: 'Converted', value: stats.converted, color: '#8B5CF6', status: 'converted' },
+  ];
 
   if (loading) {
     return (
       <StaffShell>
-        <div className="flex items-center justify-center py-20">
-          <div className="w-10 h-10 border-3 border-[#2563EB]/30 border-t-[#2563EB] rounded-full animate-spin" />
+        <LeadsSkeleton />
+      </StaffShell>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <StaffShell>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <AlertTriangle className="w-12 h-12 text-[#EF4444] mb-4" />
+            <p className="text-white font-bold text-lg mb-1">Unable to load leads</p>
+            <p className="text-slate-400 text-sm mb-4">{loadError}</p>
+            <button onClick={handleRefresh}
+              className="px-5 py-2.5 bg-[#06B6D4] text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-[#06B6D4]/20 transition-all cursor-pointer whitespace-nowrap"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       </StaffShell>
     );
@@ -202,306 +392,467 @@ export default function StaffLeadsPage() {
   return (
     <StaffShell>
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">Leads</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Track, manage, and convert incoming enquiries</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+              <Link href="/staff/dashboard" className="hover:text-[#06B6D4] transition-colors cursor-pointer">Staff</Link>
+              <span>/</span>
+              <span className="text-slate-300">Leads</span>
+            </div>
+            <h1 className="text-2xl font-bold text-white">Leads</h1>
+            <p className="text-sm text-slate-400 mt-0.5">Review, qualify and convert incoming enquiries</p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-slate-400 hover:text-[#06B6D4] hover:border-[#06B6D4]/20 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
-          {[
-            { label: 'Total', value: stats.total, color: '#94A3B8' },
-            { label: 'New', value: stats.newCount, color: '#06B6D4' },
-            { label: 'Contacted', value: stats.contacted, color: '#F59E0B' },
-            { label: 'Qualified', value: stats.qualified, color: '#10B981' },
-            { label: 'Converted', value: stats.converted, color: '#7C3AED' },
-          ].map((s) => (
-            <div key={s.label} className="glass-card rounded-2xl p-4">
-              <p className="text-xs text-slate-400 font-medium mb-1">{s.label}</p>
-              <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
-            </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+          {kpiCards.map((card) => (
+            <button
+              key={card.label}
+              onClick={() => card.status ? handleCardFilter(card.status) : undefined}
+              className={`bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl p-4 text-left transition-all group ${card.status ? 'hover:border-[rgba(255,255,255,0.18)] cursor-pointer' : 'cursor-default'}`}
+            >
+              <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1">{card.label}</p>
+              <p className="text-2xl font-bold tracking-tight" style={{ color: card.color }}>{card.value}</p>
+            </button>
           ))}
         </div>
 
-        <div className="glass-card rounded-2xl overflow-hidden">
-          <div className="p-4 lg:p-5 border-b border-[rgba(255,255,255,0.06)] flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search by name, email, company, or service..."
-                value={searchQuery}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/15 focus:border-[#06B6D4]/30 transition-all"
-              />
-            </div>
-            <div className="flex gap-2">
-              <div className="relative">
-                <select
-                  value={statusFilter}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setStatusFilter(e.target.value)}
-                  className="px-4 pr-8 py-2.5 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/15 cursor-pointer appearance-none"
-                >
-                  <option value="all">All Status</option>
-                  <option value="new">New</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="qualified">Qualified</option>
-                  <option value="converted">Converted</option>
-                  <option value="closed">Closed</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+        <div className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-[rgba(255,255,255,0.06)] space-y-3">
+            <div className="flex flex-col lg:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name, email, company, or service..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+                  className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/15 focus:border-[#06B6D4]/30 transition-all"
+                />
               </div>
-              <button onClick={() => { setRefreshing(true); fetchData(); }} disabled={refreshing}
-                className="px-4 py-2.5 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-slate-400 hover:text-[#06B6D4] hover:border-[#06B6D4]/20 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <FilterSelect value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(0); }} options={[
+                  { value: 'all', label: 'All Status' },
+                  ...VALID_STATUSES.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) })),
+                ]} />
+
+                <FilterSelect value={assigneeFilter} onChange={(v) => { setAssigneeFilter(v); setPage(0); }} options={[
+                  { value: 'all', label: 'All Assignees' },
+                  { value: 'mine', label: 'Mine' },
+                  { value: 'unassigned', label: 'Unassigned' },
+                  ...staff.map(s => ({ value: s.id, label: s.full_name || 'Unknown' })),
+                ]} />
+
+                <FilterSelect value={sortMode} onChange={(v) => { setSortMode(v); setPage(0); }} options={[
+                  { value: 'newest', label: 'Newest' },
+                  { value: 'oldest', label: 'Oldest' },
+                  { value: 'name', label: 'Name' },
+                  { value: 'company', label: 'Company' },
+                ]} />
+
+                {hasActiveFilters && (
+                  <button onClick={clearFilters}
+                    className="px-3 py-2 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-xl text-xs text-slate-400 hover:text-white hover:border-[rgba(255,255,255,0.15)] transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+                  >
+                    <X className="w-3 h-3" /> Clear
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="text-xs text-slate-500">
+              {totalCount} lead{totalCount !== 1 ? 's' : ''}
+              {hasActiveFilters && ' filtered'}
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[rgba(255,255,255,0.06)]">
-                  <th className="text-left py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Name</th>
-                  <th className="text-left py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Company</th>
-                  <th className="text-left py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Service</th>
-                  <th className="text-left py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Budget</th>
-                  <th className="text-left py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
-                  <th className="text-left py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Assigned</th>
-                  <th className="text-left py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Date</th>
-                  <th className="text-right py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLeads.map((lead) => {
-                  const assignedStaff = staff.find(s => s.id === lead.assigned_to);
-                  return (
-                    <tr key={lead.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02] transition-colors">
-                      <td className="py-4 px-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#06B6D4]/10 to-[#06B6D4]/10 flex items-center justify-center text-xs font-bold text-[#06B6D4] shrink-0">
-                            {lead.name.split(' ').map(n => n[0]).join('')}
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-white">{lead.name}</p>
-                            <p className="text-xs text-slate-400">{lead.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-5">
-                        <div className="flex items-center gap-1.5 text-sm text-slate-500">
-                          <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                          {lead.company_name || '-'}
-                        </div>
-                      </td>
-                      <td className="py-4 px-5 text-sm text-slate-400">{lead.service_interest || '-'}</td>
-                      <td className="py-4 px-5 text-sm text-slate-400">{lead.budget_range || '-'}</td>
-                      <td className="py-4 px-5">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${getStatusStyle(lead.status)}`}>
-                          <span className="w-1.5 h-1.5 rounded-full" style={{
-                            backgroundColor: lead.status === 'new' ? '#2563EB' : lead.status === 'contacted' ? '#F59E0B' : lead.status === 'qualified' ? '#10B981' : lead.status === 'converted' ? '#8B5CF6' : '#9CA3AF'
-                          }} />
-                          {lead.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-5">
-                        <select
-                          value={lead.assigned_to || ''}
-                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleAssign(lead.id, e.target.value)}
-                          className="px-2 py-1 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-white cursor-pointer pr-6"
-                        >
-                          <option value="">Unassigned</option>
-                          {staff.map(s => (
-                            <option key={s.id} value={s.id}>{s.full_name || s.id.slice(0, 8)}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-4 px-5 text-xs text-slate-400">
-                        {lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '-'}
-                      </td>
-                      <td className="py-4 px-5">
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => setSelectedLead(lead)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-slate-400 hover:text-[#06B6D4] transition-colors cursor-pointer"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          {lead.status !== 'converted' && (
-                            <button onClick={() => handleConvertToClient(lead)}
-                              disabled={converting}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#10B981]/10 text-slate-400 hover:text-[#10B981] transition-colors cursor-pointer"
-                              title="Convert to Client"
-                            >
-                              <UserCheck className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button onClick={() => handleDelete(lead.id)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#EF4444]/10 text-slate-400 hover:text-[#EF4444] transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {filteredLeads.length === 0 && (
+          {leads.length === 0 ? (
             <div className="text-center py-16">
               <UserCheck className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-              <p className="text-slate-400 font-medium mb-1">No leads found</p>
-              <p className="text-sm text-slate-500">
-                {searchQuery || statusFilter !== 'all' ? 'Try adjusting your filters' : 'Leads will appear here when someone submits the contact form'}
+              <p className="text-slate-300 font-medium mb-1">
+                {hasActiveFilters ? 'No leads match your filters' : 'No leads yet'}
               </p>
+              <p className="text-sm text-slate-500 mb-4">
+                {hasActiveFilters ? 'Try adjusting your search or filters.' : 'Leads will appear here when someone submits the contact form.'}
+              </p>
+              {hasActiveFilters && (
+                <button onClick={clearFilters}
+                  className="px-4 py-2 bg-[#06B6D4] text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-[#06B6D4]/20 transition-all cursor-pointer whitespace-nowrap"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                      <th className="text-left py-3 px-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Lead</th>
+                      <th className="text-left py-3 px-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Company</th>
+                      <th className="text-left py-3 px-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Service</th>
+                      <th className="text-left py-3 px-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Budget</th>
+                      <th className="text-left py-3 px-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                      <th className="text-left py-3 px-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Assigned</th>
+                      <th className="text-left py-3 px-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Received</th>
+                      <th className="text-right py-3 px-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leads.map((lead) => (
+                      <LeadTableRow
+                        key={lead.id}
+                        lead={lead}
+                        staff={staff}
+                        isPrivileged={isPrivileged}
+                        canDelete={canDelete}
+                        statusUpdating={statusUpdating[lead.id]}
+                        assignUpdating={assignUpdating[lead.id]}
+                        onSelect={() => setSelectedLead(lead)}
+                        onStatusChange={handleStatusChange}
+                        onAssign={handleAssign}
+                        onConvert={() => setConvertingLead(lead)}
+                        onDelete={() => setDeletingLead(lead)}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="lg:hidden">
+                {leads.map((lead) => (
+                  <LeadMobileCard
+                    key={lead.id}
+                    lead={lead}
+                    staff={staff}
+                    isPrivileged={isPrivileged}
+                    onSelect={() => setSelectedLead(lead)}
+                    onStatusChange={handleStatusChange}
+                    onAssign={handleAssign}
+                    statusUpdating={statusUpdating[lead.id]}
+                    assignUpdating={assignUpdating[lead.id]}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[rgba(255,255,255,0.06)]">
+              <p className="text-xs text-slate-500">
+                Page {page + 1} of {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-slate-400 hover:text-white hover:border-[rgba(255,255,255,0.15)] transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={page >= totalPages - 1}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-slate-400 hover:text-white hover:border-[rgba(255,255,255,0.15)] transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
         </div>
 
         <AnimatePresence>
           {selectedLead && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-              onClick={() => setSelectedLead(null)}
+            <LeadDetailDrawer
+              lead={selectedLead}
+              staff={staff}
+              currentUserId={profile?.id || ''}
+              currentUserRole={profile?.role || 'staff'}
+              onClose={() => setSelectedLead(null)}
+              onStatusChange={handleStatusChange}
+              onAssign={handleAssign}
+              onConvert={(lead) => { setSelectedLead(null); setConvertingLead(lead); }}
+              onCloseLead={handleCloseLead}
+            />
+          )}
+
+          {convertingLead && (
+            <LeadConversionDialog
+              lead={convertingLead}
+              onClose={() => setConvertingLead(null)}
+              onConverted={handleConverted}
+            />
+          )}
+
+          {deletingLead && (
+            <LeadDeleteDialog
+              leadName={deletingLead.name}
+              onConfirm={handleDelete}
+              onClose={() => setDeletingLead(null)}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 24 }}
+              className={`fixed bottom-6 right-6 z-[70] px-5 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${toast.type === 'success' ? 'bg-[#10B981] text-white' : 'bg-[#EF4444] text-white'}`}
             >
-              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl max-w-xl w-full max-h-[85vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-bold text-white">Lead Details</h3>
-                    <button onClick={() => setSelectedLead(null)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-slate-400 transition-colors cursor-pointer">
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#06B6D4]/10 to-[#06B6D4]/10 flex items-center justify-center text-xl font-bold text-[#06B6D4] shrink-0">
-                      {selectedLead.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div>
-                      <p className="text-xl font-bold text-white">{selectedLead.name}</p>
-                      <p className="text-sm text-slate-500">{selectedLead.email}</p>
-                    </div>
-                    <span className={`ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium border ${getStatusStyle(selectedLead.status)}`}>
-                      {selectedLead.status}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    {[
-                      { label: 'Company', value: selectedLead.company_name, icon: Building2 },
-                      { label: 'Phone', value: selectedLead.phone, icon: Phone },
-                      { label: 'Website', value: selectedLead.website, icon: Globe },
-                      { label: 'Location', value: selectedLead.location, icon: MapPin },
-                      { label: 'Service Interest', value: selectedLead.service_interest, icon: ArrowUpRight },
-                      { label: 'Budget Range', value: selectedLead.budget_range, icon: DollarSign },
-                      { label: 'Source', value: selectedLead.source, icon: Globe },
-                      { label: 'Date', value: selectedLead.created_at ? new Date(selectedLead.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-', icon: Calendar },
-                    ].map((item) => (
-                      <div key={item.label}>
-                        <p className="text-xs text-slate-400 mb-1">{item.label}</p>
-                        <div className="flex items-center gap-1.5">
-                          <item.icon className="w-3.5 h-3.5 text-slate-400" />
-                          <p className="text-sm font-medium text-slate-300">{item.value || '-'}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {selectedLead.message && (
-                    <div className="mb-6">
-                      <p className="text-xs text-slate-400 mb-1">Message</p>
-                      <div className="p-3 bg-white/5 rounded-xl text-sm text-slate-400">{selectedLead.message}</div>
-                    </div>
-                  )}
-
-                  <div className="mb-6">
-                    <p className="text-xs text-slate-400 mb-2">Assigned To</p>
-                    <select
-                      value={selectedLead.assigned_to || ''}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { handleAssign(selectedLead.id, e.target.value); setSelectedLead({ ...selectedLead, assigned_to: e.target.value || null }); }}
-                      className="px-3 py-2 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-white cursor-pointer pr-8"
-                    >
-                      <option value="">Unassigned</option>
-                      {staff.map(s => (
-                        <option key={s.id} value={s.id}>{s.full_name || s.id.slice(0, 8)} ({s.role})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="mb-6">
-                    <p className="text-xs text-slate-400 mb-2">Update Status</p>
-                    <div className="flex flex-wrap gap-2">
-                      {['new', 'contacted', 'qualified', 'closed'].map(s => (
-                        <button key={s}
-                          onClick={() => { handleStatusChange(selectedLead.id, s); setSelectedLead({ ...selectedLead, status: s }); }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border capitalize transition-colors cursor-pointer ${selectedLead.status === s ? getStatusStyle(s) : 'bg-transparent text-slate-400 border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]'}`}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {convertSuccess && (
-                    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-                      className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3 mb-4"
-                    >
-                      <CheckCircle className="w-5 h-5 text-emerald-600" />
-                      <div>
-                        <p className="text-sm font-semibold text-emerald-800">Client created successfully!</p>
-                        <p className="text-xs text-emerald-600">Client profile, project, and access have been set up.</p>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {convertError && (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 mb-4">{convertError}</div>
-                  )}
-
-                  <div className="flex gap-3">
-                    {selectedLead.status !== 'converted' && (
-                      <button onClick={() => handleConvertToClient(selectedLead)} disabled={converting}
-                        className="flex-1 py-3 bg-gradient-to-r from-[#06B6D4] to-[#0891B2] rounded-xl font-bold text-white hover:shadow-lg hover:shadow-[#06B6D4]/20 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap"
-                      >
-                        {converting ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Converting...
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus className="w-4 h-4" />
-                            Convert to Client
-                          </>
-                        )}
-                      </button>
-                    )}
-                    {selectedLead.email && (
-                      <a href={`mailto:${selectedLead.email}`}
-                        className="flex items-center gap-2 px-5 py-3 border border-[rgba(255,255,255,0.1)] rounded-xl text-sm font-semibold text-slate-300 hover:bg-white/5 transition-all cursor-pointer"
-                      >
-                        <Mail className="w-4 h-4" />
-                        Email
-                      </a>
-                    )}
-                    <button onClick={() => setSelectedLead(null)}
-                      className="px-5 py-3 border border-[rgba(255,255,255,0.1)] rounded-xl text-sm font-semibold text-slate-300 hover:bg-white/5 transition-all cursor-pointer whitespace-nowrap"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
+              {toast.type === 'success' ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+              ) : (
+                <AlertTriangle className="w-4 h-4" />
+              )}
+              {toast.message}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
     </StaffShell>
+  );
+}
+
+function FilterSelect({ value, onChange, options }: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="px-3 pr-7 py-2 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#06B6D4]/30 cursor-pointer appearance-none whitespace-nowrap"
+      >
+        {options.map(o => (
+          <option key={o.value} value={o.value} className="bg-[#1E293B] text-white">{o.label}</option>
+        ))}
+      </select>
+      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+    </div>
+  );
+}
+
+function LeadTableRow({
+  lead, staff, isPrivileged, canDelete,
+  statusUpdating, assignUpdating,
+  onSelect, onStatusChange, onAssign, onConvert, onDelete,
+}: {
+  lead: Lead;
+  staff: StaffInfo[];
+  isPrivileged: boolean;
+  canDelete: boolean;
+  statusUpdating?: boolean;
+  assignUpdating?: boolean;
+  onSelect: () => void;
+  onStatusChange: (id: string, status: string) => void;
+  onAssign: (id: string, staffId: string) => void;
+  onConvert: () => void;
+  onDelete: () => void;
+}) {
+  const statusStyle = getStatusStyle(lead.status);
+  const assignedStaff = staff.find(s => s.id === lead.assigned_to);
+  const initials = lead.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+
+  return (
+    <tr className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02] transition-colors group">
+      <td className="py-3.5 px-4">
+        <button onClick={onSelect} className="flex items-center gap-3 cursor-pointer text-left w-full">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#06B6D4]/10 to-[#06B6D4]/10 flex items-center justify-center text-xs font-bold text-[#06B6D4] shrink-0">
+            {initials}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-white truncate max-w-[180px]">{lead.name}</p>
+            <p className="text-xs text-slate-500 truncate max-w-[180px]">{lead.email}</p>
+          </div>
+        </button>
+      </td>
+      <td className="py-3.5 px-4">
+        <div className="flex items-center gap-1.5 text-sm text-slate-400">
+          <Building2 className="w-3 h-3 text-slate-500 shrink-0" />
+          <span className="truncate max-w-[140px]">{lead.company_name || '—'}</span>
+        </div>
+      </td>
+      <td className="py-3.5 px-4 text-sm text-slate-400 max-w-[130px] truncate">{lead.service_interest || '—'}</td>
+      <td className="py-3.5 px-4 text-sm text-slate-400">{lead.budget_range || '—'}</td>
+      <td className="py-3.5 px-4">
+        {isPrivileged && lead.status !== 'converted' && lead.status !== 'closed' ? (
+          <div className="relative">
+            <select
+              value={lead.status}
+              onChange={(e) => onStatusChange(lead.id, e.target.value)}
+              disabled={statusUpdating}
+              className="px-2 py-1 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-lg text-[11px] font-medium cursor-pointer appearance-none pr-5 disabled:opacity-50"
+              style={{ color: statusStyle.color }}
+            >
+              {VALID_STATUSES.filter(s => s !== 'converted').map(s => {
+                const st = getStatusStyle(s);
+                return (
+                  <option key={s} value={s} className="bg-[#1E293B]" style={{ color: st.color }}>
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </option>
+                );
+              })}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-slate-400 pointer-events-none" />
+            {statusUpdating && <Loader2 className="absolute -right-5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 animate-spin" />}
+          </div>
+        ) : (
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium border"
+            style={{ borderColor: statusStyle.color + '30', backgroundColor: statusStyle.color + '10', color: statusStyle.color }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusStyle.color }} />
+            {lead.status}
+          </span>
+        )}
+      </td>
+      <td className="py-3.5 px-4">
+        {isPrivileged ? (
+          <div className="relative">
+            <select
+              value={lead.assigned_to || ''}
+              onChange={(e) => onAssign(lead.id, e.target.value)}
+              disabled={assignUpdating}
+              className="px-2 py-1 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-lg text-[11px] text-white cursor-pointer appearance-none pr-5 disabled:opacity-50"
+            >
+              <option value="" className="bg-[#1E293B]">Unassigned</option>
+              {staff.map(s => (
+                <option key={s.id} value={s.id} className="bg-[#1E293B]">{s.full_name || 'Unknown'}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-slate-400 pointer-events-none" />
+            {assignUpdating && <Loader2 className="absolute -right-5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 animate-spin" />}
+          </div>
+        ) : (
+          <span className="text-xs text-slate-400">{assignedStaff?.full_name || 'Unassigned'}</span>
+        )}
+      </td>
+      <td className="py-3.5 px-4 text-xs text-slate-400 whitespace-nowrap">
+        {formatShortDate(lead.created_at)}
+      </td>
+      <td className="py-3.5 px-4">
+        <div className="flex items-center justify-end gap-0.5">
+          <button
+            onClick={onSelect}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-slate-400 hover:text-[#06B6D4] transition-colors cursor-pointer"
+            title="View details"
+            aria-label={`View details for ${lead.name}`}
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          {isPrivileged && lead.status !== 'converted' && (
+            <button
+              onClick={onConvert}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#8B5CF6]/10 text-slate-400 hover:text-[#8B5CF6] transition-colors cursor-pointer"
+              title="Convert to client"
+              aria-label={`Convert ${lead.name} to client`}
+            >
+              <UserPlus className="w-4 h-4" />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={onDelete}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#EF4444]/10 text-slate-400 hover:text-[#EF4444] transition-colors cursor-pointer"
+              title="Delete lead"
+              aria-label={`Delete ${lead.name}`}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function LeadMobileCard({
+  lead, staff, isPrivileged,
+  onSelect, onStatusChange, onAssign,
+  statusUpdating, assignUpdating,
+}: {
+  lead: Lead;
+  staff: StaffInfo[];
+  isPrivileged: boolean;
+  onSelect: () => void;
+  onStatusChange: (id: string, status: string) => void;
+  onAssign: (id: string, staffId: string) => void;
+  statusUpdating?: boolean;
+  assignUpdating?: boolean;
+}) {
+  const statusStyle = getStatusStyle(lead.status);
+  const assignedStaff = staff.find(s => s.id === lead.assigned_to);
+  const initials = lead.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+
+  return (
+    <button
+      onClick={onSelect}
+      className="w-full text-left p-4 border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02] transition-colors cursor-pointer"
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#06B6D4]/10 to-[#06B6D4]/10 flex items-center justify-center text-xs font-bold text-[#06B6D4] shrink-0">
+            {initials}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-white truncate">{lead.name}</p>
+            <p className="text-xs text-slate-500 truncate">{lead.email}</p>
+          </div>
+        </div>
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-medium border shrink-0 ml-2"
+          style={{ borderColor: statusStyle.color + '30', backgroundColor: statusStyle.color + '10', color: statusStyle.color }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusStyle.color }} />
+          {lead.status}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400 mb-2">
+        <span className="flex items-center gap-1">
+          <Building2 className="w-3 h-3 text-slate-500" />
+          {lead.company_name || '—'}
+        </span>
+        <span className="flex items-center gap-1">
+          <ArrowUpRight className="w-3 h-3 text-slate-500" />
+          {lead.service_interest || '—'}
+        </span>
+        <span className="flex items-center gap-1">
+          <Calendar className="w-3 h-3 text-slate-500" />
+          {formatShortDate(lead.created_at)}
+        </span>
+        <span className="flex items-center gap-1">
+          <UserCheck className="w-3 h-3 text-slate-500" />
+          {assignedStaff?.full_name || 'Unassigned'}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+export default function StaffLeadsPage() {
+  return (
+    <Suspense fallback={
+      <StaffShell>
+        <LeadsSkeleton />
+      </StaffShell>
+    }>
+      <LeadsContent />
+    </Suspense>
   );
 }

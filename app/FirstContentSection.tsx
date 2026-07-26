@@ -58,23 +58,23 @@ export default function FirstContentSection() {
           style={{ transitionDelay: '0ms' }}
         >
           <span className={animClass(0)} style={{ display: 'inline-block', transitionDelay: '0ms' }}>
-            Digital Businesses, Built Completely
+            Digital systems for independent UK businesses
           </span>
         </p>
 
         <h1
-          className="text-white font-bold tracking-[-0.02em] leading-[0.98] mb-8 max-w-[1100px]"
+          className="text-white font-bold tracking-[-0.02em] leading-[0.98] mb-6 max-w-[1100px]"
           style={{
             fontSize: 'clamp(38px, 6.5vw, 88px)',
             fontWeight: 700,
           }}
         >
           <span className={animClass(1)} style={{ display: 'inline-block', transitionDelay: '100ms' }}>
-            We don&rsquo;t just build websites.
+            Built around your business.
           </span>
           <br />
           <span className={animClass(2)} style={{ display: 'inline-block', transitionDelay: '200ms' }}>
-            We build the{' '}
+            Ready for where you&rsquo;re{' '}
           </span>
           <span
             className={animClass(3)}
@@ -86,20 +86,7 @@ export default function FirstContentSection() {
               transition: 'all 0.7s ease-out 300ms, text-shadow 0.7s ease-out 600ms',
             }}
           >
-            systems
-          </span>
-          <span className={animClass(4)} style={{ display: 'inline-block', transitionDelay: '350ms' }}> </span>
-          <span
-            className={animClass(5)}
-            style={{
-              display: 'inline-block',
-              transitionDelay: '400ms',
-              color: '#06B6D4',
-              textShadow: visible && !reducedMotion ? '0 0 40px rgba(6,182,212,0.25)' : 'none',
-              transition: 'all 0.7s ease-out 400ms, text-shadow 0.7s ease-out 700ms',
-            }}
-          >
-            businesses run on.
+            going next.
           </span>
         </h1>
 
@@ -108,7 +95,7 @@ export default function FirstContentSection() {
           style={{ lineHeight: 1.65, fontSize: 'clamp(16px, 1.35vw, 20px)' }}
         >
           <span className={animClass(6)} style={{ display: 'inline-block', transitionDelay: '550ms' }}>
-            Digital Footprint combines strategy, brand, websites, software, AI agents, automation, secure databases and cloud infrastructure to turn ambitious ideas into complete, operational companies.
+            From your first professional website to a complete business management platform, Digital Footprint helps you launch, grow and operate more efficiently.
           </span>
         </p>
 
@@ -122,13 +109,13 @@ export default function FirstContentSection() {
             }}
           >
             <span className="group relative inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl font-semibold text-sm text-white whitespace-nowrap cursor-pointer transition-all duration-300 bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] hover:to-[#C2410C] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#F97316]/25 focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:ring-offset-2 focus:ring-offset-[#050D1C]">
-              Discuss Your Project
+              Tell Us What You Need
               <i className="ri-arrow-right-line w-4 h-4 flex items-center justify-center group-hover:translate-x-0.5 transition-transform duration-200" />
             </span>
           </Link>
 
           <Link
-            href="/case-studies"
+            href="/services"
             className={animClass(9)}
             style={{
               display: 'inline-flex',
@@ -136,10 +123,23 @@ export default function FirstContentSection() {
             }}
           >
             <span className="group inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl font-semibold text-sm text-slate-300 whitespace-nowrap cursor-pointer transition-all duration-300 border border-white/[0.12] hover:border-white/[0.3] hover:text-white hover:bg-white/[0.04] hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-[#050D1C]">
-              Explore Our Work
+              Explore Our Services
               <i className="ri-arrow-right-line w-4 h-4 flex items-center justify-center group-hover:translate-x-0.5 transition-transform duration-200" />
             </span>
           </Link>
+        </div>
+
+        <div
+          className={`mb-10 ${animClass(7)}`}
+          style={{ transitionDelay: '850ms' }}
+        >
+          <button
+            onClick={() => document.getElementById('who-we-help')?.scrollIntoView({ behavior: 'smooth' })}
+            className="group inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-[#06B6D4] transition-all duration-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/50 focus:ring-offset-2 focus:ring-offset-[#050D1C] rounded-lg px-2 py-1 -ml-2"
+          >
+            <span>See Who We Help</span>
+            <i className="ri-arrow-down-line w-4 h-4 flex items-center justify-center group-hover:translate-y-0.5 transition-transform duration-200" />
+          </button>
         </div>
 
         <div
@@ -149,17 +149,17 @@ export default function FirstContentSection() {
           }}
         >
           <p className="text-sm text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span>Web Platforms</span>
+            <span>Websites</span>
             <span className="text-[#06B6D4]/40">&middot;</span>
-            <span>SaaS</span>
+            <span>Client Portals</span>
             <span className="text-[#06B6D4]/40">&middot;</span>
-            <span>AI Agents</span>
+            <span>Business Automation</span>
             <span className="text-[#06B6D4]/40">&middot;</span>
-            <span>Automation</span>
+            <span>AI-Powered Tools</span>
             <span className="text-[#06B6D4]/40">&middot;</span>
-            <span>Databases</span>
+            <span>Bespoke Software</span>
             <span className="text-[#06B6D4]/40">&middot;</span>
-            <span>Cloud Infrastructure</span>
+            <span>Ongoing Support</span>
           </p>
         </div>
       </div>

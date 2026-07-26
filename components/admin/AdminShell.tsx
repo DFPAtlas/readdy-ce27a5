@@ -13,7 +13,7 @@ import {
   Shield, ClipboardCheck, Server, Briefcase, Bug, DollarSign,
   Star, Award, TrendingUp, Phone, Building2, Workflow, Bot,
   Activity, Database, UserCircle, Sparkles, ChevronUp, Mail, Image,
-  Stethoscope, Command, ListTodo, Palette, BarChart3,
+  Stethoscope, Command, ListTodo, Palette, BarChart3, Headphones,
 } from 'lucide-react';
 import CommandPaletteWrapper from './CommandPaletteWrapper';
 
@@ -70,6 +70,7 @@ const navGroups = [
       { href: '/admin/email', icon: Mail, label: 'Email Studio' },
       { href: '/admin/email/templates', icon: FileText, label: 'Email Templates' },
       { href: '/admin/email-templates/images', icon: Image, label: 'Email Images' },
+      { href: '/admin/support', icon: Headphones, label: 'Support Queue' },
     ],
   },
   {

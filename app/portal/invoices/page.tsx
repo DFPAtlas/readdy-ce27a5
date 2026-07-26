@@ -43,17 +43,17 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return '\u2014';
   return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function formatShortDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return '\u2014';
   return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
 function downloadInvoice(invoice: Invoice) {
-  const content = `INVOICE\n========================================\nInvoice Number: ${invoice.invoice_number}\nDate: ${formatDate(invoice.created_at)}\nDue Date: ${formatDate(invoice.due_date)}\nStatus: ${invoice.status.toUpperCase()}\n========================================\nDescription: ${invoice.description}\nAmount: £${Number(invoice.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}\n========================================\nPaid At: ${invoice.paid_at ? formatDate(invoice.paid_at) : 'Not yet paid'}\n========================================\nDigital Footprint — Reshaping Your Digital World`;
+  const content = `INVOICE\n========================================\nInvoice Number: ${invoice.invoice_number}\nDate: ${formatDate(invoice.created_at)}\nDue Date: ${formatDate(invoice.due_date)}\nStatus: ${invoice.status.toUpperCase()}\n========================================\nDescription: ${invoice.description}\nAmount: £${Number(invoice.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}\n========================================\nPaid At: ${invoice.paid_at ? formatDate(invoice.paid_at) : 'Not yet paid'}\n========================================\nDigital Footprint \u2014 Reshaping Your Digital World`;
   const blob = new Blob([content], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = `${invoice.invoice_number}.txt`;
@@ -73,8 +73,24 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     async function fetchInvoices() {
-      const { data } = await supabase.from('invoices').select('*').order('created_at', { ascending: false });
-      if (data) setInvoices(data);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setLoading(false); return; }
+
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (!clientData) { setLoading(false); return; }
+
+      const { data } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('client_id', clientData.id)
+        .order('created_at', { ascending: false });
+
+      if (data) setInvoices(data as Invoice[]);
       setLoading(false);
     }
     fetchInvoices();

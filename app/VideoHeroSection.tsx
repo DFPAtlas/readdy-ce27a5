@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
+import Image from 'next/image';
 
 const VIDEO_URL = 'https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/4f863c50-93dd-4847-9d19-9bf2f89658ff_Firefly-Create-a-cinematic-15-second-seamless-loop-background-video-for-a-premium-digital-technology.mp4';
 const POSTER_URL = 'https://readdy.ai/api/search-image?query=A%20premium%20dark%20navy%20technology%20background%20with%20a%20glowing%20bright%20cyan%20digital%20footprint%20at%20centre%20abstract%20holographic%20dashboard%20panels%20and%20interface%20elements%20floating%20on%20deep%20blue-black%20space%20subtle%20circuit%20traces%20radiating%20from%20the%20footprint%20soft%20ambient%20cyan%20light%20reflections%20clean%20minimal%20futuristic%20corporate%20aesthetic%20no%20text%20high%20contrast%20dark%20moody%20atmosphere&width=1920&height=1080&seq=dfp-video-poster-v5-theme&orientation=landscape';
@@ -20,6 +21,7 @@ export default function VideoHeroSection() {
   const [videoReady, setVideoReady] = useState(false);
   const [videoEnded, setVideoEnded] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [posterFadeIn, setPosterFadeIn] = useState(false);
   const [showExplain, setShowExplain] = useState(false);
   const [explainVisible, setExplainVisible] = useState(false);
   const [scrollDone, setScrollDone] = useState(false);
@@ -64,6 +66,10 @@ export default function VideoHeroSection() {
     const onEnded = () => {
       if (!mountedRef.current) return;
       setVideoEnded(true);
+      const posterTimer = setTimeout(() => {
+        if (mountedRef.current) setPosterFadeIn(true);
+      }, 50);
+      return () => clearTimeout(posterTimer);
     };
 
     const onError = () => {
@@ -136,18 +142,49 @@ export default function VideoHeroSection() {
   };
 
   const showPoster = !videoReady || videoError || videoEnded;
+  const showLoadingWheel = !videoReady && !videoError && mounted;
 
   return (
     <section
+      id="our-method"
       className="relative w-full overflow-hidden"
       style={{ minHeight: '100svh', height: '100vh', background: '#050D1C' }}
       aria-label="Digital Footprint cinematic introduction"
     >
       {showPoster && (
         <div
-          className="absolute inset-0 z-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${POSTER_URL})` }}
+          className="absolute inset-0 z-[2] bg-cover bg-center"
+          style={{
+            backgroundImage: `url(${POSTER_URL})`,
+            opacity: videoEnded ? (posterFadeIn ? 1 : 0) : 1,
+            transition: videoEnded ? 'opacity 700ms ease-out' : 'none',
+          }}
         />
+      )}
+
+      {showLoadingWheel && (
+        <div className="absolute inset-0 z-[3] flex items-center justify-center pointer-events-none">
+          <div className="flex flex-col items-center gap-5">
+            <Image
+              src="https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/eee9f9ba-b907-488b-a1a8-f6d02534a71b_compressed_Remove-Background-Keep-Foot-Logo.webp"
+              alt="Digital Footprint"
+              width={48}
+              height={48}
+              priority
+              className="object-contain rounded-lg w-12 h-12 animate-pulse"
+            />
+            <div
+              className="w-10 h-10 rounded-full border-[3px] border-white/[0.08]"
+              style={{
+                borderTopColor: '#06B6D4',
+                animation: reducedMotion ? 'none' : 'dfpSpin 0.8s linear infinite',
+              }}
+            />
+            <span className="text-xs text-slate-500 font-medium tracking-wide animate-pulse">
+              Loading
+            </span>
+          </div>
+        </div>
       )}
 
       <video
@@ -157,8 +194,9 @@ export default function VideoHeroSection() {
           objectFit: 'cover',
           objectPosition: 'center center',
           opacity: videoEnded ? 0 : 1,
-          transition: 'opacity 400ms ease-out',
+          transition: 'opacity 600ms ease-in-out',
         }}
+        poster={POSTER_URL}
         muted
         playsInline
         preload="auto"
@@ -276,6 +314,10 @@ export default function VideoHeroSection() {
           0%, 20% { transform: translateY(0); opacity: 0.5; }
           50% { transform: translateY(3px); opacity: 0.8; }
           80%, 100% { transform: translateY(0); opacity: 0.5; }
+        }
+        @keyframes dfpSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
         @media (prefers-reduced-motion: reduce) {
           @keyframes dfpScrollWheel { 0%, 100% { transform: translateY(0); opacity: 1; } }

@@ -15,7 +15,7 @@ export default function ClientForm({ client, onClose, onSave }: ClientFormProps)
     contact_name: '', email: '', company_name: '', trading_name: '', phone: '',
     website: '', industry: '', address: '', notes: '', status: 'Active',
     client_type: 'business', preferred_contact_method: 'email', data_classification: 'internal',
-    timezone: 'Europe/London', billing_currency: 'GBP',
+    timezone: 'Europe/London', billing_currency: 'GBP', user_id: '',
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -32,6 +32,7 @@ export default function ClientForm({ client, onClose, onSave }: ClientFormProps)
         preferred_contact_method: client.preferred_contact_method || 'email',
         data_classification: client.data_classification || 'internal',
         timezone: client.timezone || 'Europe/London', billing_currency: client.billing_currency || 'GBP',
+        user_id: client.user_id || '',
       });
     }
   }, [client]);
@@ -206,6 +207,20 @@ export default function ClientForm({ client, onClose, onSave }: ClientFormProps)
                     <option value="public">Public</option>
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Portal User ID (Supabase Auth UUID)</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <input
+                    type="text"
+                    value={formData.user_id}
+                    onChange={(e) => setFormData({ ...formData, user_id: e.target.value.trim() })}
+                    className={inputClass('user_id')}
+                    placeholder="00000000-0000-0000-0000-000000000000"
+                  />
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Link this client to a Supabase Auth user for portal access</p>
               </div>
             </div>
           )}

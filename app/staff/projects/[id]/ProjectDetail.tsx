@@ -1,35 +1,43 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from '@/components/motion';
-import {
-  ArrowLeft, FolderKanban, User, Calendar, DollarSign,
-  Target, MessageSquare, FileText, Activity, Map,
-  Plus, Edit2, Loader2, CheckCircle, Clock,
-  Send, Download, Eye, Building2, Mail, Phone, Globe,
-} from 'lucide-react';
+import { AlertCircle, FolderKanban } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import StaffShell from '../../../../components/staff/StaffShell';
-
-
+import ProjectDetailSkeleton from '../../../../components/staff/ProjectDetailSkeleton';
+import ProjectDetailHeader from '../../../../components/staff/ProjectDetailHeader';
+import ProjectTabsNav from '../../../../components/staff/ProjectTabsNav';
+import ProjectOverviewTab from '../../../../components/staff/ProjectOverviewTab';
+import ProjectMilestonesTab from '../../../../components/staff/ProjectMilestonesTab';
+import ProjectTasksTab from '../../../../components/staff/ProjectTasksTab';
+import ProjectMessagesTab from '../../../../components/staff/ProjectMessagesTab';
+import ProjectFilesTab from '../../../../components/staff/ProjectFilesTab';
+import ProjectInvoicesTab from '../../../../components/staff/ProjectInvoicesTab';
+import ProjectRoadmapTab from '../../../../components/staff/ProjectRoadmapTab';
+import ProjectActivityTab from '../../../../components/staff/ProjectActivityTab';
 
 interface Project {
   id: string;
   name: string;
   description: string | null;
+  objective: string | null;
   client_id: string;
   status: string;
-  budget: number | null;
+  budget: number;
   start_date: string | null;
   end_date: string | null;
-  progress: number | null;
+  progress: number;
   project_lead: string | null;
+  health: string | null;
+  completed_at: string | null;
+  current_phase: string | null;
   created_at: string;
 }
 
-interface Client {
+interface ClientInfo {
   id: string;
   company_name: string | null;
   contact_name: string | null;
@@ -38,39 +46,62 @@ interface Client {
   website: string | null;
 }
 
-interface Milestone {
+interface StaffInfo {
   id: string;
-  name: string;
-  description: string | null;
-  amount: number | null;
-  status: string;
-  due_date: string | null;
+  full_name: string | null;
+  role: string;
 }
 
-interface Task {
+interface Milestone {
   id: string;
+  title: string;
+  name: string | null;
+  description: string | null;
+  status: string;
+  due_date: string | null;
+  amount: number | null;
+  payment_status: string | null;
+}
+
+interface TaskItem {
+  id: string;
+  project_id: string;
   title: string;
   description: string | null;
   status: string;
   priority: string;
   assigned_to: string | null;
   due_date: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  project_name?: string;
+  assignee_name?: string;
 }
 
 interface Message {
   id: string;
-  sender_name: string;
-  content: string;
+  sender_id: string | null;
+  sender_name: string | null;
+  content: string | null;
+  message: string | null;
   read: boolean;
+  is_internal: boolean;
   created_at: string;
+  sender_full_name?: string;
 }
 
 interface ProjectFile {
   id: string;
-  name: string;
-  file_size: number;
-  file_type: string;
+  name: string | null;
+  file_name: string | null;
+  display_name: string | null;
+  file_path: string;
+  file_type: string | null;
+  file_size: number | null;
   category: string;
+  visibility: string;
+  storage_bucket: string | null;
   created_at: string;
 }
 
@@ -78,524 +109,520 @@ interface Invoice {
   id: string;
   invoice_number: string;
   amount: number;
+  total: number | null;
+  amount_outstanding: number | null;
   status: string;
   due_date: string | null;
+  issue_date: string | null;
+  currency: string;
 }
 
 interface RoadmapItem {
   id: string;
   title: string;
-  category: string;
+  description: string | null;
+  category: string | null;
   priority: string;
   status: string;
+  target_date: string | null;
 }
 
-interface Activity {
+interface ActivityItem {
   id: string;
-  description: string;
-  activity_type: string | null;
+  description: string | null;
+  activity_type: string;
   created_at: string;
+  actor_id: string | null;
+  actor_name?: string;
 }
 
-interface StaffProfile {
-  id: string;
-  full_name: string | null;
-  role: string;
-}
+const VALID_TABS = ['overview', 'milestones', 'tasks', 'messages', 'files', 'invoices', 'roadmap', 'activity'];
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
-
-export default function ProjectDetail({ params }: { params: { id: string } }) {
+export default function ProjectDetail({ projectId }: { projectId: string }) {
   const router = useRouter();
+
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  const [profile, setProfile] = useState<StaffInfo | null>(null);
   const [project, setProject] = useState<Project | null>(null);
-  const [client, setClient] = useState<Client | null>(null);
+  const [client, setClient] = useState<ClientInfo | null>(null);
+  const [staffList, setStaffList] = useState<StaffInfo[]>([]);
+
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [roadmapItems, setRoadmapItems] = useState<RoadmapItem[]>([]);
-  const [activity, setActivity] = useState<Activity[]>([]);
-  const [staff, setStaff] = useState<StaffProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [newMessage, setNewMessage] = useState('');
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [showNewTask, setShowNewTask] = useState(false);
-  const [sending, setSending] = useState(false);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
 
-  const tabs = [
-    { key: 'overview', label: 'Overview', icon: FolderKanban },
-    { key: 'milestones', label: 'Milestones', icon: Target, count: milestones.length },
-    { key: 'tasks', label: 'Tasks', icon: CheckCircle, count: tasks.filter(t => t.status !== 'done').length },
-    { key: 'messages', label: 'Messages', icon: MessageSquare, count: messages.filter(m => !m.read).length },
-    { key: 'files', label: 'Files', icon: FileText, count: files.length },
-    { key: 'invoices', label: 'Invoices', icon: DollarSign, count: invoices.length },
-    { key: 'roadmap', label: 'Roadmap', icon: Map, count: roadmapItems.length },
-    { key: 'activity', label: 'Activity', icon: Activity },
-  ];
+  const [tabLoading, setTabLoading] = useState<Record<string, boolean>>({});
+  const [tabErrors, setTabErrors] = useState<Record<string, string>>({});
+  const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set());
+
+  const [activeTab, setActiveTab] = useState('overview');
+  const [statusSaving, setStatusSaving] = useState(false);
+
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+  const isLead = profile?.role === 'project_lead';
+  const canEditStatus = isAdmin || isLead;
+  const canEditProject = isAdmin || isLead;
+  const canViewInvoices = isAdmin || (profile?.role === 'project_lead');
+
+  const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
 
   useEffect(() => {
+    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    if (urlTab && VALID_TABS.includes(urlTab)) setActiveTab(urlTab);
+  }, []);
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', tab);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
     async function init() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setTimeout(() => router.replace('/staff/login'), 0); return; }
-      const { data: sp } = await supabase.from('staff_profiles').select('id').eq('id', session.user.id).maybeSingle();
-      if (!sp) { setTimeout(() => router.replace('/staff/login'), 0); return; }
-
-      const projectId = parseInt(params.id);
-
-      const [projectRes, milestonesRes, tasksRes, messagesRes, filesRes, invoicesRes, roadmapRes, activityRes, staffRes] = await Promise.all([
-        supabase.from('projects').select('*').eq('id', projectId).maybeSingle(),
-        supabase.from('milestones').select('*').eq('project_id', projectId).order('created_at', { ascending: true }),
-        supabase.from('project_tasks').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
-        supabase.from('project_messages').select('*').eq('project_id', projectId).order('created_at', { ascending: false }).limit(20),
-        supabase.from('project_files').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
-        supabase.from('invoices').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
-        supabase.from('technology_roadmap').select('*').eq('project_id', projectId),
-        supabase.from('project_activity').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
-        supabase.from('staff_profiles').select('id, full_name, role'),
-      ]);
-
-      if (projectRes.data) {
-        setProject(projectRes.data);
-        const { data: clientData } = await supabase.from('clients').select('*').eq('id', projectRes.data.client_id).maybeSingle();
-        if (clientData) setClient(clientData);
+      if (!isValidUUID) {
+        setLoadError('Invalid project ID');
+        setLoading(false);
+        return;
       }
 
-      if (milestonesRes.data) setMilestones(milestonesRes.data);
-      if (tasksRes.data) setTasks(tasksRes.data);
-      if (messagesRes.data) setMessages(messagesRes.data);
-      if (filesRes.data) setFiles(filesRes.data);
-      if (invoicesRes.data) setInvoices(invoicesRes.data);
-      if (roadmapRes.data) setRoadmapItems(roadmapRes.data);
-      if (activityRes.data) setActivity(activityRes.data);
-      if (staffRes.data) setStaff(staffRes.data);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setTimeout(() => router.replace('/staff/login'), 0); return; }
+
+      const { data: sp } = await supabase
+        .from('staff_profiles')
+        .select('id, full_name, role')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (!sp) { setTimeout(() => router.replace('/staff/login'), 0); return; }
+      if (cancelled) return;
+      setProfile(sp);
+
+      const { data: proj, error: projErr } = await supabase
+        .from('projects')
+        .select('id, name, description, objective, client_id, status, budget, start_date, end_date, progress, project_lead, health, completed_at, current_phase, created_at')
+        .eq('id', projectId)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (projErr) {
+        setLoadError(projErr.message);
+        setLoading(false);
+        return;
+      }
+      if (!proj) {
+        setLoadError('Project not found');
+        setLoading(false);
+        return;
+      }
+
+      setProject(proj);
+
+      if (proj.client_id) {
+        const { data: cl } = await supabase
+          .from('clients')
+          .select('id, company_name, contact_name, email, phone, website')
+          .eq('id', proj.client_id)
+          .maybeSingle();
+        if (!cancelled && cl) setClient(cl);
+      }
+
+      const { data: st } = await supabase
+        .from('staff_profiles')
+        .select('id, full_name, role');
+      if (!cancelled && st) setStaffList(st);
+
       setLoading(false);
     }
+
     init();
-  }, [params.id, router]);
+    return () => { cancelled = true; };
+  }, [projectId, router, isValidUUID]);
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !project) return;
-    setSending(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const senderName = session?.user?.user_metadata?.full_name || 'Staff';
+  const loadTabData = useCallback(async (tab: string) => {
+    if (loadedTabs.has(tab) || !project) return;
 
-    const { error } = await supabase.from('project_messages').insert({
-      project_id: parseInt(project.id),
-      sender_name: senderName,
-      content: newMessage.trim(),
-      read: false,
-    });
+    setTabLoading(prev => ({ ...prev, [tab]: true }));
+    setTabErrors(prev => { const n = { ...prev }; delete n[tab]; return n; });
 
-    if (!error) {
-      setMessages(prev => [{
-        id: crypto.randomUUID(),
-        sender_name: senderName,
-        content: newMessage.trim(),
-        read: false,
-        created_at: new Date().toISOString(),
-      }, ...prev]);
-      setNewMessage('');
-      await supabase.from('project_activity').insert({
-        project_id: parseInt(project.id),
-        description: `Message sent by ${senderName}`,
-        activity_type: 'message_sent',
-      });
+    try {
+      switch (tab) {
+        case 'milestones': {
+          const { data, error } = await supabase
+            .from('milestones')
+            .select('id, title, name, description, status, due_date, amount, payment_status')
+            .eq('project_id', project.id)
+            .order('due_date', { ascending: true, nullsFirst: false });
+          if (error) throw error;
+          setMilestones(data || []);
+          break;
+        }
+        case 'tasks': {
+          const { data, error } = await supabase
+            .from('project_tasks')
+            .select('id, project_id, title, description, status, priority, assigned_to, due_date, completed_at, created_at, updated_at')
+            .eq('project_id', project.id)
+            .order('created_at', { ascending: false });
+          if (error) throw error;
+
+          const tasksData = (data || []) as TaskItem[];
+          const assigneeIds = [...new Set(tasksData.map(t => t.assigned_to).filter(Boolean))] as string[];
+          const assigneeMap = new Map<string, string>();
+          staffList.forEach(s => assigneeMap.set(s.id, s.full_name || 'Unknown'));
+
+          const enriched = tasksData.map(t => ({
+            ...t,
+            project_name: project.name,
+            assignee_name: t.assigned_to ? (assigneeMap.get(t.assigned_to) || 'Unknown') : undefined,
+          }));
+          setTasks(enriched);
+          break;
+        }
+        case 'messages': {
+          const { data, error } = await supabase
+            .from('project_messages')
+            .select('id, sender_id, sender_name, content, message, read, is_internal, created_at')
+            .eq('project_id', project.id)
+            .order('created_at', { ascending: false })
+            .limit(50);
+          if (error) throw error;
+
+          const msgData = (data || []) as Message[];
+          const senderIds = [...new Set(msgData.map(m => m.sender_id).filter(Boolean))] as string[];
+          const senderMap = new Map<string, string>();
+          staffList.forEach(s => senderMap.set(s.id, s.full_name || 'Unknown'));
+
+          const enriched = msgData.map(m => ({
+            ...m,
+            sender_full_name: m.sender_id ? (senderMap.get(m.sender_id) || undefined) : undefined,
+          }));
+          setMessages(enriched);
+          break;
+        }
+        case 'files': {
+          const { data, error } = await supabase
+            .from('project_files')
+            .select('id, name, file_name, display_name, file_path, file_type, file_size, category, visibility, storage_bucket, created_at')
+            .eq('project_id', project.id)
+            .order('created_at', { ascending: false });
+          if (error) throw error;
+          setFiles(data || []);
+          break;
+        }
+        case 'invoices': {
+          const { data, error } = await supabase
+            .from('invoices')
+            .select('id, invoice_number, amount, total, amount_outstanding, status, due_date, issue_date, currency')
+            .eq('project_id', project.id)
+            .order('created_at', { ascending: false });
+          if (error) throw error;
+          setInvoices(data || []);
+          break;
+        }
+        case 'roadmap': {
+          const { data, error } = await supabase
+            .from('technology_roadmap')
+            .select('id, title, description, category, priority, status, target_date')
+            .eq('project_id', project.id)
+            .order('created_at', { ascending: false });
+          if (error) throw error;
+          setRoadmapItems(data || []);
+          break;
+        }
+        case 'activity': {
+          const { data, error } = await supabase
+            .from('project_activity')
+            .select('id, description, activity_type, created_at, actor_id')
+            .eq('project_id', project.id)
+            .order('created_at', { ascending: false })
+            .limit(30);
+          if (error) throw error;
+
+          const actData = (data || []) as ActivityItem[];
+          const actorIds = [...new Set(actData.map(a => a.actor_id).filter(Boolean))] as string[];
+          const actorMap = new Map<string, string>();
+          staffList.forEach(s => actorMap.set(s.id, s.full_name || 'Unknown'));
+
+          const enriched = actData.map(a => ({
+            ...a,
+            actor_name: a.actor_id ? (actorMap.get(a.actor_id) || undefined) : undefined,
+          }));
+          setActivities(enriched);
+          break;
+        }
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load data';
+      setTabErrors(prev => ({ ...prev, [tab]: message }));
     }
-    setSending(false);
-  };
 
-  const handleAddTask = async () => {
-    if (!newTaskTitle.trim() || !project) return;
-    const { error } = await supabase.from('project_tasks').insert({
-      project_id: parseInt(project.id),
-      title: newTaskTitle.trim(),
-      status: 'todo',
-      priority: 'medium',
-    });
-    if (!error) {
-      setTasks(prev => [{ id: crypto.randomUUID(), title: newTaskTitle.trim(), description: null, status: 'todo', priority: 'medium', assigned_to: null, due_date: null }, ...prev]);
-      setNewTaskTitle('');
-      setShowNewTask(false);
+    setTabLoading(prev => ({ ...prev, [tab]: false }));
+    setLoadedTabs(prev => new Set(prev).add(tab));
+  }, [project, loadedTabs, staffList]);
+
+  useEffect(() => {
+    if (activeTab && project && !loadedTabs.has(activeTab)) {
+      loadTabData(activeTab);
     }
-  };
+  }, [activeTab, project, loadedTabs, loadTabData]);
 
-  const handleTaskStatus = async (taskId: string, newStatus: string) => {
-    const { error } = await supabase.from('project_tasks').update({ status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null }).eq('id', taskId);
-    if (!error) setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-  };
-
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = useCallback(async (newStatus: string) => {
     if (!project) return;
-    const { error } = await supabase.from('projects').update({ status: newStatus }).eq('id', parseInt(project.id));
-    if (!error) setProject({ ...project, status: newStatus });
-  };
+    setStatusSaving(true);
 
-  const getPriorityStyle = (p: string) => {
-    switch (p) {
-      case 'urgent': return 'bg-red-50 text-red-600 border-red-100';
-      case 'high': return 'bg-amber-50 text-amber-600 border-amber-100';
-      case 'medium': return 'bg-blue-50 text-blue-600 border-blue-100';
-      case 'low': return 'bg-gray-50 text-gray-500 border-gray-100';
-      default: return 'bg-gray-50 text-gray-500 border-gray-100';
+    const prevStatus = project.status;
+    setProject(prev => prev ? { ...prev, status: newStatus } : null);
+
+    const { error } = await supabase
+      .from('projects')
+      .update({ status: newStatus })
+      .eq('id', project.id);
+
+    if (error) {
+      setProject(prev => prev ? { ...prev, status: prevStatus } : null);
     }
-  };
+    setStatusSaving(false);
+  }, [project]);
+
+  const refreshTasks = useCallback(() => {
+    setLoadedTabs(prev => {
+      const next = new Set(prev);
+      next.delete('tasks');
+      return next;
+    });
+  }, []);
+
+  const refreshMessages = useCallback(() => {
+    setLoadedTabs(prev => {
+      const next = new Set(prev);
+      next.delete('messages');
+      return next;
+    });
+  }, []);
+
+  const summaryData = useMemo(() => {
+    if (!project) return { progress: 0, progressLabel: '0%', openTasks: 0, overdueTasks: 0, nextMilestone: null as { title: string; due_date: string | null; isOverdue: boolean } | null, leadName: 'Unassigned' };
+
+    const today = new Date().toISOString().split('T')[0];
+    const openTasksCount = tasks.filter(t => t.status !== 'done').length;
+    const overdueTasksCount = tasks.filter(t => t.status !== 'done' && t.due_date && t.due_date < today).length;
+
+    const incompleteMilestones = milestones.filter(m => m.status !== 'completed');
+    const orderedMs = [...incompleteMilestones].sort((a, b) => {
+      if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+      if (a.due_date) return -1;
+      if (b.due_date) return 1;
+      return 0;
+    });
+
+    const nextMs = orderedMs[0] || null;
+    const nextMilestone = nextMs ? {
+      title: nextMs.title || nextMs.name || 'Untitled',
+      due_date: nextMs.due_date,
+      isOverdue: !!(nextMs.due_date && nextMs.due_date < today),
+    } : null;
+
+    const progressLabel = project.progress !== null && project.progress !== undefined && project.progress > 0
+      ? `${project.progress}%`
+      : openTasksCount > 0 || tasks.filter(t => t.status === 'done').length > 0
+        ? `${tasks.filter(t => t.status === 'done').length} of ${tasks.length} tasks`
+        : 'Not available';
+
+    const leadStaff = staffList.find(s => s.id === project.project_lead);
+
+    return {
+      progress: project.progress || 0,
+      progressLabel,
+      openTasks: openTasksCount,
+      overdueTasks: overdueTasksCount,
+      nextMilestone,
+      leadName: leadStaff?.full_name || 'Unassigned',
+    };
+  }, [project, tasks, milestones, staffList]);
+
+  const tabCounts = useMemo(() => ({
+    milestones: milestones.length,
+    tasks: tasks.filter(t => t.status !== 'done').length,
+    messages: messages.filter(m => !m.read).length,
+    files: files.length,
+    invoices: invoices.length,
+    roadmap: roadmapItems.length,
+  }), [milestones, tasks, messages, files, invoices, roadmapItems]);
+
+  const overviewActivity = useMemo(() => {
+    return activities.slice(0, 8);
+  }, [activities]);
 
   if (loading) {
     return (
       <StaffShell>
-        <div className="flex items-center justify-center py-20">
-          <div className="w-10 h-10 border-3 border-[#2563EB]/30 border-t-[#2563EB] rounded-full animate-spin" />
-        </div>
+        <ProjectDetailSkeleton />
       </StaffShell>
     );
   }
 
-  if (!project) {
+  if (loadError || !project) {
     return (
       <StaffShell>
-        <div className="text-center py-20">
-          <FolderKanban className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-          <p className="text-slate-400 font-medium">Project not found</p>
-          <Link href="/staff/projects" className="text-[#2563EB] text-sm hover:underline mt-2 inline-block">Back to Projects</Link>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <FolderKanban className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+            <p className="text-slate-300 font-medium mb-1">{loadError || 'Project not found'}</p>
+            <p className="text-sm text-slate-500 mb-4">The project may have been removed or you may not have access.</p>
+            <Link href="/staff/projects"
+              className="px-5 py-2.5 bg-[#06B6D4] text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-[#06B6D4]/20 transition-all cursor-pointer whitespace-nowrap"
+            >
+              Back to Projects
+            </Link>
+          </div>
         </div>
       </StaffShell>
     );
   }
-
-  const leadStaff = staff.find(s => s.id === project.project_lead);
 
   return (
     <StaffShell>
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <Link href="/staff/projects" className="flex items-center gap-2 text-sm text-slate-400 hover:text-[#2563EB] transition-colors cursor-pointer mb-3">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Projects
-          </Link>
-          <div className="flex items-start justify-between flex-wrap gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-white">{project.name}</h1>
-              <p className="text-sm text-slate-400 mt-0.5">{client?.company_name || client?.contact_name || 'No client'}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <select value={project.status} onChange={(e) => handleStatusChange(e.target.value)}
-                className="px-3 py-2 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-white cursor-pointer pr-8"
-              >
-                {['planning', 'active', 'on_hold', 'completed', 'cancelled'].map(s => (
-                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' ')}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
+        <ProjectDetailHeader
+          project={project}
+          client={client}
+          summary={summaryData}
+          staffList={staffList}
+          canEditStatus={canEditStatus}
+          onStatusChange={handleStatusChange}
+          statusSaving={statusSaving}
+          canEditProject={canEditProject}
+          onEditProject={() => {}}
+        />
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
-          {[
-            { label: 'Budget', value: `£${(project.budget || 0).toLocaleString()}`, icon: DollarSign, color: '#10B981' },
-            { label: 'Progress', value: `${project.progress || 0}%`, icon: Target, color: '#8B5CF6' },
-            { label: 'Start Date', value: project.start_date ? new Date(project.start_date).toLocaleDateString('en-GB') : '—', icon: Calendar, color: '#2563EB' },
-            { label: 'Project Lead', value: leadStaff?.full_name || 'Unassigned', icon: User, color: '#F59E0B' },
-          ].map(stat => (
-            <div key={stat.label} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <stat.icon className="w-4 h-4" style={{ color: stat.color }} />
-                <span className="text-xs text-slate-400 font-medium">{stat.label}</span>
-              </div>
-              <p className="text-xl font-bold text-white">{stat.value}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-1 bg-white border border-slate-100 rounded-2xl p-1.5 mb-6 overflow-x-auto">
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
-            return (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap cursor-pointer ${isActive ? 'bg-[#06B6D4] text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-                {tab.count !== undefined && tab.count > 0 && (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{tab.count}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        <ProjectTabsNav
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          counts={tabCounts}
+          canViewInvoices={canViewInvoices}
+        />
 
         <AnimatePresence mode="wait">
-          <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
-
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15 }}
+          >
             {activeTab === 'overview' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                  <div className="glass-card rounded-2xl p-6">
-                    <h3 className="text-lg font-bold text-white mb-4">Project Description</h3>
-                    <p className="text-sm text-slate-400 leading-relaxed">{project.description || 'No description provided.'}</p>
-                  </div>
-                  {client && (
-                    <div className="glass-card rounded-2xl p-6">
-                      <h3 className="text-lg font-bold text-white mb-4">Client Details</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        {[
-                          { label: 'Company', value: client.company_name, icon: Building2 },
-                          { label: 'Contact', value: client.contact_name, icon: User },
-                          { label: 'Email', value: client.email, icon: Mail },
-                          { label: 'Phone', value: client.phone, icon: Phone },
-                          { label: 'Website', value: client.website, icon: Globe },
-                        ].map(item => (
-                          <div key={item.label}>
-                            <p className="text-xs text-slate-400 mb-0.5">{item.label}</p>
-                            <div className="flex items-center gap-1.5">
-                              <item.icon className="w-3.5 h-3.5 text-slate-400" />
-                              <p className="text-sm font-medium text-slate-300">{item.value || '—'}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-6">
-                  <div className="glass-card rounded-2xl p-6">
-                    <h3 className="text-lg font-bold text-white mb-4">Activity Timeline</h3>
-                    {activity.length > 0 ? (
-                      <div className="space-y-4">
-                        {activity.slice(0, 8).map((a, i) => (
-                          <div key={a.id} className="flex gap-3">
-                            <div className="flex flex-col items-center">
-                              <div className="w-2 h-2 rounded-full bg-[#06B6D4] shrink-0" />
-                              {i < activity.slice(0, 8).length - 1 && <div className="w-px flex-1 bg-white/10 mt-1" />}
-                            </div>
-                            <div className="pb-4">
-                              <p className="text-sm text-slate-300">{a.description}</p>
-                              <p className="text-xs text-slate-400 mt-0.5">{new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-400 text-center py-8">No activity yet</p>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <ProjectOverviewTab
+                project={project}
+                client={client}
+                recentActivity={overviewActivity}
+                staffList={staffList}
+                leadId={project.project_lead}
+                openTasks={summaryData.openTasks}
+                overdueTasks={summaryData.overdueTasks}
+                milestonesTotal={milestones.length}
+                milestonesCompleted={milestones.filter(m => m.status === 'completed').length}
+              />
             )}
 
             {activeTab === 'milestones' && (
-              <div className="glass-card rounded-2xl overflow-hidden">
-                {milestones.length > 0 ? (
-                  <div className="divide-y divide-[rgba(255,255,255,0.04)]">
-                    {milestones.map(m => (
-                      <div key={m.id} className="p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${m.status === 'completed' ? 'bg-[#10B981]/10' : m.status === 'in_progress' ? 'bg-[#F59E0B]/10' : 'bg-white/5'}`}>
-                            {m.status === 'completed' ? <CheckCircle className="w-5 h-5 text-[#10B981]" /> : m.status === 'in_progress' ? <Clock className="w-5 h-5 text-[#F59E0B]" /> : <Target className="w-5 h-5 text-slate-400" />}
-                          </div>
-                          <div>
-                            <p className="font-medium text-white">{m.name}</p>
-                            <p className="text-xs text-slate-400">{m.description || ''} {m.due_date ? `· Due ${new Date(m.due_date).toLocaleDateString('en-GB')}` : ''}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {m.amount ? <span className="text-sm font-semibold text-slate-300">£{Number(m.amount).toLocaleString()}</span> : null}
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                            m.status === 'completed' ? 'bg-[#10B981]/10 text-[#10B981]' : m.status === 'in_progress' ? 'bg-[#F59E0B]/10 text-[#F59E0B]' : 'bg-white/5 text-slate-400'
-                          }`}>{m.status?.replace('_', ' ') || 'pending'}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16">
-                    <Target className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-                    <p className="text-slate-400 font-medium">No milestones yet</p>
-                  </div>
-                )}
-              </div>
+              <ProjectMilestonesTab
+                milestones={milestones}
+                loading={tabLoading.milestones || false}
+                error={tabErrors.milestones || null}
+                canEdit={canEditProject}
+                canViewFinance={canViewInvoices}
+                onRetry={() => {
+                  setLoadedTabs(prev => { const n = new Set(prev); n.delete('milestones'); return n; });
+                }}
+              />
             )}
 
-            {activeTab === 'tasks' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-white">Tasks ({tasks.length})</h3>
-                  <button onClick={() => setShowNewTask(!showNewTask)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-[#06B6D4] text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-[#06B6D4]/20 transition-all cursor-pointer whitespace-nowrap"
-                  >
-                    <Plus className="w-4 h-4" /> Add Task
-                  </button>
-                </div>
-                {showNewTask && (
-                  <div className="glass-card rounded-2xl p-4 flex gap-3">
-                    <input type="text" value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)}
-                      placeholder="Task title..." className="flex-1 px-4 py-2.5 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#06B6D4] transition-all"
-                      onKeyDown={(e) => e.key === 'Enter' && handleAddTask()} />
-                    <button onClick={handleAddTask} disabled={!newTaskTitle.trim()}
-                      className="px-4 py-2.5 bg-[#06B6D4] text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-[#06B6D4]/20 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap">Add</button>
-                    <button onClick={() => { setShowNewTask(false); setNewTaskTitle(''); }}
-                      className="px-4 py-2.5 border border-[rgba(255,255,255,0.1)] rounded-xl text-sm text-slate-400 hover:bg-white/5 transition-all cursor-pointer">Cancel</button>
-                  </div>
-                )}
-                <div className="glass-card rounded-2xl overflow-hidden">
-                  {tasks.length > 0 ? (
-                    <div className="divide-y divide-[rgba(255,255,255,0.04)]">
-                      {tasks.map(t => (
-                        <div key={t.id} className="p-4 flex items-center gap-4 hover:bg-white/[0.02] transition-colors">
-                          <button onClick={() => handleTaskStatus(t.id, t.status === 'done' ? 'todo' : 'done')}
-                            className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 cursor-pointer transition-all ${t.status === 'done' ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-slate-400'}`}>
-                            {t.status === 'done' && <CheckCircle className="w-3 h-3 text-white" />}
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium ${t.status === 'done' ? 'text-slate-500 line-through' : 'text-white'}`}>{t.title}</p>
-                            {t.description && <p className="text-xs text-slate-400 mt-0.5 truncate">{t.description}</p>}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-medium border ${getPriorityStyle(t.priority)}`}>{t.priority}</span>
-                            {t.due_date && <span className="text-xs text-slate-400">{new Date(t.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-16"><CheckCircle className="w-12 h-12 text-slate-200 mx-auto mb-4" /><p className="text-slate-400 font-medium">No tasks yet</p></div>
-                  )}
-                </div>
-              </div>
+            {activeTab === 'tasks' && profile && (
+              <ProjectTasksTab
+                tasks={tasks}
+                loading={tabLoading.tasks || false}
+                error={tabErrors.tasks || null}
+                projectId={project.id}
+                projectName={project.name}
+                currentUserId={profile.id}
+                canCreateTask={true}
+                staffOptions={staffList.map(s => ({ id: s.id, full_name: s.full_name || 'Unknown' }))}
+                onRefresh={refreshTasks}
+                onRetry={() => {
+                  setLoadedTabs(prev => { const n = new Set(prev); n.delete('tasks'); return n; });
+                }}
+              />
             )}
 
-            {activeTab === 'messages' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <div className="glass-card rounded-2xl p-6">
-                    <div className="space-y-4 max-h-[500px] overflow-y-auto mb-4">
-                      {messages.length > 0 ? messages.map(msg => (
-                        <div key={msg.id} className={`flex ${staff.some(s => s.full_name === msg.sender_name) ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[75%] px-4 py-3 rounded-2xl ${staff.some(s => s.full_name === msg.sender_name) ? 'bg-[#06B6D4] text-white rounded-br-md' : 'bg-white/5 text-slate-200 rounded-bl-md'}`}>
-                            <p className="text-sm">{msg.content}</p>
-                            <p className="text-[10px] mt-1 opacity-60">{msg.sender_name} · {new Date(msg.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                          </div>
-                        </div>
-                      )) : (
-                        <div className="text-center py-10 text-slate-400"><MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-40" /><p className="text-sm">No messages yet</p></div>
-                      )}
-                    </div>
-                    <div className="flex gap-3">
-                      <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type a message..." className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#2563EB] transition-all"
-                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} />
-                      <button onClick={handleSendMessage} disabled={!newMessage.trim() || sending}
-                        className="px-5 py-2.5 bg-[#06B6D4] text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-[#06B6D4]/20 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap flex items-center gap-2">
-                        {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Send
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {activeTab === 'messages' && profile && (
+              <ProjectMessagesTab
+                messages={messages}
+                loading={tabLoading.messages || false}
+                error={tabErrors.messages || null}
+                projectId={project.id}
+                currentUserId={profile.id}
+                currentUserName={profile.full_name || 'Staff'}
+                staffList={staffList}
+                onRefresh={refreshMessages}
+                onRetry={() => {
+                  setLoadedTabs(prev => { const n = new Set(prev); n.delete('messages'); return n; });
+                }}
+              />
             )}
 
             {activeTab === 'files' && (
-              <div className="glass-card rounded-2xl overflow-hidden">
-                {files.length > 0 ? (
-                  <div className="divide-y divide-[rgba(255,255,255,0.04)]">
-                    {files.map(f => (
-                      <div key={f.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-[#2563EB]/10 flex items-center justify-center"><FileText className="w-5 h-5 text-[#2563EB]" /></div>
-                          <div><p className="text-sm font-medium text-slate-900">{f.name}</p><p className="text-xs text-slate-400">{formatBytes(f.file_size)} · {f.category} · {new Date(f.created_at).toLocaleDateString('en-GB')}</p></div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#2563EB] transition-colors cursor-pointer"><Eye className="w-4 h-4" /></button>
-                          <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#2563EB] transition-colors cursor-pointer"><Download className="w-4 h-4" /></button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16"><FileText className="w-12 h-12 text-slate-200 mx-auto mb-4" /><p className="text-slate-400 font-medium">No files yet</p></div>
-                )}
-              </div>
+              <ProjectFilesTab
+                files={files}
+                loading={tabLoading.files || false}
+                error={tabErrors.files || null}
+                onRetry={() => {
+                  setLoadedTabs(prev => { const n = new Set(prev); n.delete('files'); return n; });
+                }}
+              />
             )}
 
             {activeTab === 'invoices' && (
-              <div className="glass-card rounded-2xl overflow-hidden">
-                {invoices.length > 0 ? (
-                  <div className="divide-y divide-[rgba(255,255,255,0.04)]">
-                    {invoices.map(inv => (
-                      <div key={inv.id} className="p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-[#F59E0B]/10 flex items-center justify-center"><DollarSign className="w-5 h-5 text-[#F59E0B]" /></div>
-                          <div><p className="font-medium text-white">{inv.invoice_number}</p><p className="text-xs text-slate-400">Due {inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB') : 'N/A'}</p></div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-slate-300">£{Number(inv.amount).toLocaleString()}</span>
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${inv.status === 'paid' ? 'bg-emerald-50 text-emerald-600' : inv.status === 'overdue' ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-600'}`}>{inv.status}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16"><DollarSign className="w-12 h-12 text-slate-200 mx-auto mb-4" /><p className="text-slate-400 font-medium">No invoices yet</p></div>
-                )}
-              </div>
+              <ProjectInvoicesTab
+                invoices={invoices}
+                loading={tabLoading.invoices || false}
+                error={tabErrors.invoices || null}
+                onRetry={() => {
+                  setLoadedTabs(prev => { const n = new Set(prev); n.delete('invoices'); return n; });
+                }}
+              />
             )}
 
             {activeTab === 'roadmap' && (
-              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-                {roadmapItems.length > 0 ? (
-                  <div className="divide-y divide-slate-50">
-                    {roadmapItems.map(item => (
-                      <div key={item.id} className="p-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-[#8B5CF6]/10 flex items-center justify-center"><Map className="w-5 h-5 text-[#8B5CF6]" /></div>
-                          <div><p className="font-medium text-slate-900">{item.title}</p><p className="text-xs text-slate-400 capitalize">{item.category}</p></div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-medium border ${getPriorityStyle(item.priority)}`}>{item.priority}</span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-medium bg-slate-50 text-slate-500 border border-slate-100 capitalize">{item.status}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16"><Map className="w-12 h-12 text-slate-200 mx-auto mb-4" /><p className="text-slate-400 font-medium">No roadmap items</p></div>
-                )}
-              </div>
+              <ProjectRoadmapTab
+                items={roadmapItems}
+                loading={tabLoading.roadmap || false}
+                error={tabErrors.roadmap || null}
+                onRetry={() => {
+                  setLoadedTabs(prev => { const n = new Set(prev); n.delete('roadmap'); return n; });
+                }}
+              />
             )}
 
             {activeTab === 'activity' && (
-              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6">
-                {activity.length > 0 ? (
-                  <div className="space-y-0">
-                    {activity.map(a => (
-                      <div key={a.id} className="flex gap-4 py-3 border-b border-slate-50 last:border-0">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                          a.activity_type === 'project_created' ? 'bg-[#2563EB]/10' : a.activity_type === 'message_sent' ? 'bg-[#10B981]/10' : 'bg-slate-100'
-                        }`}>
-                          {a.activity_type === 'project_created' ? <Plus className="w-4 h-4 text-[#2563EB]" /> :
-                           a.activity_type === 'message_sent' ? <MessageSquare className="w-4 h-4 text-[#10B981]" /> :
-                           <Activity className="w-4 h-4 text-slate-400" />}
-                        </div>
-                        <div><p className="text-sm text-slate-600">{a.description}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16"><Activity className="w-12 h-12 text-slate-200 mx-auto mb-4" /><p className="text-slate-400 font-medium">No activity recorded</p></div>
-                )}
-              </div>
+              <ProjectActivityTab
+                activities={activities}
+                loading={tabLoading.activity || false}
+                error={tabErrors.activity || null}
+                onRetry={() => {
+                  setLoadedTabs(prev => { const n = new Set(prev); n.delete('activity'); return n; });
+                }}
+              />
             )}
-
           </motion.div>
         </AnimatePresence>
       </div>

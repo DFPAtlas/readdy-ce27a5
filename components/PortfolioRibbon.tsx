@@ -53,7 +53,7 @@ function renderItems() {
     { text: 'QuickGuard', color: 'text-[#F97316]' },
     { text: 'GuardianHub', color: 'text-[#10B981]' },
     { text: 'LetHub', color: 'text-[#2563EB]' },
-    { text: 'Homora', color: 'text-[#7C3AED]' },
+    { text: 'HomAura', color: 'text-[#7C3AED]' },
     { text: 'FisheryHub', color: 'text-[#06B6D4]' },
     { text: 'Corevia AI', color: 'text-[#EC4899]' },
     { text: 'DataHarbour', color: 'text-[#0891B2]' },

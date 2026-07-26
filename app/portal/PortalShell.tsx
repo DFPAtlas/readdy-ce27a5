@@ -1,24 +1,26 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { AnimatePresence, motion } from '@/components/motion';
+import { NotificationDropdown } from '@/components/portal/NotificationDropdown';
 import {
-  Bell,
   ChevronDown,
   FileText,
   Fingerprint,
   FolderKanban,
   FolderOpen,
+  Globe,
   Headphones,
   LayoutDashboard,
   LogOut,
   Map,
   Menu,
   MessageSquare,
+  Monitor,
   Settings,
   User,
   X,
+  CheckCircle,
+  LifeBuoy,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -37,6 +39,55 @@ export default function PortalShell({ children }: PortalShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingApprovals, setPendingApprovals] = useState(0);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  const fetchCounts = useCallback(async (uid: string, cid: string) => {
+    const { data: threadsData } = await supabase
+      .from('message_threads')
+      .select('id')
+      .eq('client_id', cid)
+      .eq('client_visible', true);
+
+    const threadIds = (threadsData || []).map(t => t.id);
+    let msgCount = 0;
+
+    if (threadIds.length > 0) {
+      const { data: allMsgs } = await supabase
+        .from('project_messages')
+        .select('id')
+        .in('thread_id', threadIds)
+        .eq('is_internal', false);
+
+      if (allMsgs && allMsgs.length > 0) {
+        const msgIds = allMsgs.map(m => m.id);
+        const { data: readData } = await supabase
+          .from('message_read_receipts')
+          .select('message_id')
+          .eq('user_id', uid)
+          .in('message_id', msgIds);
+
+        const readSet = new Set((readData || []).map(r => r.message_id));
+        msgCount = allMsgs.filter(m => !readSet.has(m.id)).length;
+      }
+    }
+    setUnreadCount(msgCount);
+
+    const { data: projData } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('client_id', cid);
+    const projectIds = (projData || []).map(p => p.id);
+
+    if (projectIds.length > 0) {
+      const { count: approvalCount } = await supabase
+        .from('client_approvals')
+        .select('*', { count: 'exact', head: true })
+        .in('project_id', projectIds)
+        .in('status', ['awaiting_client', 'viewed', 'resubmitted']);
+      setPendingApprovals(approvalCount ?? 0);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,7 +107,12 @@ export default function PortalShell({ children }: PortalShellProps) {
       setUserEmail(session.user.email ?? null);
       setUserName(name);
       setLoading(false);
-      fetchUnread();
+
+      supabase.from('clients').select('id').eq('user_id', session.user.id).maybeSingle().then(({ data }) => {
+        if (data?.id && !cancelled) {
+          fetchCounts(session.user.id, data.id);
+        }
+      });
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -70,23 +126,62 @@ export default function PortalShell({ children }: PortalShellProps) {
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, [router]);
+  }, [router, fetchCounts]);
 
-  async function fetchUnread() {
-    const { data: projectsData } = await supabase.from('projects').select('id');
-    if (!projectsData?.length) {
-      setUnreadCount(0);
-      return;
-    }
+  useEffect(() => {
+    let cancelled = false;
+    const initRealtime = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-    const { count } = await supabase
-      .from('project_messages')
-      .select('*', { count: 'exact', head: true })
-      .in('project_id', projectsData.map(project => project.id))
-      .eq('read', false);
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      if (!clientData?.id) return;
 
-    setUnreadCount(count ?? 0);
-  }
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+
+      const channel = supabase
+        .channel(`portal-shell:${session.user.id}:${Date.now()}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'project_messages',
+        }, () => {
+          if (!cancelled) fetchCounts(session.user.id, clientData.id);
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'message_read_receipts',
+        }, () => {
+          if (!cancelled) fetchCounts(session.user.id, clientData.id);
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'client_approvals',
+        }, () => {
+          if (!cancelled) fetchCounts(session.user.id, clientData.id);
+        })
+        .subscribe();
+
+      channelRef.current = channel;
+    };
+
+    initRealtime();
+    return () => {
+      cancelled = true;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [fetchCounts]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -104,6 +199,10 @@ export default function PortalShell({ children }: PortalShellProps) {
   }, [pathname]);
 
   const handleLogout = async () => {
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
     await supabase.auth.signOut();
     setTimeout(() => router.replace('/portal/login'), 0);
   };
@@ -111,8 +210,11 @@ export default function PortalShell({ children }: PortalShellProps) {
   const navItems = [
     { href: '/portal/dashboard', label: 'Overview', icon: LayoutDashboard },
     { href: '/portal/projects', label: 'Projects', icon: FolderKanban },
+    { href: '/portal/approvals', label: 'Approvals', icon: CheckCircle, badge: pendingApprovals },
+    { href: '/portal/websites', label: 'My Websites', icon: Monitor },
     { href: '/portal/messages', label: 'Messages', icon: MessageSquare, badge: unreadCount },
-    { href: '/portal/files', label: 'Files', icon: FolderOpen },
+    { href: '/portal/files', label: 'Content & Assets', icon: FolderOpen },
+    { href: '/portal/support', label: 'Support', icon: LifeBuoy },
     { href: '/portal/invoices', label: 'Invoices', icon: FileText },
     { href: '/portal/roadmap', label: 'Roadmap', icon: Map },
     { href: '/portal/settings', label: 'Settings', icon: Settings },
@@ -226,16 +328,7 @@ export default function PortalShell({ children }: PortalShellProps) {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              <Link
-                href="/portal/messages"
-                className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
-                aria-label={`${unreadCount} unread messages`}
-              >
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#8B5CF6] ring-2 ring-[#081321]" />
-                )}
-              </Link>
+              <NotificationDropdown />
 
               <div className="relative" ref={menuRef}>
                 <button
