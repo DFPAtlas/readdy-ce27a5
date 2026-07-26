@@ -142,7 +142,7 @@ export default function AdminApplicationsPage() {
                       <span className="text-xs text-slate-500">{app.tester_email}</span>
                     </div>
                     <p className="text-sm text-slate-400">Applied to: <button onClick={() => router.push(`/admin/uat/jobs/${app.job_id}`)} className="text-[#06B6D4] hover:underline cursor-pointer">{app.job_title}</button></p>
-                    {app.application_message && <p className="text-xs text-slate-500 mt-1 italic">"{app.application_message}"</p>}
+                    {app.application_message && <p className="text-xs text-slate-500 mt-1 italic">“{app.application_message}”</p>}
                     {app.admin_notes && <p className="text-xs text-slate-500 mt-0.5">Note: {app.admin_notes}</p>}
                     <p className="text-xs text-slate-600 mt-1">{new Date(app.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
