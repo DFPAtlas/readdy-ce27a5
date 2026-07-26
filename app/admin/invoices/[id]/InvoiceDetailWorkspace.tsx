@@ -267,7 +267,7 @@ export default function InvoiceDetailWorkspace({ invoiceId }: { invoiceId: strin
                     ['Created', new Date(String(invoice.created_at)).toLocaleDateString('en-GB')],
                   ].map(([label, value]) => (
                     <div key={String(label)} className="flex justify-between py-2 border-b border-[rgba(255,255,255,0.04)] last:border-0">
-                      <span className="text-sm text-slate-400">{label}</span>
+                      <span className="text-sm text-slate-400">{String(label)}</span>
                       <span className="text-sm text-white">{String(value)}</span>
                     </div>
                   ))}
@@ -282,7 +282,7 @@ export default function InvoiceDetailWorkspace({ invoiceId }: { invoiceId: strin
                     ['Outstanding', formatMoney(amountOutstanding, currency)],
                   ].map(([label, value]) => (
                     <div key={String(label)} className="flex justify-between py-2 border-b border-[rgba(255,255,255,0.04)] last:border-0">
-                      <span className="text-sm text-slate-400">{label}</span>
+                      <span className="text-sm text-slate-400">{String(label)}</span>
                       <span className={`text-sm font-medium ${label === 'Outstanding' && amountOutstanding > 0 ? 'text-amber-400' : 'text-white'}`}>{String(value)}</span>
                     </div>
                   ))}
@@ -501,9 +501,9 @@ export default function InvoiceDetailWorkspace({ invoiceId }: { invoiceId: strin
                     ['Cancelled', invoice.cancelled_at],
                     ['Written Off', invoice.written_off_at],
                     ['Archived', invoice.archived_at],
-                  ].map(([label, val]) => val ? (
+                  ].map(([label, val]) => val != null ? (
                     <div key={String(label)} className="flex justify-between py-1">
-                      <span className="text-xs text-slate-400">{label}</span>
+                      <span className="text-xs text-slate-400">{String(label)}</span>
                       <span className="text-xs text-slate-300">{new Date(String(val)).toLocaleString('en-GB')}</span>
                     </div>
                   ) : null)}
