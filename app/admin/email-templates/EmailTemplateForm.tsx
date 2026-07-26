@@ -218,7 +218,7 @@ export default function EmailTemplateForm({ template, onClose, onSaved }: Props)
     >
       <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
         className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl w-full max-w-4xl my-4"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-6 border-b border-[rgba(255,255,255,0.08)]">
           <h2 className="text-lg font-bold text-white">{template ? 'Edit Template' : 'New Template'}</h2>
@@ -343,7 +343,7 @@ export default function EmailTemplateForm({ template, onClose, onSaved }: Props)
                               title={`Click to insert: ${img.file_name}`}
                             />
                             <button
-                              onClick={(e) => { e.stopPropagation(); copyImageUrl(img.public_url); }}
+                              onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); copyImageUrl(img.public_url); }}
                               className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#1E293B] border border-[rgba(255,255,255,0.1)] flex items-center justify-center text-[8px] text-slate-400 hover:text-white cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                               {copiedUrl === img.public_url ? <Check className="w-2.5 h-2.5" /> : <Copy className="w-2.5 h-2.5" />}
@@ -375,7 +375,7 @@ export default function EmailTemplateForm({ template, onClose, onSaved }: Props)
                               title={`Click to insert: ${img.file_name}`}
                             />
                             <button
-                              onClick={(e) => { e.stopPropagation(); copyImageUrl(img.public_url); }}
+                              onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); copyImageUrl(img.public_url); }}
                               className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#1E293B] border border-[rgba(255,255,255,0.1)] flex items-center justify-center text-[8px] text-slate-400 hover:text-white cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                               {copiedUrl === img.public_url ? <Check className="w-2.5 h-2.5" /> : <Copy className="w-2.5 h-2.5" />}
