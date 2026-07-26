@@ -8,6 +8,7 @@ export async function generateStaticParams() {
   ];
 }
 
-export default function WebsitePage({ params }: { params: { id: string } }) {
-  return <WebsiteDetail websiteId={params.id} />;
+export default async function WebsitePage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  return <WebsiteDetail websiteId={resolvedParams.id} />;
 }
