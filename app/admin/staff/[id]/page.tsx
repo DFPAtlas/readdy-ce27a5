@@ -8,7 +8,8 @@ export async function generateStaticParams() {
   ];
 }
 
-export default function StaffDetailWrapper({ params }: { params: { id: string } }) {
+export default async function StaffDetailWrapper({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
   return (
     <Suspense fallback={<div className="flex items-center justify-center h-64"><p className="text-slate-500">Loading...</p></div>}>
       <StaffDetailPage />

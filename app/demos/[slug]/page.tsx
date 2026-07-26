@@ -9,6 +9,7 @@ export async function generateStaticParams() {
   ];
 }
 
-export default function DemoPage({ params }: { params: { slug: string } }) {
-  return <DemoDetail slug={params.slug} />;
+export default async function DemoPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
+  return <DemoDetail slug={resolvedParams.slug} />;
 }

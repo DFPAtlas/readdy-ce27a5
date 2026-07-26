@@ -21,6 +21,7 @@ export async function generateStaticParams() {
   ];
 }
 
-export default function ProductSlugPage({ params }: { params: { slug: string } }) {
-  return <ProductDetail slug={params.slug} />;
+export default async function ProductSlugPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
+  return <ProductDetail slug={resolvedParams.slug} />;
 }

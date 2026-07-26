@@ -235,7 +235,7 @@ export default function TesterJobDetail({ jobId }: { jobId: string }) {
                 </div>
                 <h3 className="text-lg font-bold text-white mb-1">Already Applied</h3>
                 <p className="text-sm text-slate-400 mb-2">Your application is currently: <span className="font-medium text-blue-400 capitalize">{existingApp.status}</span></p>
-                {existingApp.application_message && <p className="text-xs text-slate-500 italic">"{existingApp.application_message}"</p>}
+                {existingApp.application_message && <p className="text-xs text-slate-500 italic">“{existingApp.application_message}”</p>}
                 <button onClick={() => router.push('/uat/applications')} className="mt-4 px-5 py-2.5 border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-slate-400 hover:text-white cursor-pointer whitespace-nowrap">Track Applications</button>
               </div>
             ) : (

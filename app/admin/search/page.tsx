@@ -117,7 +117,7 @@ function SearchPageInner() {
         if (error) { failures.push(m.typeKey); return; }
         if (!data || data.length === 0) return;
 
-        data.forEach((row: Record<string, unknown>, index: number) => {
+        (data as unknown as Record<string, unknown>[]).forEach((row, index) => {
           let rank = 0;
           const primaryVal = String(row[m.displayField] || '');
           const qLower = q.toLowerCase();

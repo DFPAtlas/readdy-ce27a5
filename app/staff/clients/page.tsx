@@ -92,7 +92,7 @@ function ClientsContent() {
   const [statusUpdating, setStatusUpdating] = useState<Record<string, boolean>>({});
   const [leadUpdating, setLeadUpdating] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
   const isPrivileged = isAdmin || profile?.role === 'project_lead';
@@ -149,8 +149,8 @@ function ClientsContent() {
         setStaffMap(map);
       }
 
-      await fetchClients(cancelled);
-      await fetchStats(cancelled);
+      await fetchClients(() => cancelled);
+      await fetchStats(() => cancelled);
     }
     init();
     return () => { cancelled = true; };
@@ -195,7 +195,7 @@ function ClientsContent() {
     if (error) { setLoadError(error.message); setLoading(false); return; }
 
     const clientIds = (data || []).map(c => c.id);
-    let projectCounts: Record<string, number> = {};
+    const projectCounts: Record<string, number> = {};
     if (clientIds.length > 0) {
       const { data: pcData } = await supabase.from('projects').select('client_id').in('client_id', clientIds);
       if (pcData) {

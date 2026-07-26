@@ -8,6 +8,12 @@ import {
 import { EditorDocument, EditorBlockData, BLOCK_DEFINITIONS } from './editor-types';
 import { renderBlockToInline } from './inline-renderer';
 
+function getTextAlign(value: unknown): React.CSSProperties['textAlign'] {
+  return value === 'left' || value === 'right' || value === 'center' || value === 'justify'
+    ? value
+    : 'left';
+}
+
 const BLOCK_ICON_MAP: Record<string, React.ElementType> = {
   heading: Type, text: Type, image: Image, button: MousePointer, divider: ({ className }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="12" x2="20" y2="12" /></svg>
@@ -205,7 +211,7 @@ export default function CenterCanvas({
                                   fontSize: (block.style.fontSize as string) || '14px',
                                   fontWeight: (block.style.fontWeight as string) || 'normal',
                                   color: (block.style.color as string) || document.settings.defaultTextColor,
-                                  textAlign: (block.style.textAlign as string) || 'left',
+                                  textAlign: getTextAlign(block.style.textAlign),
                                   padding: (block.style.padding as string) || '8px 0',
                                   lineHeight: '1.6',
                                 }}

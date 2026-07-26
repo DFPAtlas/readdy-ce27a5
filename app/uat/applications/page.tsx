@@ -140,7 +140,7 @@ export default function TesterApplicationsPage() {
                       </div>
                       <h3 className="text-sm font-semibold text-white mb-1">{app.job_title}</h3>
                       {app.application_message && (
-                        <p className="text-xs text-slate-500 italic">"{app.application_message}"</p>
+                        <p className="text-xs text-slate-500 italic">“{app.application_message}”</p>
                       )}
                       {app.admin_notes && (
                         <p className="text-xs text-slate-500 mt-1">Admin: {app.admin_notes}</p>

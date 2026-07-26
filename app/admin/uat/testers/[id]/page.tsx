@@ -4,6 +4,7 @@ export async function generateStaticParams() {
   return [{ id: '1' }, { id: '2' }, { id: '3' }];
 }
 
-export default function TesterDetailPage({ params }: { params: { id: string } }) {
-  return <Tester360Workspace testerId={params.id} />;
+export default async function TesterDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  return <Tester360Workspace testerId={resolvedParams.id} />;
 }

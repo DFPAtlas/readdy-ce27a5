@@ -54,7 +54,7 @@ export default function AdminRatingsPage() {
     testersData?.forEach((t: any) => { testerMap[t.id] = t; });
 
     const jobIds = [...new Set(assignsData?.map((a: any) => a.job_id).filter(Boolean) || [])];
-    let jobMap: Record<string, string> = {};
+    const jobMap: Record<string, string> = {};
     if (jobIds.length > 0) {
       const { data: jobsData } = await supabase.from('uat_jobs').select('id, title').in('id', jobIds);
       jobsData?.forEach((j: any) => { jobMap[j.id] = j.title; });

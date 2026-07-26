@@ -31,6 +31,7 @@ interface ProjectFile {
   version?: number;
   client_downloadable?: boolean;
   client_replaceable?: boolean;
+  content_request_id?: string | null;
   created_at: string;
   updated_at: string;
 }

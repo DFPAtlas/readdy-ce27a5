@@ -30,7 +30,7 @@ export default function CampaignAnalytics() {
         const cId = c.id as string;
         const campaignJobs = (jobs || []).filter(j => j.campaign_id === cId);
 
-        let delivered = 0, opens = 0, clicks = 0, bounces = 0, unsubs = 0, complaints = 0;
+        const delivered = 0, opens = 0, clicks = 0, bounces = 0, unsubs = 0, complaints = 0;
         const { count: delCount } = await supabase.from('email_delivery_events').select('*', { count: 'exact' }).eq('campaign_id', cId).eq('event_type', 'delivered');
         const { count: openCount } = await supabase.from('email_delivery_events').select('*', { count: 'exact' }).eq('campaign_id', cId).eq('event_type', 'opened');
         const { count: clickCount } = await supabase.from('email_delivery_events').select('*', { count: 'exact' }).eq('campaign_id', cId).eq('event_type', 'clicked');

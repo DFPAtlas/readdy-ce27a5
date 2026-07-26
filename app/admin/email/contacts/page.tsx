@@ -331,7 +331,7 @@ export default function ContactsPage() {
                       <span className="text-xs text-slate-500">{c.created_at ? new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</span>
                     </td>
                     <td className="px-3 py-3.5 text-right relative action-menu">
-                      <button onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === c.id ? null : c.id) }}
+                      <button onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); setMenuOpenId(menuOpenId === c.id ? null : c.id) }}
                         className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-white transition-colors cursor-pointer">
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
@@ -381,7 +381,7 @@ export default function ContactsPage() {
             onClick={() => setShowAddModal(false)}>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
               className="bg-[#1a1a1e] border border-[rgba(255,255,255,0.1)] rounded-2xl shadow-2xl max-w-md w-full p-6"
-              onClick={e => e.stopPropagation()}>
+              onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-lg font-bold text-white">Add Contact</h3>
                 <button onClick={() => setShowAddModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] cursor-pointer"><X className="w-4 h-4" /></button>

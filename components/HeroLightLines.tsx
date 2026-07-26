@@ -59,6 +59,8 @@ export default function HeroLightLines() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    const activeCanvas = canvas;
+    const activeCtx = ctx;
     ctxRef.current = ctx;
 
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -73,7 +75,7 @@ export default function HeroLightLines() {
     };
 
     function resize() {
-      const parent = canvas.parentElement;
+      const parent = activeCanvas.parentElement;
       if (!parent) return;
       const w = parent.clientWidth;
       const h = parent.clientHeight;
@@ -81,11 +83,11 @@ export default function HeroLightLines() {
       wRef.current = w;
       hRef.current = h;
       const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-      canvas.style.width = w + 'px';
-      canvas.style.height = h + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      activeCanvas.width = w * dpr;
+      activeCanvas.height = h * dpr;
+      activeCanvas.style.width = w + 'px';
+      activeCanvas.style.height = h + 'px';
+      activeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       initLines();
     }
 

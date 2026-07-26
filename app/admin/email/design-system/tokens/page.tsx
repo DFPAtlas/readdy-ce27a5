@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   Palette, Search, Plus, ChevronDown, ArrowRight, CheckCircle2,
   Clock, Eye, Edit3, Archive, ShieldCheck, AlertTriangle, XCircle,
-  Layers, GitBranch,
+  Layers, GitBranch, Package,
 } from 'lucide-react';
 
 type TokenCategory = 'colour' | 'typography' | 'spacing' | 'width' | 'border_radius' | 'divider' | 'image' | 'button' | 'section_padding' | 'header_layout' | 'footer_layout' | 'link' | 'accessibility' | 'compatibility_fallback' | 'other';
@@ -362,3 +362,4 @@ export default function DesignSystemTokens() {
     </div>
   );
 }
+

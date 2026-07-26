@@ -26,7 +26,7 @@ const MAX_RECIPIENTS = 5;
 const RATE_LIMIT_WINDOW_MS = 60000;
 const MAX_PER_WINDOW = 10;
 
-export default function EnhancedSendTestModal({ template, document, brandKitId, onClose, onSent }: EnhancedSendTestProps) {
+export default function EnhancedSendTestModal({ template, document: editorDocument, brandKitId, onClose, onSent }: EnhancedSendTestProps) {
   const [recipients, setRecipients] = useState<string[]>(['']);
   const [searchClient, setSearchClient] = useState('');
   const [clients, setClients] = useState<Client[]>([]);
@@ -77,10 +77,10 @@ export default function EnhancedSendTestModal({ template, document, brandKitId, 
   }, [template]);
 
   useEffect(() => {
-    if (document) {
-      const html = renderDocumentToHtml(document);
+    if (editorDocument) {
+      const html = renderDocumentToHtml(editorDocument);
       const result = runValidation({
-        document,
+        document: editorDocument,
         templateName: template.name,
         subject: template.subject,
         category: template.category || 'general',
@@ -94,7 +94,7 @@ export default function EnhancedSendTestModal({ template, document, brandKitId, 
         setShowValidationWarning(true);
       }
     }
-  }, [document, template.name, template.subject, template.category, brandKitId]);
+  }, [editorDocument, template.name, template.subject, template.category, brandKitId]);
 
   const selectClient = (client: Client, index: number) => {
     const newRecipients = [...recipients];
@@ -225,7 +225,7 @@ export default function EnhancedSendTestModal({ template, document, brandKitId, 
     >
       <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
         className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl w-full max-w-xl my-4"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-5 border-b border-[rgba(255,255,255,0.08)]">
           <div>

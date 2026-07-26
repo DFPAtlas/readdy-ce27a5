@@ -132,7 +132,7 @@ export default function IntegrationsPage() {
           <div>
             <h3 className="text-sm font-semibold text-white">Credential Security</h3>
             <p className="text-xs text-slate-500 mt-1">
-              All provider keys, webhook secrets and service-role credentials are stored securely in Supabase Edge Function secrets or environment variables. They are never exposed to browser code or displayed in this inventory. Configuration sources indicate where each integration's credentials are managed.
+              All provider keys, webhook secrets and service-role credentials are stored securely in Supabase Edge Function secrets or environment variables. They are never exposed to browser code or displayed in this inventory. Configuration sources indicate where each integration’s credentials are managed.
             </p>
           </div>
         </div>

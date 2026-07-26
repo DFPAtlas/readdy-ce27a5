@@ -181,8 +181,8 @@ export default function DemoDetail({ slug }: { slug: string }) {
                       return (
                         <div>
                           <h3 className="text-base font-bold text-slate-900 mb-2">{String(step.heading || `Step ${tourStep + 1}`)}</h3>
-                          {step.description && <p className="text-sm text-slate-500 mb-4">{String(step.description)}</p>}
-                          {step.image_url && (
+                          {step.description != null && <p className="text-sm text-slate-500 mb-4">{String(step.description)}</p>}
+                          {step.image_url != null && (
                             <img
                               src={String(step.image_url)}
                               alt={String(step.heading || '')}
@@ -245,7 +245,7 @@ export default function DemoDetail({ slug }: { slug: string }) {
                     const s = ss as Record<string, unknown>;
                     return (
                       <div key={i} className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
-                        {s.image_url && (
+                        {s.image_url != null && (
                           <div
                             className="relative cursor-pointer overflow-hidden"
                             onClick={() => setImageExpanded(imageExpanded === i ? null : i)}
@@ -261,8 +261,8 @@ export default function DemoDetail({ slug }: { slug: string }) {
                           </div>
                         )}
                         <div className="p-4">
-                          {s.caption && <p className="text-sm font-medium text-slate-800 mb-1">{String(s.caption)}</p>}
-                          {s.alt_text && <p className="text-xs text-slate-400">{String(s.alt_text)}</p>}
+                          {s.caption != null && <p className="text-sm font-medium text-slate-800 mb-1">{String(s.caption)}</p>}
+                          {s.alt_text != null && <p className="text-xs text-slate-400">{String(s.alt_text)}</p>}
                         </div>
                       </div>
                     );

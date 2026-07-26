@@ -81,7 +81,7 @@ export function useGlobalSearch() {
 
           if (!data || data.length === 0) return;
 
-          data.slice(0, MAX_RESULTS_PER_MODULE).forEach((row: Record<string, unknown>, index: number) => {
+          (data as unknown as Record<string, unknown>[]).slice(0, MAX_RESULTS_PER_MODULE).forEach((row, index) => {
             let rank = 0;
             const primaryVal = String(row[mod.displayField] || '');
             const q = query.toLowerCase();

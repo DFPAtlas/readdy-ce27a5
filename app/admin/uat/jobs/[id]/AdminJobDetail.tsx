@@ -335,7 +335,7 @@ export default function AdminJobDetail({ jobId }: { jobId: string }) {
                     </div>
 
                     {app.application_message && (
-                      <p className="text-sm text-slate-400 mb-3 italic">"{app.application_message}"</p>
+                      <p className="text-sm text-slate-400 mb-3 italic">“{app.application_message}”</p>
                     )}
                     {app.admin_notes && (
                       <p className="text-xs text-slate-500 mb-2">Admin note: {app.admin_notes}</p>

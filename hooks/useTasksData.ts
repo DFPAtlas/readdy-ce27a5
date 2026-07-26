@@ -124,7 +124,9 @@ export function useTasksOverview() {
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from('project_tasks').select('status, priority, due_date, owner_id');
+      const { data, error } = await supabase
+        .from('project_tasks')
+        .select('status, priority, due_date, owner_id, assigned_to, review_status, completed_at');
       if (error || !data) { setLoading(false); return; }
 
       const now = new Date();
@@ -159,3 +161,4 @@ export function useTasksOverview() {
 
   return { stats, loading };
 }
+

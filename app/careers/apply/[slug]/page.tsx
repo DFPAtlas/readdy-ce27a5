@@ -9,6 +9,7 @@ export async function generateStaticParams() {
   ];
 }
 
-export default function CareersApplyPage({ params }: { params: { slug: string } }) {
-  return <CareersApplyClient slug={params.slug} />;
+export default async function CareersApplyPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
+  return <CareersApplyClient slug={resolvedParams.slug} />;
 }

@@ -218,7 +218,7 @@ export default function LeadsTable({
           >
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
               className="bg-[#1E293B] border border-[rgba(255,255,255,0.1)] rounded-2xl shadow-2xl max-w-md w-full p-6"
-              onClick={e => e.stopPropagation()}
+              onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
             >
               <h3 className="text-lg font-bold text-white mb-1">Change Stage to &ldquo;{STAGE_LABELS[stageModal.stage]}&rdquo;</h3>
               <p className="text-sm text-slate-400 mb-4">A reason is required for this stage change.</p>

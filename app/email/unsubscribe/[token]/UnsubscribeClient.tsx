@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { CheckCircle2, Ban } from 'lucide-react'
 import { maskEmail } from '@/components/admin/email/contacts/contacts-types'
+import Link from 'next/link'
 
 export default function PublicUnsubscribePage() {
   const params = useParams()
@@ -84,10 +85,10 @@ export default function PublicUnsubscribePage() {
             className="block w-full py-3 bg-[#06B6D4] text-white rounded-xl font-semibold text-sm hover:bg-[#0891B2] cursor-pointer text-center">
             Manage Preferences
           </a>
-          <a href="/"
+          <Link href="/"
             className="block w-full py-3 bg-white/[0.04] border border-[rgba(255,255,255,0.08)] text-slate-400 rounded-xl font-semibold text-sm hover:bg-white/[0.08] cursor-pointer text-center">
             Back to Website
-          </a>
+          </Link>
         </div>
 
         <div className="text-center pt-2">

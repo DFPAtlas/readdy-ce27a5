@@ -6,11 +6,11 @@ import type { JSX } from 'react';
 interface TransitionDef {
   duration?: number;
   delay?: number;
-  ease?: string;
+  ease?: string | number[];
   type?: string;
-  x?: number | string;
-  scale?: number;
-  opacity?: number;
+  x?: number | string | TransitionDef;
+  scale?: number | TransitionDef;
+  opacity?: number | TransitionDef;
   [key: string]: unknown;
 }
 
@@ -38,7 +38,7 @@ function resolveStyleValue(value: unknown): Record<string, unknown> | undefined 
 function buildTransitionStyle(transition?: TransitionDef, initial?: Record<string, unknown>): React.CSSProperties {
   const duration = transition?.duration ?? 0.4;
   const delay = transition?.delay ?? 0;
-  const ease = transition?.ease ?? transition?.type === 'tween' ? 'ease-out' : 'ease-out';
+  const ease = typeof transition?.ease === 'string' ? transition.ease : 'ease-out';
   return {
     transition: `opacity ${duration}s ${ease} ${delay}s, transform ${duration}s ${ease} ${delay}s`,
   };

@@ -133,9 +133,16 @@ export default function ClientCreateEditDialog({
       notes: data.notes.trim() || null,
     };
 
+    const clientId = initialData?.id;
+    if (mode === 'edit' && !clientId) {
+      setError('A client ID is required to save changes.');
+      setSaving(false);
+      return;
+    }
+
     const { data: result, error: saveError } = mode === 'create'
       ? await supabase.from('clients').insert(payload).select('id').single()
-      : await supabase.from('clients').update(payload).eq('id', initialData?.id!).select('id').single();
+      : await supabase.from('clients').update(payload).eq('id', clientId as string).select('id').single();
 
     if (saveError) {
       setError(saveError.message);
@@ -173,7 +180,7 @@ export default function ClientCreateEditDialog({
           aria-label={title}
           initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
           className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl max-w-lg w-full"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
         >
           <div className="p-6 border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between">
             <div className="flex items-center gap-3">

@@ -100,7 +100,7 @@ export default function AdminReportsPage() {
     let jobId: string | null = null;
     let projectName = '';
     let jobTitle: string | null = null;
-    let testPeriod = '';
+    const testPeriod = '';
 
     if (genForm.type === 'project') {
       feedbackQuery = feedbackQuery.eq('project_id', genForm.project_id);

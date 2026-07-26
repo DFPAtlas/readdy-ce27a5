@@ -139,7 +139,7 @@ export default function CommandSupportPage() {
 
         {showForm && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={(e) => e.stopPropagation()}
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
               className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl w-full max-w-lg p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-white">New Ticket</h2>

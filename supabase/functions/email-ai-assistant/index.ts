@@ -227,7 +227,7 @@ serve(async (req: Request) => {
       });
     }
 
-    let modelConfig: AIModelConfig = {
+    const modelConfig: AIModelConfig = {
       provider: Deno.env.get("AI_PROVIDER") || "openai",
       model: Deno.env.get("AI_MODEL") || "gpt-4o-mini",
       api_key: aiApiKey,

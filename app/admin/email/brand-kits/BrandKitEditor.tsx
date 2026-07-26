@@ -119,7 +119,7 @@ export default function BrandKitEditorPage() {
         typography_settings: defaultTypography(), button_settings: defaultButtons(),
         layout_settings: defaultLayout(), header_settings: defaultHeader(),
         footer_settings: defaultFooter(), contact_settings: defaultContact(),
-        social_settings: [], created_by: null, updated_by: null,
+        social_settings: [], ai_voice_settings: {}, locale_overrides: {}, created_by: null, updated_by: null,
         created_at: '', updated_at: '',
       };
       return { ...base, [field]: value, updated_at: new Date().toISOString() } as BrandKit;
@@ -130,10 +130,10 @@ export default function BrandKitEditorPage() {
     if (!kit) return;
     setSaving(true);
     const { data: userData } = await supabase.auth.getUser();
-    const payload = { ...kit, updated_by: userData.user?.id, updated_at: new Date().toISOString() };
+    const payload = { ...kit, updated_by: userData.user?.id ?? null, updated_at: new Date().toISOString() };
 
     if (isNew) {
-      payload.created_by = userData.user?.id;
+      payload.created_by = userData.user?.id ?? null;
       const { data, error } = await supabase.from('email_brand_kits').insert(payload).select().single();
       if (!error && data) {
         setFeedback('Brand kit created');
@@ -556,7 +556,7 @@ export default function BrandKitEditorPage() {
                 </button>
               </div>
               {social.length === 0 ? (
-                <p className="text-sm text-slate-500 py-4">No social links configured. Click "Add Link" to add one.</p>
+                <p className="text-sm text-slate-500 py-4">No social links configured. Click &quot;Add Link&quot; to add one.</p>
               ) : (
                 <div className="space-y-3">
                   {social.map((link: BrandSocialLink, idx: number) => (
@@ -652,8 +652,8 @@ export default function BrandKitEditorPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { key: 'capitalization_rules', label: 'Capitalisation Rules', placeholder: 'e.g. sentence case for headings' },
-                  { key: 'punctuation_guidance', label: 'Punctuation Guidance', placeholder: 'e.g. avoid exclamation marks' },
+                  { key: 'capitalization_rules', label: 'Capitalisation Rules', placeholder: 'e.g. sentence case for headings', hint: 'Preferred capitalisation for headings and body copy' },
+                  { key: 'punctuation_guidance', label: 'Punctuation Guidance', placeholder: 'e.g. avoid exclamation marks', hint: 'Rules for punctuation in generated content' },
                 ].map(field => {
                   const voiceSettings = kit?.ai_voice_settings || {};
                   const val = (voiceSettings as Record<string, unknown>)[field.key] || '';
@@ -675,10 +675,10 @@ export default function BrandKitEditorPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { key: 'greeting_style', label: 'Greeting Style', placeholder: 'e.g. Hi {{first_name}},' },
-                  { key: 'sign_off_style', label: 'Sign-off Style', placeholder: 'e.g. Best regards, The DFP Team' },
-                  { key: 'max_subject_length', label: 'Max Subject Length', placeholder: 'e.g. 60' },
-                  { key: 'max_paragraph_length', label: 'Max Paragraph Length', placeholder: 'e.g. 3 sentences' },
+                  { key: 'greeting_style', label: 'Greeting Style', placeholder: 'e.g. Hi {{first_name}},', hint: 'Preferred opening style for emails' },
+                  { key: 'sign_off_style', label: 'Sign-off Style', placeholder: 'e.g. Best regards, The DFP Team', hint: 'Preferred closing style for emails' },
+                  { key: 'max_subject_length', label: 'Max Subject Length', placeholder: 'e.g. 60', hint: 'Maximum recommended subject-line length' },
+                  { key: 'max_paragraph_length', label: 'Max Paragraph Length', placeholder: 'e.g. 3 sentences', hint: 'Maximum recommended paragraph length' },
                 ].map(field => {
                   const voiceSettings = kit?.ai_voice_settings || {};
                   const val = (voiceSettings as Record<string, unknown>)[field.key] || '';

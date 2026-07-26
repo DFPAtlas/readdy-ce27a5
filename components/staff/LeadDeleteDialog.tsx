@@ -36,7 +36,7 @@ export default function LeadDeleteDialog({ leadName, onConfirm, onClose }: LeadD
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl max-w-md w-full"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
         >
           <div className="p-6">
             <div className="w-12 h-12 rounded-2xl bg-[#EF4444]/10 flex items-center justify-center mb-5">
