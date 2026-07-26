@@ -4,6 +4,7 @@ export async function generateStaticParams() {
   return [{ id: '1' }, { id: '2' }, { id: 'new' }];
 }
 
-export default function BrandKitPage({ params }: { params: { id: string } }) {
+export default async function BrandKitPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
   return <BrandKitEditorPage />;
 }
