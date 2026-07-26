@@ -13,6 +13,7 @@ export async function generateStaticParams() {
   ];
 }
 
-export default function HelpArticlePage({ params }: { params: { slug: string } }) {
-  return <HelpArticleDetail slug={params.slug} />;
+export default async function HelpArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
+  return <HelpArticleDetail slug={resolvedParams.slug} />;
 }
