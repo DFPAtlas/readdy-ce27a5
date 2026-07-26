@@ -11,6 +11,8 @@ import {
 
 interface Website {
   id: string;
+  client_id?: string | null;
+  project_id?: string;
   name: string;
   description?: string | null;
   primary_domain?: string | null;
