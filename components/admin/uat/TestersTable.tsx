@@ -6,7 +6,7 @@ import { useTesters } from '@/hooks/useUatTesterData';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { TESTER_PROFILE_STATUS_CONFIG, ONBOARDING_STATUS_CONFIG, PERFORMANCE_BAND_CONFIG } from '@/lib/uat-tester-definitions';
-import { Search, RefreshCw, Eye, ChevronDown, ChevronUp, Filter, UserPlus, MapPin, Star, Shield, UserCheck, Clock, Ban } from 'lucide-react';
+import { Search, RefreshCw, Eye, ChevronDown, ChevronUp, Filter, UserPlus, MapPin, Star, Shield, UserCheck, Clock, Ban, Users } from 'lucide-react';
 
 export default function TestersTable() {
   const router = useRouter();
@@ -95,9 +95,19 @@ export default function TestersTable() {
           </thead>
           <tbody>
             {filtered.map((tester: any) => {
-              const sc = TESTER_PROFILE_STATUS_CONFIG[tester.status] || TESTER_PROFILE_STATUS_CONFIG.applicant;
-              const rb = tester.reliability_band ? PERFORMANCE_BAND_CONFIG[tester.reliability_band] : null;
-              const qb = tester.quality_band ? PERFORMANCE_BAND_CONFIG[tester.quality_band] : null;
+              const sc = TESTER_PROFILE_STATUS_CONFIG[
+                tester.status as keyof typeof TESTER_PROFILE_STATUS_CONFIG
+              ] || TESTER_PROFILE_STATUS_CONFIG.applicant;
+              const rb = tester.reliability_band
+                ? PERFORMANCE_BAND_CONFIG[
+                    tester.reliability_band as keyof typeof PERFORMANCE_BAND_CONFIG
+                  ]
+                : null;
+              const qb = tester.quality_band
+                ? PERFORMANCE_BAND_CONFIG[
+                    tester.quality_band as keyof typeof PERFORMANCE_BAND_CONFIG
+                  ]
+                : null;
               return (
                 <tr key={tester.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02] transition-colors">
                   <td className="py-4 px-5">

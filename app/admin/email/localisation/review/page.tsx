@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import {
   Eye, ArrowLeft, Search, Filter, Check, X, AlertTriangle, MessageSquare,
   FileText, Megaphone, Workflow, Repeat, Clock, ChevronDown, ChevronRight,
-  ExternalLink, RefreshCw, Globe, ShieldCheck,
+  ExternalLink, RefreshCw, Globe, ShieldCheck, CheckCircle2,
 } from 'lucide-react';
 
 interface TranslationVariant {
