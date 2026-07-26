@@ -13,6 +13,7 @@ export async function generateStaticParams() {
   ];
 }
 
-export default function HelpCategoryPage({ params }: { params: { category: string } }) {
-  return <HelpCategoryClient category={params.category} />;
+export default async function HelpCategoryPage({ params }: { params: Promise<{ category: string }> }) {
+  const resolvedParams = await params;
+  return <HelpCategoryClient category={resolvedParams.category} />;
 }
