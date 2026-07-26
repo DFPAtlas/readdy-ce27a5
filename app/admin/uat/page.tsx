@@ -13,7 +13,7 @@ import {
 import {
   UAT_PROJECT_STATUS_CONFIG, UAT_JOB_STATUS_CONFIG, UAT_ENV_STATUS_CONFIG,
   UAT_APP_STATUS_CONFIG, UAT_ASSIGN_STATUS_CONFIG, UAT_FEEDBACK_STATUS_CONFIG,
-  UAT_FEEDBACK_TYPE_CONFIG, UAT_SEVERITY_CONFIG, UAT_PRIORITY_CONFIG,
+  UAT_FEEDBACK_TYPE_CONFIG, UAT_SEVERITY_CONFIG,
   UAT_RETEST_STATUS_CONFIG, UAT_APPROVAL_STATUS_CONFIG,
 } from '@/lib/uat-definitions';
 
@@ -31,12 +31,17 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'approval', label: 'Approval', icon: 'ri-shield-check-line' },
 ];
 
+function getConfigEntry<K extends string, T>(config: Record<K, T>, key: unknown): T | undefined {
+  return typeof key === 'string' && Object.prototype.hasOwnProperty.call(config, key)
+    ? config[key as K]
+    : undefined;
+}
+
 export default function AdminUatHubPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
 
   const [projects, setProjects] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
@@ -47,9 +52,7 @@ export default function AdminUatHubPage() {
   const [retests, setRetests] = useState<any[]>([]);
   const [approvals, setApprovals] = useState<any[]>([]);
 
-  const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+  const [, setStatusUpdating] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAll();
@@ -178,7 +181,7 @@ export default function AdminUatHubPage() {
               <div className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-xl p-5">
                 <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><FolderKanban className="w-4 h-4 text-[#06B6D4]" /> Recent Projects</h3>
                 {filterBySearch(projects, ['name', 'reference', 'client_company']).slice(0, 5).map((p) => {
-                  const sc = UAT_PROJECT_STATUS_CONFIG[p.status] || UAT_PROJECT_STATUS_CONFIG.draft;
+                  const sc = getConfigEntry(UAT_PROJECT_STATUS_CONFIG, p.status) || UAT_PROJECT_STATUS_CONFIG.draft;
                   return (
                     <div key={p.id} className="flex items-center justify-between py-2 border-b border-[rgba(255,255,255,0.04)] last:border-0">
                       <div className="min-w-0 flex-1">
@@ -229,7 +232,7 @@ export default function AdminUatHubPage() {
                   </thead>
                   <tbody>
                     {filterBySearch(projects, ['name', 'reference', 'client_company']).map((p) => {
-                      const sc = UAT_PROJECT_STATUS_CONFIG[p.status] || UAT_PROJECT_STATUS_CONFIG.draft;
+                      const sc = getConfigEntry(UAT_PROJECT_STATUS_CONFIG, p.status) || UAT_PROJECT_STATUS_CONFIG.draft;
                       return (
                         <tr key={p.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02]">
                           <td className="py-3 px-5"><p className="text-sm font-semibold text-white">{p.name}</p></td>
@@ -318,7 +321,7 @@ export default function AdminUatHubPage() {
                   </thead>
                   <tbody>
                     {filterBySearch(jobs, ['title', 'reference', 'description']).map((j) => {
-                      const sc = UAT_JOB_STATUS_CONFIG[j.status] || UAT_JOB_STATUS_CONFIG.draft;
+                      const sc = getConfigEntry(UAT_JOB_STATUS_CONFIG, j.status) || UAT_JOB_STATUS_CONFIG.draft;
                       return (
                         <tr key={j.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02]">
                           <td className="py-3 px-5"><p className="text-sm font-semibold text-white">{j.title}</p></td>
@@ -353,14 +356,14 @@ export default function AdminUatHubPage() {
             <div>
               <div className="space-y-3 p-5">
                 {filterBySearch(applications, ['application_message']).map((app) => {
-                  const ac = UAT_APP_STATUS_CONFIG[app.status] || { label: app.status, color: '#94A3B8', bg: 'bg-slate-500/10' };
+                  const ac = getConfigEntry(UAT_APP_STATUS_CONFIG, app.status) || { label: app.status, color: '#94A3B8', bg: 'bg-slate-500/10' };
                   return (
                     <div key={app.id} className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-xl p-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="text-sm text-white font-medium">Application</span>
                           <span className="px-2 py-0.5 rounded-lg text-xs font-medium ml-2" style={{ color: ac.color, backgroundColor: ac.bg }}>{ac.label}</span>
-                          {app.application_message && <p className="text-xs text-slate-400 mt-1 italic">"{app.application_message}"</p>}
+                          {app.application_message && <p className="text-xs text-slate-400 mt-1 italic">&ldquo;{app.application_message}&rdquo;</p>}
                         </div>
                         <div className="flex gap-1">
                           {app.status === 'submitted' && (
@@ -399,7 +402,7 @@ export default function AdminUatHubPage() {
                   </thead>
                   <tbody>
                     {assignments.map((a) => {
-                      const ac = UAT_ASSIGN_STATUS_CONFIG[a.status] || { label: a.status, color: '#94A3B8', bg: 'bg-slate-500/10' };
+                      const ac = getConfigEntry(UAT_ASSIGN_STATUS_CONFIG, a.status) || { label: a.status, color: '#94A3B8', bg: 'bg-slate-500/10' };
                       return (
                         <tr key={a.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02]">
                           <td className="py-3 px-5">
