@@ -149,7 +149,7 @@ export default function ImportsPage() {
       const email = row[emailIdx]?.trim().toLowerCase()
       if (!email || !email.includes('@')) { invalid++; continue }
 
-      const { data: existing } = await supabase.from('leads').select('id, do_not_contact').eq('email', email).maybeSingle()
+      const { data: existing } = await supabase.from('leads').select('id, do_not_contact, name, company_name').eq('email', email).maybeSingle()
       if (existing?.do_not_contact) { suppressed++; continue }
 
       const name = nameIdx >= 0 ? row[nameIdx] : email.split('@')[0]
