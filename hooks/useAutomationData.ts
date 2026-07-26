@@ -190,7 +190,7 @@ export function useAutomationOverview() {
   const fetch = useCallback(async () => {
     setLoading(true);
     const [wfRes, execRes, whRes, schedRes, agentRes, tokenRes, appRes] = await Promise.all([
-      supabase.from('digital_footprint_n8n_agents').select('status, health_status').is('archived_at', null),
+      supabase.from('digital_footprint_n8n_agents').select('status, health_status, open_alert_count').is('archived_at', null),
       supabase.from('workflow_executions').select('status, duration_ms'),
       supabase.from('workflow_webhooks').select('failure_count'),
       supabase.from('workflow_schedules').select('missed_state'),
