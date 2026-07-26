@@ -295,7 +295,7 @@ export default function AutomationsPage() {
                       Edit
                     </Link>
                     <button
-                      onClick={(e) => { e.stopPropagation(); setActionMenuId(actionMenuId === a.id ? null : a.id); }}
+                      onClick={(e) => { e.stopPropagation(); setActionMenuId(actionMenuId === a.id ? null : a.id ?? null); }}
                       className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.06] text-slate-500 hover:text-white transition-all cursor-pointer"
                     >
                       <MoreHorizontal className="w-4 h-4" />
