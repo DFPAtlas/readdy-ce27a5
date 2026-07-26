@@ -124,7 +124,7 @@ export function useProjectsOverview() {
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from('projects').select('status, health');
+      const { data, error } = await supabase.from('projects').select('status, health, uat_state');
       if (error || !data) { setLoading(false); return; }
 
       const s: Record<string, number> = {
