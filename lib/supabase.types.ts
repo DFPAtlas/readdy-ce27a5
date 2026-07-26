@@ -4,6 +4,7 @@ export interface AdminProfile {
   full_name: string | null;
   role: 'admin' | 'super_admin';
   active: boolean;
+  organisation_id: string | null;
   created_at: string | null;
   updated_at: string | null;
 }

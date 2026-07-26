@@ -25,14 +25,14 @@ export default function NotificationCentre() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const load = useCallback(async () => {
-    if (!profile?.user_id) return;
+    if (!profile?.id) return;
     setLoading(true);
     setError(null);
 
     let query = supabase
       .from('notifications')
       .select('*', { count: 'exact' })
-      .eq('recipient_user_id', profile.user_id)
+      .eq('recipient_user_id', profile.id)
       .is('dismissed_at', null);
 
     if (filterUnread) query = query.is('read_at', null);
@@ -49,7 +49,7 @@ export default function NotificationCentre() {
     setNotifications(data || []);
     setTotalCount(count || 0);
     setLoading(false);
-  }, [profile?.user_id, page, filterUnread, filterCategory, filterSeverity, searchTerm]);
+  }, [profile?.id, page, filterUnread, filterCategory, filterSeverity, searchTerm]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -59,8 +59,8 @@ export default function NotificationCentre() {
   };
 
   const handleMarkAllRead = async () => {
-    if (!profile?.user_id) return;
-    await markAllNotificationsAsRead(profile.user_id);
+    if (!profile?.id) return;
+    await markAllNotificationsAsRead(profile.id);
     setNotifications((p) => p.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
   };
 
