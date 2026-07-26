@@ -92,7 +92,7 @@ function ClientsContent() {
   const [statusUpdating, setStatusUpdating] = useState<Record<string, boolean>>({});
   const [leadUpdating, setLeadUpdating] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
   const isPrivileged = isAdmin || profile?.role === 'project_lead';
@@ -149,8 +149,8 @@ function ClientsContent() {
         setStaffMap(map);
       }
 
-      await fetchClients(cancelled);
-      await fetchStats(cancelled);
+      await fetchClients(() => cancelled);
+      await fetchStats(() => cancelled);
     }
     init();
     return () => { cancelled = true; };
