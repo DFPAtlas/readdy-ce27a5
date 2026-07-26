@@ -82,7 +82,7 @@ export default function ContactForm({ onClose }: ContactFormProps) {
           <div className="flex justify-between items-center mb-8">
             <div>
               <h2 className="text-3xl font-bold text-gray-800">Get In Touch</h2>
-              <p className="text-gray-600 mt-2">Have questions? We'd love to hear from you.</p>
+              <p className="text-gray-600 mt-2">Have questions? We’d love to hear from you.</p>
             </div>
             <button 
               onClick={onClose}
@@ -98,7 +98,7 @@ export default function ContactForm({ onClose }: ContactFormProps) {
                 <i className="ri-checkbox-circle-fill text-green-600 text-2xl mr-4"></i>
                 <div>
                   <h3 className="text-green-800 font-semibold text-lg">Message Sent Successfully!</h3>
-                  <p className="text-green-600">We'll get back to you within 24 hours.</p>
+                  <p className="text-green-600">We’ll get back to you within 24 hours.</p>
                 </div>
               </div>
             </div>
@@ -247,9 +247,9 @@ export default function ContactForm({ onClose }: ContactFormProps) {
                 <div className="text-sm text-blue-800">
                   <p className="font-semibold mb-1">What happens next?</p>
                   <ul className="space-y-1 text-blue-700">
-                    <li>• We'll review your inquiry within 2 hours</li>
+                    <li>• We’ll review your inquiry within 2 hours</li>
                     <li>• Our team will contact you to discuss your needs</li>
-                    <li>• We'll provide a free consultation and quote</li>
+                    <li>• We’ll provide a free consultation and quote</li>
                   </ul>
                 </div>
               </div>
