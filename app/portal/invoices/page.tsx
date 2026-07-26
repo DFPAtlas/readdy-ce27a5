@@ -20,6 +20,10 @@ interface Invoice {
   invoice_number: string;
   description: string;
   amount: number;
+  total: number | null;
+  amount_paid: number | null;
+  amount_outstanding: number | null;
+  currency: string;
   status: string;
   due_date: string | null;
   paid_at: string | null;
@@ -52,8 +56,20 @@ function formatShortDate(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
+function invoiceTotal(invoice: Invoice): number {
+  return Number(invoice.total ?? invoice.amount ?? 0);
+}
+
+function invoiceOutstanding(invoice: Invoice): number {
+  const total = invoiceTotal(invoice);
+  return Number(invoice.amount_outstanding ?? Math.max(0, total - Number(invoice.amount_paid ?? 0)));
+}
+
 function downloadInvoice(invoice: Invoice) {
-  const content = `INVOICE\n========================================\nInvoice Number: ${invoice.invoice_number}\nDate: ${formatDate(invoice.created_at)}\nDue Date: ${formatDate(invoice.due_date)}\nStatus: ${invoice.status.toUpperCase()}\n========================================\nDescription: ${invoice.description}\nAmount: £${Number(invoice.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}\n========================================\nPaid At: ${invoice.paid_at ? formatDate(invoice.paid_at) : 'Not yet paid'}\n========================================\nDigital Footprint \u2014 Reshaping Your Digital World`;
+  const currency = invoice.currency || 'GBP';
+  const amount = new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(invoiceTotal(invoice));
+  const outstanding = new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(invoiceOutstanding(invoice));
+  const content = `INVOICE\n========================================\nInvoice Number: ${invoice.invoice_number}\nDate: ${formatDate(invoice.created_at)}\nDue Date: ${formatDate(invoice.due_date)}\nStatus: ${invoice.status.toUpperCase()}\n========================================\nDescription: ${invoice.description}\nTotal: ${amount}\nOutstanding: ${outstanding}\n========================================\nPaid At: ${invoice.paid_at ? formatDate(invoice.paid_at) : 'Not yet paid'}\n========================================\nDigital Footprint \u2014 Reshaping Your Digital World`;
   const blob = new Blob([content], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = `${invoice.invoice_number}.txt`;
@@ -101,15 +117,27 @@ export default function InvoicesPage() {
     setPayError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setPayError('Your session has expired. Please sign in again.');
+        return;
+      }
       const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/create-checkout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ invoiceId: invoice.id, amount: Number(invoice.amount), description: invoice.description, customerEmail: session?.user?.email, successUrl: `${window.location.origin}/portal/invoices?paid=true`, cancelUrl: `${window.location.origin}/portal/invoices`, mode: 'payment' }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+        },
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          successUrl: `${window.location.origin}/portal/invoices?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/portal/invoices?payment=cancelled`,
+        }),
       });
       const result = await res.json();
       if (result.url) window.location.href = result.url;
-      else setPayError('Failed to create payment session.');
-    } catch { setPayError('Something went wrong.'); }
+      else setPayError(result.error || 'Failed to create payment session.');
+    } catch { setPayError('The payment service could not be reached. Please try again.'); }
     finally { setPayLoading(null); }
   };
 
@@ -124,8 +152,10 @@ export default function InvoicesPage() {
     return sortDir === 'asc' ? cmp : -cmp;
   });
 
-  const totalOutstanding = invoices.filter(i => i.status === 'pending' || i.status === 'overdue').reduce((sum, i) => sum + Number(i.amount), 0);
-  const totalPaid = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.amount), 0);
+  const totalOutstanding = invoices
+    .filter(i => !['paid', 'draft', 'cancelled', 'written_off', 'archived'].includes(i.status))
+    .reduce((sum, i) => sum + invoiceOutstanding(i), 0);
+  const totalPaid = invoices.reduce((sum, i) => sum + Number(i.amount_paid ?? (i.status === 'paid' ? invoiceTotal(i) : 0)), 0);
   const stats = {
     total: invoices.length,
     paid: invoices.filter(i => i.status === 'paid').length,
@@ -239,7 +269,7 @@ export default function InvoicesPage() {
                   </div>
                   <div className="lg:col-span-2 flex items-center gap-1">
                     <PoundSterling className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="text-sm font-semibold text-white">{Number(invoice.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
+                    <span className="text-sm font-semibold text-white">{invoiceOutstanding(invoice).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="lg:col-span-1"><StatusBadge status={invoice.status} /></div>
                   <div className="lg:col-span-2 flex items-center gap-1.5">
@@ -279,7 +309,8 @@ export default function InvoicesPage() {
                 <div className="p-5 space-y-4">
                   {[
                     { label: 'Invoice Number', value: selectedInvoice.invoice_number },
-                    { label: 'Amount', value: `£${Number(selectedInvoice.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`, bold: true },
+                    { label: 'Invoice Total', value: `£${invoiceTotal(selectedInvoice).toLocaleString('en-GB', { minimumFractionDigits: 2 })}` },
+                    { label: 'Outstanding', value: `£${invoiceOutstanding(selectedInvoice).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`, bold: true },
                     { label: 'Description', value: selectedInvoice.description },
                     { label: 'Issued Date', value: formatDate(selectedInvoice.created_at) },
                     { label: 'Due Date', value: formatDate(selectedInvoice.due_date), highlight: selectedInvoice.status === 'overdue' },
