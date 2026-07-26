@@ -26,7 +26,7 @@ const MAX_RECIPIENTS = 5;
 const RATE_LIMIT_WINDOW_MS = 60000;
 const MAX_PER_WINDOW = 10;
 
-export default function EnhancedSendTestModal({ template, document, brandKitId, onClose, onSent }: EnhancedSendTestProps) {
+export default function EnhancedSendTestModal({ template, document: editorDocument, brandKitId, onClose, onSent }: EnhancedSendTestProps) {
   const [recipients, setRecipients] = useState<string[]>(['']);
   const [searchClient, setSearchClient] = useState('');
   const [clients, setClients] = useState<Client[]>([]);
@@ -77,10 +77,10 @@ export default function EnhancedSendTestModal({ template, document, brandKitId, 
   }, [template]);
 
   useEffect(() => {
-    if (document) {
-      const html = renderDocumentToHtml(document);
+    if (editorDocument) {
+      const html = renderDocumentToHtml(editorDocument);
       const result = runValidation({
-        document,
+        document: editorDocument,
         templateName: template.name,
         subject: template.subject,
         category: template.category || 'general',
@@ -94,7 +94,7 @@ export default function EnhancedSendTestModal({ template, document, brandKitId, 
         setShowValidationWarning(true);
       }
     }
-  }, [document, template.name, template.subject, template.category, brandKitId]);
+  }, [editorDocument, template.name, template.subject, template.category, brandKitId]);
 
   const selectClient = (client: Client, index: number) => {
     const newRecipients = [...recipients];
