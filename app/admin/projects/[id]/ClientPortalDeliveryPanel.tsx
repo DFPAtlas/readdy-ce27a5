@@ -424,7 +424,7 @@ export default function ClientPortalDeliveryPanel({ project, onProjectUpdated }:
                           {!m.client_visible && <span className="text-amber-400">Internal only</span>}
                         </div>
                       </div>
-                      <button onClick={() => { setEditingMilestone(m.id); setEditingMilestoneData({ title: m.title || m.name, status: m.status, due_date: m.due_date || '' }); }}
+                      <button onClick={() => { setEditingMilestone(m.id); setEditingMilestoneData({ title: m.title || m.name || '', status: m.status, due_date: m.due_date || '' }); }}
                         className="text-slate-500 hover:text-[#06B6D4] cursor-pointer"><Edit2 className="w-3.5 h-3.5" /></button>
                       <button onClick={() => handleDeleteMilestone(m.id)}
                         className="text-slate-500 hover:text-red-400 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
