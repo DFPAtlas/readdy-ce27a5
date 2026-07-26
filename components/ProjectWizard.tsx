@@ -744,7 +744,7 @@ export default function ProjectWizard({ isOpen, onClose, initialData }: WizardPr
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-        onClick={(e) => e.target === e.currentTarget && onClose()}
+        onClick={(e: React.MouseEvent<HTMLElement>) => e.target === e.currentTarget && onClose()}
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -762,7 +762,7 @@ export default function ProjectWizard({ isOpen, onClose, initialData }: WizardPr
                 <Check className="w-10 h-10 text-[#00F0FF]" />
               </motion.div>
               <h2 className="text-2xl font-bold font-mono mb-4 text-gray-900">Project Brief Submitted!</h2>
-              <p className="text-gray-500 mb-6">We'll review your requirements and get back to you within 24 hours.</p>
+              <p className="text-gray-500 mb-6">We’ll review your requirements and get back to you within 24 hours.</p>
               <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
