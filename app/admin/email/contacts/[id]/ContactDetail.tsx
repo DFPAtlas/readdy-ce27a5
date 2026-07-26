@@ -9,6 +9,7 @@ import {
   ArrowLeft, Mail, Building2, Phone, Tag, Clock, ShieldCheck, AlertTriangle,
   CheckCircle2, Ban, X, History, Users, FileText, ChevronDown,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { EmailContact, ContactPreference, ConsentEvent } from '@/components/admin/email/contacts/contacts-types'
 import { maskEmail, CONTACT_STATUS_LABELS, CONSENT_STATUS_LABELS, CONSENT_STATUS_COLORS, SUBSCRIPTION_CATEGORIES } from '@/components/admin/email/contacts/contacts-types'
 
@@ -93,12 +94,19 @@ export default function ContactDetailPage() {
     </div>
   )
 
-  const tabs: { key: Tab; label: string; icon: any }[] = [
+  const tabs: { key: Tab; label: string; icon: LucideIcon }[] = [
     { key: 'overview', label: 'Overview', icon: Mail },
     { key: 'preferences', label: 'Preferences', icon: CheckCircle2 },
     { key: 'consent', label: 'Consent', icon: ShieldCheck },
     { key: 'activity', label: 'Activity', icon: History },
     { key: 'audiences', label: 'Audiences', icon: Users },
+  ]
+
+  const contactDetails: { label: string; value: string | null | undefined; Icon: LucideIcon }[] = [
+    { label: 'Email', value: contact.email, Icon: Mail },
+    { label: 'Company', value: contact.company_name, Icon: Building2 },
+    { label: 'Phone', value: contact.phone, Icon: Phone },
+    { label: 'Role', value: contact.contact_role, Icon: Tag },
   ]
 
   return (
@@ -144,10 +152,10 @@ export default function ContactDetailPage() {
           <div className="bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6 space-y-4">
             <h3 className="text-sm font-semibold text-white">Contact Details</h3>
             <div className="space-y-3">
-              {[['Email', contact.email, Mail], ['Company', contact.company_name, Building2], ['Phone', contact.phone, Phone], ['Role', contact.contact_role, Tag]].map(([label, value, Icon]) => (
-                <div key={label as string} className="flex items-center gap-3">
+              {contactDetails.map(({ label, value, Icon }) => (
+                <div key={label} className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-white/[0.02] border border-[rgba(255,255,255,0.04)] flex items-center justify-center shrink-0">
-                    {(Icon as any) && <Icon className="w-4 h-4 text-slate-500" />}
+                    <Icon className="w-4 h-4 text-slate-500" />
                   </div>
                   <div>
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</p>
