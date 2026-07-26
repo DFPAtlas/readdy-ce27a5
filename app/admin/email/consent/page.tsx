@@ -207,7 +207,7 @@ export default function ConsentPage() {
             onClick={() => setShowAddModal(false)}>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
               className="bg-[#1a1a1e] border border-[rgba(255,255,255,0.1)] rounded-2xl shadow-2xl max-w-md w-full p-6"
-              onClick={e => e.stopPropagation()}>
+              onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-lg font-bold text-white">Record Consent Event</h3>
                 <button onClick={() => setShowAddModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
