@@ -8,13 +8,13 @@ import {
   TESTER_PROFILE_STATUS_CONFIG, ONBOARDING_STATUS_CONFIG, PERFORMANCE_BAND_CONFIG,
   AVAILABILITY_STATE_CONFIG, CAPABILITY_TYPE_LABELS, AGREEMENT_TYPE_LABELS,
   WARNING_ACTION_LABELS, APPEAL_STATE_CONFIG, PAYMENT_APPROVAL_CONFIG,
-  DISPUTE_STATUS_CONFIG, ENTITLEMENT_ELIGIBILITY_CONFIG,
+  ENTITLEMENT_ELIGIBILITY_CONFIG,
 } from '@/lib/uat-tester-definitions';
 import {
-  ArrowLeft, User, Monitor, Smartphone, Globe, Shield, Award, Star,
-  FileText, DollarSign, AlertTriangle, Clock, Calendar, MapPin,
-  Mail, Phone, RefreshCw, CheckCircle, XCircle, Ban, MessageSquare,
-  ChevronDown, ChevronUp, X, Plus, Loader2, Activity,
+  ArrowLeft, User, Monitor, Smartphone, Shield, Award, Star,
+  FileText, DollarSign, AlertTriangle, Clock,
+  Mail, RefreshCw, CheckCircle, XCircle, Ban, MessageSquare,
+  Plus, Loader2, Activity,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -22,9 +22,15 @@ interface Props {
   testerId: string;
 }
 
+function getConfigEntry<K extends string, T>(config: Record<K, T>, key: unknown): T | undefined {
+  return typeof key === 'string' && Object.prototype.hasOwnProperty.call(config, key)
+    ? config[key as K]
+    : undefined;
+}
+
 export default function Tester360Workspace({ testerId }: Props) {
   const router = useRouter();
-  const { tester, devices, capabilities, availability, agreements, warnings, ratings, assignments, entitlements, disputes, loading, refetch } = useTesterDetail(testerId);
+  const { tester, devices, capabilities, availability, agreements, warnings, ratings, assignments, entitlements, loading, refetch } = useTesterDetail(testerId);
   const [activeTab, setActiveTab] = useState('overview');
 
   const [statusUpdating, setStatusUpdating] = useState(false);
@@ -131,10 +137,10 @@ export default function Tester360Workspace({ testerId }: Props) {
     );
   }
 
-  const sc = TESTER_PROFILE_STATUS_CONFIG[tester.status] || TESTER_PROFILE_STATUS_CONFIG.applicant;
-  const oc = ONBOARDING_STATUS_CONFIG[tester.onboarding_status] || ONBOARDING_STATUS_CONFIG.not_started;
-  const rb = tester.reliability_band ? PERFORMANCE_BAND_CONFIG[tester.reliability_band] : null;
-  const qb = tester.quality_band ? PERFORMANCE_BAND_CONFIG[tester.quality_band] : null;
+  const sc = getConfigEntry(TESTER_PROFILE_STATUS_CONFIG, tester.status) || TESTER_PROFILE_STATUS_CONFIG.applicant;
+  const oc = getConfigEntry(ONBOARDING_STATUS_CONFIG, tester.onboarding_status) || ONBOARDING_STATUS_CONFIG.not_started;
+  const rb = getConfigEntry(PERFORMANCE_BAND_CONFIG, tester.reliability_band) || null;
+  const qb = getConfigEntry(PERFORMANCE_BAND_CONFIG, tester.quality_band) || null;
 
   const tabs = [
     { key: 'overview', label: 'Overview', icon: User },
@@ -247,7 +253,7 @@ export default function Tester360Workspace({ testerId }: Props) {
                 <div className="space-y-2">
                   {warnings.filter((w: any) => w.is_active).map((w: any) => (
                     <div key={w.id} className="py-2 border-b border-[rgba(255,255,255,0.04)] last:border-0">
-                      <p className="text-sm text-white font-medium">{WARNING_ACTION_LABELS[w.action_type] || w.action_type}</p>
+                      <p className="text-sm text-white font-medium">{getConfigEntry(WARNING_ACTION_LABELS, w.action_type) || w.action_type}</p>
                       <p className="text-xs text-slate-400">{w.reason}</p>
                     </div>
                   ))}
@@ -313,7 +319,7 @@ export default function Tester360Workspace({ testerId }: Props) {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {capabilities.map((c: any) => (
                 <div key={c.id} className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-xl p-4">
-                  <p className="text-sm font-medium text-white">{CAPABILITY_TYPE_LABELS[c.capability_type] || c.capability_type}</p>
+                  <p className="text-sm font-medium text-white">{getConfigEntry(CAPABILITY_TYPE_LABELS, c.capability_type) || c.capability_type}</p>
                   <div className="flex items-center gap-3 mt-2">
                     <span className="text-xs text-slate-500">Self: {c.self_declared_level}</span>
                     {c.verified_level && <span className="text-xs text-emerald-400">Verified: {c.verified_level}</span>}
@@ -370,7 +376,7 @@ export default function Tester360Workspace({ testerId }: Props) {
           ) : (
             <div className="space-y-3">
               {availability.map((a: any) => {
-                const asc = AVAILABILITY_STATE_CONFIG[a.availability_state];
+                const asc = getConfigEntry(AVAILABILITY_STATE_CONFIG, a.availability_state);
                 return (
                   <div key={a.id} className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-xl p-4">
                     <div className="flex items-center justify-between mb-2">
@@ -538,7 +544,7 @@ export default function Tester360Workspace({ testerId }: Props) {
               <tbody>
                 {agreements.map((a: any) => (
                   <tr key={a.id} className="border-b border-[rgba(255,255,255,0.04)]">
-                    <td className="px-6 py-3.5"><span className="text-sm text-white">{AGREEMENT_TYPE_LABELS[a.agreement_type] || a.agreement_type}</span></td>
+                    <td className="px-6 py-3.5"><span className="text-sm text-white">{getConfigEntry(AGREEMENT_TYPE_LABELS, a.agreement_type) || a.agreement_type}</span></td>
                     <td className="px-6 py-3.5"><span className="text-sm text-white">{a.version}</span></td>
                     <td className="px-6 py-3.5">{a.accepted ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-red-400" />}</td>
                     <td className="px-6 py-3.5"><span className="text-xs text-slate-400">{a.accepted_at ? new Date(a.accepted_at).toLocaleDateString('en-GB') : '-'}</span></td>
@@ -572,7 +578,7 @@ export default function Tester360Workspace({ testerId }: Props) {
                       <div>
                         <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium mb-1"
                           style={{ color: w.is_active ? '#F97316' : '#6B7280', backgroundColor: w.is_active ? '#F9731620' : '#6B728020' }}>
-                          {WARNING_ACTION_LABELS[w.action_type] || w.action_type}
+                          {getConfigEntry(WARNING_ACTION_LABELS, w.action_type) || w.action_type}
                         </span>
                         <p className="text-sm text-white mt-1">{w.reason}</p>
                         {w.evidence_link && <p className="text-xs text-slate-500 mt-1">Evidence: {w.evidence_link}</p>}
