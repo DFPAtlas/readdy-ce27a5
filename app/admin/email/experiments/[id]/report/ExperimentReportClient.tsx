@@ -137,8 +137,8 @@ export default function ExperimentReportClient({ params }: { params: { id: strin
                   <tr key={v.id} className="border-b border-[rgba(255,255,255,0.03)]">
                     <td className="px-4 py-3"><span className="text-sm font-medium text-white">{v.label}</span></td>
                     <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${v.type==='control'?'bg-emerald-500/10 text-emerald-400 border-emerald-500/20':'bg-violet-500/10 text-violet-400 border-violet-500/20'}`}>{v.type==='control'?'Control':'Variant'}</span></td>
-                    <td className="px-4 py-3"><span className="text-xs text-slate-300">{vr?.assigned||'—'}</span></td>
-                    <td className="px-4 py-3"><span className="text-xs text-slate-300">{vr?.delivered||'—'}</span></td>
+                    <td className="px-4 py-3"><span className="text-xs text-slate-300">{vr?.assigned != null ? String(vr.assigned) : '—'}</span></td>
+                    <td className="px-4 py-3"><span className="text-xs text-slate-300">{vr?.delivered != null ? String(vr.delivered) : '—'}</span></td>
                     <td className="px-4 py-3"><span className="text-xs font-medium text-white">{vr?.primary_value!=null?`${vr.primary_value}%`:'—'}</span></td>
                     <td className="px-4 py-3">
                       {exp.decision?.winner_variant===v.label
@@ -178,7 +178,7 @@ export default function ExperimentReportClient({ params }: { params: { id: strin
             ? <>
                 <p><span className="text-slate-500">Winner:</span> <span className="text-amber-400 font-medium ml-2">{exp.decision.winner_variant as string}</span></p>
                 <p><span className="text-slate-500">Decided:</span> <span className="text-slate-300 ml-2">{exp.decision.decided_at?new Date(exp.decision.decided_at as string).toLocaleString():'—'}</span></p>
-                <p><span className="text-slate-500">Note:</span> <span className="text-slate-300 ml-2">{exp.decision.decision_note||'—'}</span></p>
+                <p><span className="text-slate-500">Note:</span> <span className="text-slate-300 ml-2">{exp.decision.decision_note != null ? String(exp.decision.decision_note) : '—'}</span></p>
               </>
             : exp.status==='inconclusive'
               ? <p className="text-amber-400 text-sm">This experiment was marked inconclusive. No winner was selected.</p>
