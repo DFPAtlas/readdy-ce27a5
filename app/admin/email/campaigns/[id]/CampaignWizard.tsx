@@ -632,14 +632,14 @@ export default function CampaignWizard({ campaign, isNew }: CampaignWizardProps)
                 {validationResult.errors.length > 0 && (
                   <div className="space-y-1">
                     {validationResult.errors.map((e, i) => (
-                      <p key={i} className="text-xs text-red-400">• {e.message}</p>
+                      <p key={i} className="text-xs text-red-400">• {e.explanation}</p>
                     ))}
                   </div>
                 )}
                 {validationResult.warnings.length > 0 && (
                   <div className="space-y-1 mt-2">
                     {validationResult.warnings.map((w, i) => (
-                      <p key={i} className="text-xs text-amber-400">• {w.message}</p>
+                      <p key={i} className="text-xs text-amber-400">• {w.explanation}</p>
                     ))}
                   </div>
                 )}
@@ -944,7 +944,7 @@ export default function CampaignWizard({ campaign, isNew }: CampaignWizardProps)
             >
               <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
                 className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl max-w-md w-full p-6"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
