@@ -195,7 +195,7 @@ export default function RetentionPage() {
         )}
 
         {dryRunResult === null && !dryRunning && (
-          <p className="text-sm text-slate-500 text-center py-8">Click "Run Dry-Run Estimate" to preview affected records</p>
+          <p className="text-sm text-slate-500 text-center py-8">Click “Run Dry-Run Estimate” to preview affected records</p>
         )}
       </div>
 
