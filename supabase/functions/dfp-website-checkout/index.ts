@@ -119,11 +119,18 @@ function bytesToUuid(bytes: Uint8Array): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
-async function checkoutOrderId(email: string, packageId: string): Promise<string> {
-  const bucket = Math.floor(Date.now() / IDEMPOTENCY_WINDOW_MS);
+async function checkoutOrderId(email: string, packageId: string, bucket: number): Promise<string> {
   const payload = new TextEncoder().encode(`dfp-checkout|${email}|${packageId}|${bucket}`);
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", payload));
   return bytesToUuid(digest);
+}
+
+async function checkoutOrderIds(email: string, packageId: string): Promise<string[]> {
+  const currentBucket = Math.floor(Date.now() / IDEMPOTENCY_WINDOW_MS);
+  return await Promise.all([
+    checkoutOrderId(email, packageId, currentBucket),
+    checkoutOrderId(email, packageId, currentBucket - 1),
+  ]);
 }
 
 Deno.serve(async (req: Request) => {
@@ -198,76 +205,113 @@ Deno.serve(async (req: Request) => {
   });
   const stripe = new Stripe(STRIPE_SECRET_KEY);
 
-  const orderId = await checkoutOrderId(customerEmail, pkg.id);
+  const candidateOrderIds = await checkoutOrderIds(customerEmail, pkg.id);
+  let orderId = candidateOrderIds[0];
   let projectReference = generateProjectReference();
   let existingOrder: ExistingOrder | null = null;
   let orderReady = false;
 
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const { error: insertError } = await admin
-      .from("dfp_checkout_orders")
-      .insert({
-        id: orderId,
-        project_reference: projectReference,
-        package_id: pkg.id,
-        package_name: pkg.name,
-        full_price_minor: pkg.fullPriceMinor,
-        starting_payment_minor: pkg.depositMinor,
-        remaining_balance_minor: pkg.fullPriceMinor - pkg.depositMinor,
-        second_milestone_minor: pkg.secondMilestoneMinor,
-        final_milestone_minor: pkg.finalMilestoneMinor,
-        currency: "gbp",
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone || null,
-        business_name: businessName || null,
-        billing_address: billingAddress,
-        billing_postcode: billingPostcode || null,
-        billing_country: billingCountry,
-        existing_website: existingWebsite || null,
-        project_description: projectDescription || null,
-        preferred_contact: preferredContact,
-        payment_status: "pending",
-        project_status: "new",
-      });
+  const { data: candidateOrders, error: candidateLookupError } = await admin
+    .from("dfp_checkout_orders")
+    .select(
+      "id, project_reference, package_id, customer_email, stripe_customer_id, stripe_checkout_session_id, payment_status",
+    )
+    .in("id", candidateOrderIds);
 
-    if (!insertError) {
-      orderReady = true;
-      break;
-    }
+  if (candidateLookupError) {
+    console.error("Failed to check recent checkout orders", candidateLookupError);
+    return json(req, { error: "Unable to prepare checkout" }, 500);
+  }
 
-    if (insertError.code !== "23505") {
-      console.error("Failed to reserve checkout order", insertError);
-      return json(req, { error: "Unable to record order" }, 500);
-    }
+  if (candidateOrders?.length) {
+    const ordersById = new Map(
+      (candidateOrders as ExistingOrder[]).map((order) => [order.id, order]),
+    );
+    const recentOrder = candidateOrderIds
+      .map((candidateId) => ordersById.get(candidateId))
+      .find((order): order is ExistingOrder => Boolean(order));
 
-    const { data: duplicate, error: duplicateError } = await admin
-      .from("dfp_checkout_orders")
-      .select(
-        "id, project_reference, package_id, customer_email, stripe_customer_id, stripe_checkout_session_id, payment_status",
-      )
-      .eq("id", orderId)
-      .maybeSingle();
-
-    if (duplicateError) {
-      console.error("Failed to read existing checkout order", duplicateError);
-      return json(req, { error: "Unable to recover checkout" }, 500);
-    }
-
-    if (duplicate) {
-      existingOrder = duplicate as ExistingOrder;
+    if (recentOrder) {
       if (
-        existingOrder.package_id !== pkg.id ||
-        normaliseEmail(existingOrder.customer_email) !== customerEmail
+        recentOrder.package_id !== pkg.id ||
+        normaliseEmail(recentOrder.customer_email) !== customerEmail
       ) {
         return json(req, { error: "Checkout request conflict" }, 409);
       }
-      projectReference = existingOrder.project_reference;
+      existingOrder = recentOrder;
+      orderId = recentOrder.id;
+      projectReference = recentOrder.project_reference;
       orderReady = true;
-      break;
     }
+  }
 
-    projectReference = generateProjectReference();
+  if (!orderReady) {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { error: insertError } = await admin
+        .from("dfp_checkout_orders")
+        .insert({
+          id: orderId,
+          project_reference: projectReference,
+          package_id: pkg.id,
+          package_name: pkg.name,
+          full_price_minor: pkg.fullPriceMinor,
+          starting_payment_minor: pkg.depositMinor,
+          remaining_balance_minor: pkg.fullPriceMinor - pkg.depositMinor,
+          second_milestone_minor: pkg.secondMilestoneMinor,
+          final_milestone_minor: pkg.finalMilestoneMinor,
+          currency: "gbp",
+          customer_name: customerName,
+          customer_email: customerEmail,
+          customer_phone: customerPhone || null,
+          business_name: businessName || null,
+          billing_address: billingAddress,
+          billing_postcode: billingPostcode || null,
+          billing_country: billingCountry,
+          existing_website: existingWebsite || null,
+          project_description: projectDescription || null,
+          preferred_contact: preferredContact,
+          payment_status: "pending",
+          project_status: "new",
+        });
+
+      if (!insertError) {
+        orderReady = true;
+        break;
+      }
+
+      if (insertError.code !== "23505") {
+        console.error("Failed to reserve checkout order", insertError);
+        return json(req, { error: "Unable to record order" }, 500);
+      }
+
+      const { data: duplicate, error: duplicateError } = await admin
+        .from("dfp_checkout_orders")
+        .select(
+          "id, project_reference, package_id, customer_email, stripe_customer_id, stripe_checkout_session_id, payment_status",
+        )
+        .eq("id", orderId)
+        .maybeSingle();
+
+      if (duplicateError) {
+        console.error("Failed to read existing checkout order", duplicateError);
+        return json(req, { error: "Unable to recover checkout" }, 500);
+      }
+
+      if (duplicate) {
+        existingOrder = duplicate as ExistingOrder;
+        if (
+          existingOrder.package_id !== pkg.id ||
+          normaliseEmail(existingOrder.customer_email) !== customerEmail
+        ) {
+          return json(req, { error: "Checkout request conflict" }, 409);
+        }
+        projectReference = existingOrder.project_reference;
+        orderReady = true;
+        break;
+      }
+
+      projectReference = generateProjectReference();
+    }
   }
 
   if (!orderReady) {
