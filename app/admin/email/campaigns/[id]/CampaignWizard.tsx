@@ -632,14 +632,14 @@ export default function CampaignWizard({ campaign, isNew }: CampaignWizardProps)
                 {validationResult.errors.length > 0 && (
                   <div className="space-y-1">
                     {validationResult.errors.map((e, i) => (
-                      <p key={i} className="text-xs text-red-400">• {e.message}</p>
+                      <p key={i} className="text-xs text-red-400">• {e.explanation}</p>
                     ))}
                   </div>
                 )}
                 {validationResult.warnings.length > 0 && (
                   <div className="space-y-1 mt-2">
                     {validationResult.warnings.map((w, i) => (
-                      <p key={i} className="text-xs text-amber-400">• {w.message}</p>
+                      <p key={i} className="text-xs text-amber-400">• {w.explanation}</p>
                     ))}
                   </div>
                 )}
