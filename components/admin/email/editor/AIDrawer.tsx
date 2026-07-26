@@ -512,9 +512,9 @@ export default function AIDrawer({
                                     <div className="min-w-0">
                                       <p className="text-sm text-white">{text}</p>
                                       <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500">
-                                        {opt.character_count && <span>{opt.character_count} chars</span>}
-                                        {opt.tone && <span className="text-[#06B6D4]">{opt.tone as string}</span>}
-                                        {opt.issues && <span className="text-amber-400">{opt.issues as string}</span>}
+                                        {opt.character_count != null && <span>{String(opt.character_count)} chars</span>}
+                                        {opt.tone != null && <span className="text-[#06B6D4]">{String(opt.tone)}</span>}
+                                        {opt.issues != null && <span className="text-amber-400">{String(opt.issues)}</span>}
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -544,7 +544,7 @@ export default function AIDrawer({
                                   <div className="flex items-start justify-between gap-3">
                                     <div>
                                       <p className="text-sm text-white">{text}</p>
-                                      {opt.character_count && <p className="text-[10px] text-slate-500 mt-0.5">{opt.character_count} chars</p>}
+                                      {opt.character_count != null && <p className="text-[10px] text-slate-500 mt-0.5">{String(opt.character_count)} chars</p>}
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                       <button onClick={() => handleCopy(text, i)}
@@ -574,7 +574,7 @@ export default function AIDrawer({
                               <div className="bg-[#06B6D4]/[0.04] border border-[#06B6D4]/10 rounded-xl p-3">
                                 <p className="text-sm text-white">{((result.data as Record<string, unknown>).suggested_text as string) || 'No suggestion generated'}</p>
                               </div>
-                              {(result.data as Record<string, unknown>).changes_summary && (
+                              {(result.data as Record<string, unknown>).changes_summary != null && (
                                 <p className="text-[10px] text-slate-500 mt-1">{(result.data as Record<string, unknown>).changes_summary as string}</p>
                               )}
                             </div>
@@ -609,7 +609,7 @@ export default function AIDrawer({
                                 </div>
                               </div>
                             )}
-                            {(result.data as Record<string, unknown>).body && (
+                            {(result.data as Record<string, unknown>).body != null && (
                               <div>
                                 <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Draft Body</p>
                                 <div className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-xl p-4">
@@ -617,7 +617,7 @@ export default function AIDrawer({
                                 </div>
                               </div>
                             )}
-                            {(result.data as Record<string, unknown>).cta && (
+                            {(result.data as Record<string, unknown>).cta != null && (
                               <div>
                                 <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Call to Action</p>
                                 <div className="bg-[#06B6D4]/[0.04] border border-[#06B6D4]/10 rounded-xl p-3">
@@ -637,7 +637,7 @@ export default function AIDrawer({
                         {result.actionType === 'content_review' && (
                           <div className="space-y-2">
                             <p className="text-xs text-slate-500">Content improvement suggestions</p>
-                            {(result.data as Record<string, unknown>).suggestions && Array.isArray((result.data as Record<string, unknown>).suggestions) && (
+                            {Array.isArray((result.data as Record<string, unknown>).suggestions) && (
                               (result.data as Record<string, unknown>).suggestions as Array<Record<string, unknown>>
                             ).map((s: Record<string, unknown>, i: number) => (
                               <div key={i} className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-xl p-3">
@@ -659,7 +659,7 @@ export default function AIDrawer({
                         {result.actionType === 'accessibility_suggestions' && (
                           <div className="space-y-2">
                             <p className="text-xs text-slate-500">Accessibility improvement suggestions</p>
-                            {(result.data as Record<string, unknown>).suggestions && Array.isArray((result.data as Record<string, unknown>).suggestions) && (
+                            {Array.isArray((result.data as Record<string, unknown>).suggestions) && (
                               (result.data as Record<string, unknown>).suggestions as Array<Record<string, unknown>>
                             ).map((s: Record<string, unknown>, i: number) => (
                               <div key={i} className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-xl p-3">
