@@ -4,6 +4,7 @@ export async function generateStaticParams() {
   return [{ id: '1' }, { id: '2' }, { id: '3' }];
 }
 
-export default function LeadDetailPage({ params }: { params: { id: string } }) {
-  return <Lead360Workspace leadId={params.id} />;
+export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  return <Lead360Workspace leadId={resolvedParams.id} />;
 }
