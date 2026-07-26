@@ -1,0 +1,9 @@
+[functions.create-checkout]
+verify_jwt = true
+
+[functions.milestone-checkout]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
