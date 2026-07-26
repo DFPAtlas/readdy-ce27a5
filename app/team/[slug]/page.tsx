@@ -10,12 +10,13 @@ export async function generateStaticParams() {
   ];
 }
 
-export default function TeamProfilePage({ params }: { params: { slug: string } }) {
+export default async function TeamProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
   return (
     <>
       <Header />
       <main className="min-h-screen bg-[#fafbfc] pt-24">
-        <TeamProfileDetail slug={params.slug} />
+        <TeamProfileDetail slug={resolvedParams.slug} />
       </main>
       <Footer />
     </>
