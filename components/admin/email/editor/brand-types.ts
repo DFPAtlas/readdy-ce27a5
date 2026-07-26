@@ -123,6 +123,24 @@ export interface BrandSocialLink {
   visible: boolean;
 }
 
+export interface BrandKitVoiceSettings extends Record<string, unknown> {
+  tone_descriptors?: string;
+  reading_level?: string;
+  formality?: string;
+  preferred_terms?: string;
+  restricted_phrases?: string;
+  capitalization_rules?: string;
+  punctuation_guidance?: string;
+  greeting_style?: string;
+  sign_off_style?: string;
+  max_subject_length?: string;
+  max_paragraph_length?: string;
+  compliance_notes?: string;
+  example_copy?: string;
+}
+
+export type BrandKitLocaleOverrides = Record<string, Record<string, string>>;
+
 export interface BrandKit {
   id: string;
   organisation_id: string;
@@ -141,6 +159,8 @@ export interface BrandKit {
   footer_settings: BrandKitFooter | null;
   contact_settings: BrandKitContact | null;
   social_settings: BrandSocialLink[] | null;
+  ai_voice_settings: BrandKitVoiceSettings | null;
+  locale_overrides: BrandKitLocaleOverrides | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
