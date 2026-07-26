@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminProfile } from '@/hooks/useAdminProfile';
 import { motion } from '@/components/motion';
-import { Bell, Mail, Clock, ToggleLeft, Save, ArrowLeft } from 'lucide-react';
+import { Bell, Clock, Save, ArrowLeft } from 'lucide-react';
 import AdminShell from '@/components/admin/AdminShell';
 import Link from 'next/link';
 
@@ -33,9 +33,9 @@ export default function NotificationPreferences() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!profile?.user_id) { setLoading(false); return; }
+    if (!profile?.id) { setLoading(false); return; }
 
-    const stored = localStorage.getItem(`notif_prefs_${profile.user_id}`);
+    const stored = localStorage.getItem(`notif_prefs_${profile.id}`);
     if (stored) {
       try { setPrefs((p) => ({ ...p, ...JSON.parse(stored) })); } catch {}
     }
@@ -43,7 +43,7 @@ export default function NotificationPreferences() {
     supabase
       .from('user_settings')
       .select('notifications_enabled, email_notifications, notification_email')
-      .eq('user_id', profile.user_id)
+      .eq('user_id', profile.id)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
@@ -55,7 +55,7 @@ export default function NotificationPreferences() {
         }
         setLoading(false);
       });
-  }, [profile?.user_id]);
+  }, [profile?.id]);
 
   const toggleCategory = (cat: string) => {
     setPrefs((p) => ({
@@ -65,17 +65,17 @@ export default function NotificationPreferences() {
   };
 
   const save = async () => {
-    if (!profile?.user_id) return;
+    if (!profile?.id) return;
     setSaving(true);
     setError(null);
     setSaved(false);
 
-    localStorage.setItem(`notif_prefs_${profile.user_id}`, JSON.stringify(prefs));
+    localStorage.setItem(`notif_prefs_${profile.id}`, JSON.stringify(prefs));
 
     const { error: updateErr } = await supabase
       .from('user_settings')
       .upsert({
-        user_id: profile.user_id,
+        user_id: profile.id,
         notifications_enabled: prefs.in_app_enabled,
         email_notifications: prefs.email_enabled,
       }, { onConflict: 'user_id' });
@@ -248,3 +248,4 @@ export default function NotificationPreferences() {
     </AdminShell>
   );
 }
+
