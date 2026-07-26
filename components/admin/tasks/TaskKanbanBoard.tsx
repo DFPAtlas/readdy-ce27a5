@@ -105,13 +105,13 @@ export default function TaskKanbanBoard({ tasks, onDragEnd }: TaskKanbanBoardPro
                             <span className="text-[10px] text-slate-500">{task.estimated_effort_hours as number}h</span>
                           )}
                         </div>
-                        {task.due_date && (
+                        {task.due_date != null && (
                           <div className={`flex items-center gap-1 mt-2 text-[10px] ${overdue ? 'text-red-400' : 'text-slate-500'}`}>
                             {overdue ? <AlertTriangle className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
                             <span>{new Date(task.due_date as string).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
                           </div>
                         )}
-                        {task.task_reference && (
+                        {task.task_reference != null && (
                           <p className="text-[10px] text-slate-600 font-mono mt-1">{task.task_reference as string}</p>
                         )}
                       </div>
