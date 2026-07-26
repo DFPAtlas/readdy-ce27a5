@@ -51,7 +51,7 @@ export default function CareersApplyClient({ slug }: { slug: string }) {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (formValues.website_alt.trim()) {
       setFormState('success');
