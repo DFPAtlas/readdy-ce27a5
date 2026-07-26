@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from '@/components/motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type MouseEvent } from 'react';
 import { X, Target, Calendar, FileText, Loader2 } from 'lucide-react';
 
 interface Milestone {
@@ -52,7 +52,7 @@ export default function MilestoneForm({ milestone, projects, onClose, onSave }: 
       onClick={onClose}
     >
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
         className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
       >
         <div className="p-6 border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between">
