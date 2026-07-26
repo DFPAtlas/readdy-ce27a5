@@ -93,7 +93,7 @@ function formatShortDate(d: string | null) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-const METADATA_COLS = 'id,name,email,phone,company_name,website,service_interest,budget_range,location,status,stage,priority,estimated_value,contact_role,contact_phone,industry,source,campaign,assigned_to,created_at,updated_at,converted_to_client,converted_at';
+const METADATA_COLS = 'id,name,email,phone,company_name,website,service_interest,message,budget_range,location,status,stage,priority,estimated_value,contact_role,contact_phone,industry,source,campaign,assigned_to,created_at,updated_at,converted_to_client,converted_at';
 
 function LeadsContent() {
   const router = useRouter();
@@ -120,7 +120,7 @@ function LeadsContent() {
   const [statusUpdating, setStatusUpdating] = useState<Record<string, boolean>>({});
   const [assignUpdating, setAssignUpdating] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
   const isPrivileged = isAdmin || profile?.role === 'project_lead';
