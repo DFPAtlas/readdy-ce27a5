@@ -50,8 +50,8 @@ export default function AdminLeadsPage() {
     if (overdueOnly) result = result.filter(l => l.next_action_due && new Date(l.next_action_due) < new Date());
 
     result.sort((a, b) => {
-      const aVal = (a as Record<string, unknown>)[sortField];
-      const bVal = (b as Record<string, unknown>)[sortField];
+      const aVal = (a as unknown as Record<string, unknown>)[sortField];
+      const bVal = (b as unknown as Record<string, unknown>)[sortField];
       if (aVal == null && bVal == null) return 0;
       if (aVal == null) return 1;
       if (bVal == null) return -1;
@@ -261,7 +261,7 @@ export default function AdminLeadsPage() {
           >
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
               className="bg-[#1E293B] border border-[rgba(255,255,255,0.1)] rounded-2xl shadow-2xl max-w-sm w-full p-6"
-              onClick={e => e.stopPropagation()}
+              onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
             >
               <h3 className="text-lg font-bold text-white mb-2">Delete Lead?</h3>
               <p className="text-sm text-slate-400 mb-6">This action cannot be undone. Notes and follow-ups will also be removed.</p>
@@ -341,7 +341,7 @@ function LeadFormModal({ lead, onClose, onSaved }: { lead: CrmLead | null; onClo
     >
       <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
         className="bg-[#1E293B] border border-[rgba(255,255,255,0.1)] rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
+        onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-bold text-white">{lead ? 'Edit Lead' : 'Add New Lead'}</h3>
