@@ -107,7 +107,7 @@ export default function AdminLeadsTable({ leads, onStatusChange, onDelete }: Adm
           >
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white border border-gray-100 rounded-2xl shadow-2xl max-w-lg w-full p-6"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-[#1E293B]">Lead Details</h3>
@@ -153,7 +153,7 @@ export default function AdminLeadsTable({ leads, onStatusChange, onDelete }: Adm
           >
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white border border-gray-100 rounded-2xl shadow-2xl max-w-sm w-full p-6"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
             >
               <h3 className="text-lg font-bold text-[#1E293B] mb-2">Delete Lead?</h3>
               <p className="text-sm text-gray-400 mb-6">This action cannot be undone.</p>

@@ -372,7 +372,7 @@ export default function AdminSubmissionsPage() {
             >
               <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
                 className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl max-w-md w-full p-6 text-white"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-bold">Convert to Project</h3>

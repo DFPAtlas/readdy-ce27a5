@@ -25,7 +25,7 @@ export default function ValidationPanel({ open, onClose, result, onRun, onNaviga
     >
       <motion.div initial={{ x: 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 100, opacity: 0 }}
         className="w-full max-w-lg h-full bg-[#0f0f13] border-l border-[rgba(255,255,255,0.06)] shadow-2xl flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(255,255,255,0.06)]">
           <div>

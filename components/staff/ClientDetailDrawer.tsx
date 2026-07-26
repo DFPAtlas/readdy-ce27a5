@@ -160,7 +160,7 @@ export default function ClientDetailDrawer({
           initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
           transition={{ type: 'tween', duration: 0.2 }}
           className="absolute right-0 top-0 bottom-0 w-full max-w-xl bg-[#1E293B] border-l border-[rgba(255,255,255,0.08)] shadow-2xl overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
         >
           <div className="sticky top-0 bg-[#1E293B] border-b border-[rgba(255,255,255,0.06)] px-6 py-4 flex items-center justify-between z-10">
             <h2 className="text-lg font-bold text-white">Client Details</h2>

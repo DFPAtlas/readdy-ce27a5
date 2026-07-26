@@ -86,7 +86,7 @@ export default function VersionCompareModal({ open, onClose, versionA, versionB,
     >
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
         className="bg-[#0f0f13] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(255,255,255,0.06)]">
           <div className="flex items-center gap-3">

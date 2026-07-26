@@ -177,7 +177,7 @@ export default function InvoiceForm({ isOpen, onClose, onSuccess }: InvoiceFormP
         >
           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
             className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">

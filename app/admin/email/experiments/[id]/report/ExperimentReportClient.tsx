@@ -11,7 +11,10 @@ interface ExperimentData {
   hypothesis:Record<string,unknown>;variants:{id:string;label:string;type:string}[];
   audience_config:{estimated_eligible?:number;estimated_total?:number};
   allocation_config:{type:string;holdout_percent?:number};
-  metrics_config:{primary?:{name:string;description:string}};
+  metrics_config:{
+    primary?:{name:string;description:string};
+    secondary?:{name:string;description?:string}[];
+  };
   guardrails_config:Record<string,{enabled:boolean;threshold:number}>;
   results:Record<string,unknown>;decision:Record<string,unknown>;
   schedule_config:{start_at?:string;end_at?:string};

@@ -405,7 +405,7 @@ export default function EmailTemplatesPage() {
                 <motion.div
                   initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
                   className="absolute right-0 top-12 w-72 bg-[#1a1a1e] border border-[rgba(255,255,255,0.1)] rounded-2xl shadow-2xl p-4 z-50 space-y-4"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
                 >
                   <div>
                     <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Brand</label>
@@ -551,7 +551,7 @@ export default function EmailTemplatesPage() {
                   <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#121215] to-transparent" />
 
                   <button
-                    onClick={(e) => { e.stopPropagation(); toggleSelect(template.id); }}
+                    onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); toggleSelect(template.id); }}
                     className={`absolute top-2 left-2 w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer z-10 ${
                       isSelected ? 'bg-[#06B6D4] text-white' : 'bg-black/30 text-white/0 group-hover:text-white/70'
                     }`}
@@ -561,14 +561,14 @@ export default function EmailTemplatesPage() {
 
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <button
-                      onClick={(e) => { e.stopPropagation(); setPreviewTemplate(template); setPreviewMode('desktop'); }}
+                      onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); setPreviewTemplate(template); setPreviewMode('desktop'); }}
                       className="w-8 h-8 rounded-lg bg-black/50 backdrop-blur border border-[rgba(255,255,255,0.08)] flex items-center justify-center text-slate-300 hover:text-white transition-colors cursor-pointer"
                       title="Desktop preview"
                     >
                       <Monitor className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); setPreviewTemplate(template); setPreviewMode('mobile'); }}
+                      onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); setPreviewTemplate(template); setPreviewMode('mobile'); }}
                       className="w-8 h-8 rounded-lg bg-black/50 backdrop-blur border border-[rgba(255,255,255,0.08)] flex items-center justify-center text-slate-300 hover:text-white transition-colors cursor-pointer"
                       title="Mobile preview"
                     >
@@ -618,7 +618,7 @@ export default function EmailTemplatesPage() {
                     </button>
                     <div className="relative more-menu">
                       <button
-                        onClick={(e) => { e.stopPropagation(); setMoreOpenId(moreOpenId === template.id ? null : template.id); }}
+                        onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); setMoreOpenId(moreOpenId === template.id ? null : template.id); }}
                         className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.02] border border-[rgba(255,255,255,0.04)] text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
                       >
                         <MoreHorizontal className="w-3.5 h-3.5" />
@@ -628,7 +628,7 @@ export default function EmailTemplatesPage() {
                           <motion.div
                             initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
                             className="absolute right-0 bottom-10 w-44 bg-[#1a1a1e] border border-[rgba(255,255,255,0.1)] rounded-xl shadow-2xl overflow-hidden z-50"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
                           >
 <button onClick={() => { handleEdit(template.id); setMoreOpenId(null); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-slate-300 hover:bg-white/[0.04] transition-colors cursor-pointer">
                               <Edit3 className="w-3.5 h-3.5" /> Edit
@@ -714,14 +714,14 @@ export default function EmailTemplatesPage() {
                             <Send className="w-4 h-4" />
                           </button>
                           <div className="relative more-menu">
-                            <button onClick={(e) => { e.stopPropagation(); setMoreOpenId(moreOpenId === template.id ? null : template.id); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.04] text-slate-400 hover:text-white transition-colors cursor-pointer">
+                            <button onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); setMoreOpenId(moreOpenId === template.id ? null : template.id); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.04] text-slate-400 hover:text-white transition-colors cursor-pointer">
                               <MoreHorizontal className="w-4 h-4" />
                             </button>
                             <AnimatePresence>
                               {moreOpenId === template.id && (
                                 <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
                                   className="absolute right-0 top-10 w-44 bg-[#1a1a1e] border border-[rgba(255,255,255,0.1)] rounded-xl shadow-2xl overflow-hidden z-50"
-                                  onClick={(e) => e.stopPropagation()}
+                                  onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
                                 >
 <button onClick={() => { handleEdit(template.id); setMoreOpenId(null); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-slate-300 hover:bg-white/[0.04] transition-colors cursor-pointer"><Edit3 className="w-3.5 h-3.5" /> Edit</button>
                                   <button onClick={() => { setPreviewTemplate(template); setMoreOpenId(null); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-slate-300 hover:bg-white/[0.04] transition-colors cursor-pointer"><Eye className="w-3.5 h-3.5" /> Preview</button>
@@ -752,7 +752,7 @@ export default function EmailTemplatesPage() {
           >
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               className="bg-[#1a1a1e] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl max-w-sm w-full p-6"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
             >
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
@@ -780,7 +780,7 @@ export default function EmailTemplatesPage() {
           >
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               className="bg-[#1a1a1e] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl max-w-sm w-full p-6"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
             >
               <h3 className="text-lg font-bold text-white mb-4">Rename Template</h3>
               <input
@@ -809,7 +809,7 @@ export default function EmailTemplatesPage() {
           >
             <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
               className="bg-[#1a1a1e] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl w-full max-w-2xl my-4"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between px-6 py-4 border-b border-[rgba(255,255,255,0.06)]">
                 <div>
