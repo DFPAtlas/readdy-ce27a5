@@ -115,7 +115,7 @@ export default function InvoicesTable({ invoices, onStatusChange, onDelete, onSe
                 </td>
                 <td className="py-4 px-5">
                   <p className="text-sm text-slate-300">{formatMoney(amountPaid, currency)}</p>
-                  {status === 'paid' && inv.paid_at && (
+                  {status === 'paid' && inv.paid_at != null && (
                     <p className="text-xs text-emerald-400">{new Date(String(inv.paid_at)).toLocaleDateString('en-GB')}</p>
                   )}
                 </td>
