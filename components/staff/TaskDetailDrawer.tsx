@@ -21,7 +21,6 @@ interface TaskItem {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
-  progress: number | null;
   project_name?: string;
   assignee_name?: string;
 }
