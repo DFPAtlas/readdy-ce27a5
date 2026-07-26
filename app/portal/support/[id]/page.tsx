@@ -8,6 +8,7 @@ export async function generateStaticParams() {
   ];
 }
 
-export default function SupportTicketPage({ params }: { params: { id: string } }) {
-  return <TicketDetail ticketId={params.id} />;
+export default async function SupportTicketPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  return <TicketDetail ticketId={resolvedParams.id} />;
 }
