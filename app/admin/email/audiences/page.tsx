@@ -218,7 +218,7 @@ export default function AudiencesPage() {
                     <ArrowUpRight className="w-4 h-4" />
                   </Link>
                   <div className="relative action-menu">
-                    <button onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === a.id ? null : a.id) }}
+                    <button onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); setMenuOpenId(menuOpenId === a.id ? null : a.id) }}
                       className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] cursor-pointer">
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
@@ -260,7 +260,7 @@ export default function AudiencesPage() {
             onClick={() => setShowCreateModal(false)}>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
               className="bg-[#1a1a1e] border border-[rgba(255,255,255,0.1)] rounded-2xl shadow-2xl max-w-md w-full p-6"
-              onClick={e => e.stopPropagation()}>
+              onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-lg font-bold text-white">Create Audience</h3>
                 <button onClick={() => setShowCreateModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
