@@ -215,7 +215,7 @@ export default function AuditLog() {
       <AnimatePresence>
         {selectedDetail && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedDetail(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="bg-[#1E293B] border border-[rgba(255,255,255,0.1)] rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()} className="bg-[#1E293B] border border-[rgba(255,255,255,0.1)] rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-white">Audit Entry Detail</h3>
                 <button onClick={() => setSelectedDetail(null)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-white cursor-pointer">
@@ -261,7 +261,7 @@ export default function AuditLog() {
                   <span className="text-xs text-slate-300">{new Date(selectedDetail.created_at).toLocaleString('en-GB')}</span>
                 </div>
 
-                {selectedDetail.before_summary && (
+                {selectedDetail.before_summary != null && (
                   <div className="pt-2 border-t border-[rgba(255,255,255,0.06)]">
                     <span className="text-xs text-slate-500 block mb-1">Before (redacted)</span>
                     <pre className="text-xs text-slate-400 bg-black/20 rounded-lg p-2 overflow-x-auto max-h-32">
@@ -269,7 +269,7 @@ export default function AuditLog() {
                     </pre>
                   </div>
                 )}
-                {selectedDetail.after_summary && (
+                {selectedDetail.after_summary != null && (
                   <div className="pt-2 border-t border-[rgba(255,255,255,0.06)]">
                     <span className="text-xs text-slate-500 block mb-1">After (redacted)</span>
                     <pre className="text-xs text-slate-400 bg-black/20 rounded-lg p-2 overflow-x-auto max-h-32">
