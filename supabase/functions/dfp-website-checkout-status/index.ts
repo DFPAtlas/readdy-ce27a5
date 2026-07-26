@@ -21,13 +21,14 @@ function cors(req: Request): HeadersInit {
     const url = new URL(origin);
     if (isAllowedHost(url.hostname)) allowedOrigin = origin;
   } catch {
-    // Non-browser
+    // Non-browser requests
   }
   return {
     "content-type": "application/json",
     "access-control-allow-origin": allowedOrigin,
     "access-control-allow-headers": "authorization, apikey, content-type, x-client-info",
     "access-control-allow-methods": "GET, OPTIONS",
+    "cache-control": "no-store",
     "vary": "Origin",
   };
 }
@@ -47,9 +48,13 @@ Deno.serve(async (req: Request) => {
 
   const url = new URL(req.url);
   const ref = url.searchParams.get("ref") || "";
+  const sessionId = url.searchParams.get("session_id") || "";
 
-  if (!ref || !/^DFP-\d{4}-[A-HJ-NP-Z2-9]{6}$/.test(ref)) {
-    return json(req, { error: "Invalid project reference" }, 400);
+  if (!/^DFP-\d{4}-[A-HJ-NP-Z2-9]{6}$/.test(ref)) {
+    return json(req, { error: "Order not found" }, 404);
+  }
+  if (!/^cs_(?:test|live)_[A-Za-z0-9]+$/.test(sessionId)) {
+    return json(req, { error: "Order not found" }, 404);
   }
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -59,9 +64,10 @@ Deno.serve(async (req: Request) => {
   const { data, error } = await admin
     .from("dfp_checkout_orders")
     .select(
-      "project_reference, package_id, package_name, starting_payment_minor, full_price_minor, remaining_balance_minor, second_milestone_minor, final_milestone_minor, customer_name, customer_email, payment_status"
+      "project_reference, package_id, package_name, starting_payment_minor, full_price_minor, remaining_balance_minor, second_milestone_minor, final_milestone_minor, payment_status",
     )
     .eq("project_reference", ref)
+    .eq("stripe_checkout_session_id", sessionId)
     .maybeSingle();
 
   if (error || !data) {
