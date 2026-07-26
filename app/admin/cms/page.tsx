@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from '@/components/motion';
 import AdminShell from '@/components/admin/AdminShell';
@@ -13,13 +14,13 @@ import {
   useDemoRegistry, useDemoMetrics,
   useHelpArticles, useHelpArticleMetrics,
   usePartnerApplications, usePartnerMetrics,
-  HelpArticle, CmsPage, CmsNavItem, CmsMedia, CmsService, CmsStaff, CmsCaseStudy,
-  CmsTestimonial, CmsFaq, CmsAnnouncement, CmsLegal, CmsRedirect,
+  HelpArticle, CmsService, CmsStaff, CmsCaseStudy,
+  CmsTestimonial, CmsFaq, CmsAnnouncement, CmsLegal,
   PublicTeamProfile, DemoRegistry, PartnerApplication,
   useCareersVacancies, useCareerApplications, useCareersMetrics,
   CareersVacancy, CareerApplication,
 } from '@/hooks/useCmsData';
-import { editorialStatusConfig, productStatusConfig, PRODUCT_STATUSES, PRODUCT_VISIBILITY, PRODUCT_CATEGORIES, TEAM_PROFILE_STATUSES, TEAM_DEPARTMENTS, teamProfileStatusConfig, demoFormatConfig, demoStatusConfig, DEMO_FORMATS, DEMO_STATUSES, DEMO_VISIBILITY, helpArticleStatusConfig, helpCategoryConfig, HELP_ARTICLE_STATUSES, HELP_ARTICLE_VISIBILITY, partnerStatusConfig, PARTNER_APPLICATION_STATUSES, vacancyStatusConfig, applicationStatusConfig, VACANCY_STATUSES, EMPLOYMENT_TYPES, employmentTypeConfig } from '@/lib/cms-definitions';
+import { editorialStatusConfig, productStatusConfig, PRODUCT_STATUSES, PRODUCT_VISIBILITY, TEAM_PROFILE_STATUSES, teamProfileStatusConfig, demoFormatConfig, demoStatusConfig, DEMO_FORMATS, DEMO_STATUSES, DEMO_VISIBILITY, helpArticleStatusConfig, helpCategoryConfig, HELP_ARTICLE_STATUSES, HELP_ARTICLE_VISIBILITY, partnerStatusConfig, PARTNER_APPLICATION_STATUSES, vacancyStatusConfig, applicationStatusConfig, VACANCY_STATUSES, employmentTypeConfig } from '@/lib/cms-definitions';
 
 const TABS = [
   { key: 'overview', label: 'Overview', icon: 'ri-dashboard-line' },
@@ -52,7 +53,7 @@ export default function CmsPage() {
   const { metrics, loading: metricsLoading } = useCmsMetrics();
   const { pages, loading: pagesLoading, refetch: refetchPages } = useCmsPages();
   const { items: navItems, loading: navLoading, refetch: refetchNav } = useCmsNavigation();
-  const { media, loading: mediaLoading, refetch: refetchMedia } = useCmsMedia();
+  const { media, loading: mediaLoading } = useCmsMedia();
   const { services, loading: servicesLoading } = useCmsServices();
   const { staff, loading: staffLoading } = useCmsStaff();
   const { items: caseStudies, loading: csLoading } = useCmsCaseStudies();
@@ -355,7 +356,7 @@ export default function CmsPage() {
                       <div key={m.id} className="bg-[#0F172A] rounded-xl overflow-hidden border border-[rgba(255,255,255,0.06)]">
                         <div className="aspect-square bg-white/5 flex items-center justify-center overflow-hidden">
                           {m.mime_type?.startsWith('image/') && m.public_url ? (
-                            <img src={m.public_url} alt={m.alt_text || m.file_name} className="w-full h-full object-cover" loading="lazy" />
+                            <Image src={m.public_url} alt={m.alt_text || m.file_name} width={240} height={240} className="w-full h-full object-cover" unoptimized />
                           ) : (
                             <i className="ri-file-3-line w-8 h-8 text-slate-600 flex items-center justify-center" />
                           )}
@@ -1034,7 +1035,7 @@ export default function CmsPage() {
                             <td className="px-5 py-3">
                               <div className="flex items-center gap-3">
                                 {p.profile_asset_id ? (
-                                  <img src={p.profile_asset_id} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                                  <Image src={p.profile_asset_id} alt="" width={32} height={32} className="w-8 h-8 rounded-lg object-cover" unoptimized />
                                 ) : (
                                   <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
                                     <span className="text-xs font-bold text-slate-500">
@@ -1190,6 +1191,20 @@ export default function CmsPage() {
   );
 }
 
+function isCmsRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function readCmsString(item: Record<string, unknown>, key: string): string {
+  const value = item[key];
+  return typeof value === 'string' ? value : '';
+}
+
+function readCmsDisplayValue(item: Record<string, unknown>, key: string): string | number | null {
+  const value = item[key];
+  return typeof value === 'string' || typeof value === 'number' ? value : null;
+}
+
 function CollectionTable({
   type, services, servicesLoading, staff, staffLoading, caseStudies, csLoading,
   testimonials, tmLoading, faqs, faqsLoading, announcements, annLoading, legal, legalLoading,
@@ -1248,33 +1263,41 @@ function CollectionTable({
           </tr>
         </thead>
         <tbody>
-          {(data.items as unknown[]).map((item: Record<string, unknown>) => (
-            <tr key={item.id as string} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02]">
+          {(data.items as unknown[]).map((item) => {
+            if (!isCmsRecord(item)) return null;
+
+            const id = readCmsString(item, 'id');
+            const status = readCmsString(item, 'status') || 'Draft';
+            const order = readCmsDisplayValue(item, 'sort_order') ?? readCmsDisplayValue(item, 'display_order') ?? '-';
+
+            return (
+            <tr key={id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02]">
               <td className="px-5 py-3 text-sm text-white">
-                {type === 'faqs' ? <span className="line-clamp-2">{(item as CmsFaq).question}</span>
-                  : type === 'testimonials' ? (item as CmsTestimonial).source_name
-                  : type === 'legal' ? (item as CmsLegal).title
-                  : (item as Record<string, string>).name || (item as Record<string, string>).title || ''}
+                {type === 'faqs' ? <span className="line-clamp-2">{readCmsString(item, 'question')}</span>
+                  : type === 'testimonials' ? readCmsString(item, 'source_name')
+                  : type === 'legal' ? readCmsString(item, 'title')
+                  : readCmsString(item, 'name') || readCmsString(item, 'title')}
               </td>
-              {type === 'services' && <td className="px-5 py-3 text-sm text-slate-400 font-mono text-xs">{(item as CmsService).slug}</td>}
-              {type === 'staff' && <td className="px-5 py-3 text-sm text-slate-400">{(item as CmsStaff).role || '-'}</td>}
-              {type === 'case-studies' && <td className="px-5 py-3 text-sm text-slate-400">{(item as CmsCaseStudy).industry || '-'}</td>}
-              {type === 'testimonials' && <td className="px-5 py-3 text-sm text-slate-400">{(item as CmsTestimonial).role_company || '-'}</td>}
-              {type === 'faqs' && <td className="px-5 py-3 text-sm text-slate-400">{(item as CmsFaq).category || '-'}</td>}
-              {type === 'announcements' && <td className="px-5 py-3"><span className="px-2 py-0.5 rounded text-[10px] font-medium bg-white/5 text-slate-400">{(item as CmsAnnouncement).style}</span></td>}
-              {type === 'legal' && <td className="px-5 py-3 text-sm text-slate-400">v{(item as CmsLegal).version}</td>}
+              {type === 'services' && <td className="px-5 py-3 text-sm text-slate-400 font-mono text-xs">{readCmsString(item, 'slug')}</td>}
+              {type === 'staff' && <td className="px-5 py-3 text-sm text-slate-400">{readCmsString(item, 'role') || '-'}</td>}
+              {type === 'case-studies' && <td className="px-5 py-3 text-sm text-slate-400">{readCmsString(item, 'industry') || '-'}</td>}
+              {type === 'testimonials' && <td className="px-5 py-3 text-sm text-slate-400">{readCmsString(item, 'role_company') || '-'}</td>}
+              {type === 'faqs' && <td className="px-5 py-3 text-sm text-slate-400">{readCmsString(item, 'category') || '-'}</td>}
+              {type === 'announcements' && <td className="px-5 py-3"><span className="px-2 py-0.5 rounded text-[10px] font-medium bg-white/5 text-slate-400">{readCmsString(item, 'style')}</span></td>}
+              {type === 'legal' && <td className="px-5 py-3 text-sm text-slate-400">v{readCmsDisplayValue(item, 'version')}</td>}
               <td className="px-5 py-3">
                 <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                  (item as Record<string, string>).status === 'Published' || (item as Record<string, string>).status === 'Active'
+                  status === 'Published' || status === 'Active'
                     ? 'bg-emerald-500/10 text-emerald-400'
                     : 'bg-slate-500/10 text-slate-400'
-                }`}>{(item as Record<string, string>).status || 'Draft'}</span>
+                }`}>{status}</span>
               </td>
               {type !== 'faqs' && type !== 'testimonials' && (
-                <td className="px-5 py-3 text-sm text-slate-400">{(item as Record<string, number>).sort_order ?? (item as Record<string, number>).display_order ?? '-'}</td>
+                <td className="px-5 py-3 text-sm text-slate-400">{order}</td>
               )}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
