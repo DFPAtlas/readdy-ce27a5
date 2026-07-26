@@ -32,9 +32,10 @@ interface Project {
   completed_at: string | null;
   priority: string;
   created_at: string;
-  client_name?: string;
-  client_company?: string;
-  lead_name?: string;
+  client_name?: string | null;
+  client_company?: string | null;
+  lead_name?: string | null;
+  healthState?: HealthState;
 }
 
 interface ClientInfo { id: string; company_name: string | null; contact_name: string | null; }
@@ -219,7 +220,7 @@ function ProjectsContent() {
     if (clientsRes.data) setClients(clientsRes.data);
     if (staffRes.data) setStaff(staffRes.data);
 
-    let projectData = (projectsRes.data || []) as Project[];
+    const projectData = (projectsRes.data || []) as Project[];
 
     const clientMap = new Map<string, ClientInfo>();
     (clientsRes.data || []).forEach(c => clientMap.set(c.id, c));

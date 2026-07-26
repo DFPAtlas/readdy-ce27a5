@@ -31,6 +31,8 @@ interface Client {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  account_manager: string | null;
+  health_status: string | null;
   project_count: number;
 }
 
@@ -49,7 +51,7 @@ interface ClientStats {
 const CLIENT_STATUSES = ['active', 'inactive', 'prospect', 'on_hold'] as const;
 const PAGE_SIZE = 20;
 
-const LIST_COLS = 'id,company_name,contact_name,email,phone,website,industry,status,project_lead,lead_id,notes,created_at,updated_at,address';
+const LIST_COLS = 'id,company_name,contact_name,email,phone,website,industry,status,project_lead,lead_id,notes,created_at,updated_at,address,account_manager,health_status';
 
 function getStatusStyle(status: string) {
   switch (status) {
@@ -92,7 +94,7 @@ function ClientsContent() {
   const [statusUpdating, setStatusUpdating] = useState<Record<string, boolean>>({});
   const [leadUpdating, setLeadUpdating] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
   const isPrivileged = isAdmin || profile?.role === 'project_lead';
@@ -149,8 +151,8 @@ function ClientsContent() {
         setStaffMap(map);
       }
 
-      await fetchClients(cancelled);
-      await fetchStats(cancelled);
+      await fetchClients(() => cancelled);
+      await fetchStats(() => cancelled);
     }
     init();
     return () => { cancelled = true; };
@@ -195,7 +197,7 @@ function ClientsContent() {
     if (error) { setLoadError(error.message); setLoading(false); return; }
 
     const clientIds = (data || []).map(c => c.id);
-    let projectCounts: Record<string, number> = {};
+    const projectCounts: Record<string, number> = {};
     if (clientIds.length > 0) {
       const { data: pcData } = await supabase.from('projects').select('client_id').in('client_id', clientIds);
       if (pcData) {
