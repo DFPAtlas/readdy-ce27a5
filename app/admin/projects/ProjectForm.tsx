@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from '@/components/motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type MouseEvent } from 'react';
 import { X, Layers, FileText, Users, Calendar, Loader2, Target } from 'lucide-react';
 import { PROJECT_STATUSES } from '@/lib/project-definitions';
 
@@ -90,7 +90,7 @@ export default function ProjectForm({ project, clients, onClose, onSave }: Proje
       onClick={onClose}
     >
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
         className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
       >
         <div className="p-6 border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between">
