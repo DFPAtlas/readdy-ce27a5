@@ -73,21 +73,6 @@ function getStatusStyle(status: string) {
   }
 }
 
-function getPriorityStyle(priority: string) {
-  switch (priority) {
-    case 'urgent': return { color: '#EF4444', bg: 'bg-[#EF4444]/10' };
-    case 'high': return { color: '#F59E0B', bg: 'bg-[#F59E0B]/10' };
-    case 'medium': return { color: '#06B6D4', bg: 'bg-[#06B6D4]/10' };
-    case 'low': return { color: '#10B981', bg: 'bg-[#10B981]/10' };
-    default: return { color: '#94A3B8', bg: 'bg-white/5' };
-  }
-}
-
-function formatDate(d: string | null) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
 function formatShortDate(d: string | null) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -173,7 +158,6 @@ function LeadsContent() {
       if (cancelled) return;
       if (staffRes.data) setStaff(staffRes.data);
 
-      await fetchLeads(() => cancelled);
     }
     init();
     return () => { cancelled = true; };
@@ -212,7 +196,7 @@ function LeadsContent() {
     return q;
   }, [searchQuery, statusFilter, assigneeFilter, sortMode, page, profile]);
 
-  const fetchLeads = async (cancelled: () => boolean) => {
+  const fetchLeads = useCallback(async (cancelled: () => boolean) => {
     setLoadError('');
     const q = buildQuery();
     const { data, error, count } = await q;
@@ -226,9 +210,9 @@ function LeadsContent() {
     setTotalCount(count || 0);
     setLoading(false);
     setRefreshing(false);
-  };
+  }, [buildQuery]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     const counts = await Promise.all([
       supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'new'),
       supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'contacted'),
@@ -244,7 +228,7 @@ function LeadsContent() {
       converted: counts[3].count || 0,
       total: counts[4].count || 0,
     });
-  };
+  }, []);
 
   useEffect(() => {
     if (!profile) return;
@@ -252,7 +236,7 @@ function LeadsContent() {
     fetchLeads(() => cancelled);
     fetchStats();
     return () => { cancelled = true; };
-  }, [searchQuery, statusFilter, assigneeFilter, sortMode, page, profile]);
+  }, [profile, fetchLeads, fetchStats]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -533,12 +517,7 @@ function LeadsContent() {
                     key={lead.id}
                     lead={lead}
                     staff={staff}
-                    isPrivileged={isPrivileged}
                     onSelect={() => setSelectedLead(lead)}
-                    onStatusChange={handleStatusChange}
-                    onAssign={handleAssign}
-                    statusUpdating={statusUpdating[lead.id]}
-                    assignUpdating={assignUpdating[lead.id]}
                   />
                 ))}
               </div>
@@ -782,18 +761,11 @@ function LeadTableRow({
 }
 
 function LeadMobileCard({
-  lead, staff, isPrivileged,
-  onSelect, onStatusChange, onAssign,
-  statusUpdating, assignUpdating,
+  lead, staff, onSelect,
 }: {
   lead: Lead;
   staff: StaffInfo[];
-  isPrivileged: boolean;
   onSelect: () => void;
-  onStatusChange: (id: string, status: string) => void;
-  onAssign: (id: string, staffId: string) => void;
-  statusUpdating?: boolean;
-  assignUpdating?: boolean;
 }) {
   const statusStyle = getStatusStyle(lead.status);
   const assignedStaff = staff.find(s => s.id === lead.assigned_to);
