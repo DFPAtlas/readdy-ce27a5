@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { motion, AnimatePresence } from '@/components/motion';
 import {
   Search, RefreshCw, ChevronDown, ArrowUpRight,
   FolderKanban, Calendar, User, X, Plus,
-  Clock, CheckCircle, AlertCircle, Pause,
+  CheckCircle, AlertCircle, Pause,
   LayoutGrid, List, AlertTriangle, Target,
-  Milestone, Filter,
+  Milestone,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -52,7 +51,7 @@ type DateFilter = 'all' | 'ending_soon' | 'overdue_end' | 'no_end_date';
 
 const VALID_STATUSES = ['planning', 'active', 'on_hold', 'completed', 'cancelled'];
 
-function deriveHealth(project: Project, overdues: { milestones: number; tasks: number }, totalIncomplete: number): HealthState {
+function deriveHealth(project: Project, overdues: { milestones: number; tasks: number }): HealthState {
   if (project.status === 'completed') return 'completed';
   if (project.status === 'on_hold') return 'on_hold';
   if (project.health === 'at_risk' || project.health === 'critical') return 'at_risk';
@@ -98,11 +97,6 @@ function getStatusMeta(status: string): { label: string; color: string; bg: stri
     case 'cancelled': return { label: 'Cancelled', color: '#EF4444', bg: 'bg-[#EF4444]/10' };
     default: return { label: status, color: '#9CA3AF', bg: 'bg-white/5' };
   }
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function formatShortDate(dateStr: string | null): string {
@@ -311,7 +305,7 @@ function ProjectsContent() {
         tasks: projectOverdueMap.tOverdue[p.id] || 0,
       };
       const totalIncomplete = (projectOverdueMap.tTotal[p.id] || 0) - (projectOverdueMap.tCompleted[p.id] || 0);
-      return { ...p, healthState: deriveHealth(p, overdue, totalIncomplete), overdue, totalIncomplete };
+      return { ...p, healthState: deriveHealth(p, overdue), overdue, totalIncomplete };
     });
   }, [projects, projectOverdueMap]);
 
