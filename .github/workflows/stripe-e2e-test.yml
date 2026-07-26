@@ -1,6 +1,11 @@
 name: Stripe end-to-end test
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/stripe-e2e-test.yml'
   push:
     branches:
       - agent/stripe-e2e-test
