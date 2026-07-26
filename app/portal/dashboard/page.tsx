@@ -33,6 +33,16 @@ interface Project {
   updated_at?: string;
 }
 
+interface WebsiteSummary {
+  id: string;
+  name: string;
+  preview_image?: string | null;
+  staging_url?: string | null;
+  production_url?: string | null;
+  client_staging_access?: boolean;
+  status: string;
+}
+
 interface Invoice {
   id: string;
   invoice_number: string;
@@ -141,7 +151,7 @@ export default function DashboardPage() {
   const [staffProfiles, setStaffProfiles] = useState<Record<string, StaffProfile>>({});
   const [updates, setUpdates] = useState<ClientUpdate[]>([]);
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
-  const [websites, setWebsites] = useState<Record<string, { id: string; name: string; preview_image?: string | null; staging_url?: string | null; production_url?: string | null; client_staging_access?: boolean; status: string }>>({});
+  const [websites, setWebsites] = useState<Record<string, WebsiteSummary>>({});
   const [contentRequests, setContentRequests] = useState<any[]>([]);
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -289,11 +299,11 @@ export default function DashboardPage() {
               .eq('client_visible', true);
 
             if (websitesData) {
-              const webMap: Record<string, string> = {};
+              const webMap: Record<string, WebsiteSummary> = {};
               for (const w of websitesData) {
                 if (w.project_id) webMap[w.project_id] = w;
               }
-              setWebsites(webMap as any);
+              setWebsites(webMap);
             }
           }
         }
