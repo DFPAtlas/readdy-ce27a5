@@ -74,7 +74,7 @@ const MOCK_INCIDENTS = [
     detection_time: '2026-07-15T20:00:00Z', owner: 'System',
     current: { delivery_rate: 99.2, event_lag: '45min' },
     baseline: { delivery_rate: 99.2, event_lag: '2min' },
-    affected: { campaigns: 0, automations: 0, transactional: 0 },
+    affected: { campaigns: 0, automations: 0, transactional: [] },
     estimated_impact: 0,
     containment: [],
     timeline: [
