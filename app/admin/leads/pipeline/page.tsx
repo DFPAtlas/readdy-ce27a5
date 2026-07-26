@@ -119,7 +119,7 @@ export default function PipelinePage() {
                     return (
                       <motion.div key={lead.id} layout
                         draggable
-                        onDragStart={(e) => handleDragStart(e, lead.id)}
+                        onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleDragStart(e, lead.id)}
                         className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-xl p-3.5 cursor-grab active:cursor-grabbing hover:border-[rgba(255,255,255,0.15)] transition-colors group"
                       >
                         <div className="flex items-center justify-between mb-2">
@@ -163,3 +163,4 @@ export default function PipelinePage() {
     </AdminShell>
   );
 }
+
