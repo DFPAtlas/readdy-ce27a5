@@ -55,7 +55,7 @@ export default function TesterPaymentsPage() {
       assignments?.forEach((a: any) => { assignMap[a.id] = a.status; });
 
       const projectIds = [...new Set(jobs?.map((j: any) => j.project_id).filter(Boolean) || [])];
-      let projectMap: Record<string, string> = {};
+      const projectMap: Record<string, string> = {};
       if (projectIds.length > 0) {
         const { data: projects } = await supabase.from('uat_projects').select('id, name').in('id', projectIds);
         projects?.forEach((p: any) => { projectMap[p.id] = p.name; });
