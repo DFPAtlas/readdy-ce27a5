@@ -10,6 +10,7 @@ import ProjectPortfolio from '../../components/admin/dashboard/ProjectPortfolio'
 import LeadsSummary from '../../components/admin/dashboard/LeadsSummary';
 import RecentActivity from '../../components/admin/dashboard/RecentActivity';
 import OperationalHealth from '../../components/admin/dashboard/OperationalHealth';
+import Link from 'next/link';
 import { LoadingState, ErrorState, ConnectionFailedState } from '../../components/admin/shared/DataState';
 import { AlertTriangle } from 'lucide-react';
 
@@ -108,8 +109,8 @@ export function AdminPortalContent() {
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <a href="/admin/uat/jobs" className="text-xs text-[#06B6D4] hover:underline cursor-pointer">UAT Jobs</a>
-              <a href="/admin/uat/feedback" className="text-xs text-[#06B6D4] hover:underline cursor-pointer">UAT Feedback</a>
+              <Link href="/admin/uat/jobs" className="text-xs text-[#06B6D4] hover:underline cursor-pointer">UAT Jobs</Link>
+              <Link href="/admin/uat/feedback" className="text-xs text-[#06B6D4] hover:underline cursor-pointer">UAT Feedback</Link>
             </div>
           </div>
         </div>
