@@ -166,7 +166,7 @@ export default function LeadConversionDialog({ lead, onClose, onConverted }: Lea
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
         >
           {mode === 'review' && (
             <>
