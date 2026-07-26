@@ -1,0 +1,256 @@
+name: Stripe end-to-end test v2
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/stripe-e2e-test-v2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  stripe-e2e:
+    name: Checkout, duplicate protection and webhook
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Create checkout twice and verify test mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          EMAIL="stripe-e2e-v2-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@example.com"
+
+          cat > payload.json <<JSON
+          {
+            "packageId": "launch",
+            "customerName": "DFP Stripe Test",
+            "customerEmail": "${EMAIL}",
+            "customerPhone": "07700900123",
+            "businessName": "DFP Automated Test",
+            "billingAddress": "1 Test Street",
+            "billingPostcode": "SW1A 1AA",
+            "billingCountry": "GB",
+            "existingWebsite": "https://example.com",
+            "projectDescription": "Automated Stripe test-mode checkout verification",
+            "preferredContact": "email"
+          }
+          JSON
+
+          ENDPOINT="https://zjqftnkrmqhmbrtkvafy.supabase.co/functions/v1/dfp-website-checkout"
+
+          for ATTEMPT in 1 2; do
+            HTTP_CODE=$(curl --silent --show-error \
+              --output "checkout-${ATTEMPT}.json" \
+              --write-out '%{http_code}' \
+              --request POST "$ENDPOINT" \
+              --header 'Origin: https://digital-footprint.uk' \
+              --header 'Content-Type: application/json' \
+              --data @payload.json)
+
+            echo "Checkout attempt ${ATTEMPT}: HTTP ${HTTP_CODE}"
+            jq '{sessionId, projectReference, reused, hasUrl: (.url | type == "string")}' "checkout-${ATTEMPT}.json"
+            test "$HTTP_CODE" = "200"
+          done
+
+          SESSION_ONE=$(jq -r '.sessionId' checkout-1.json)
+          SESSION_TWO=$(jq -r '.sessionId' checkout-2.json)
+          REF_ONE=$(jq -r '.projectReference' checkout-1.json)
+          REF_TWO=$(jq -r '.projectReference' checkout-2.json)
+          REUSED=$(jq -r '.reused' checkout-2.json)
+
+          [[ "$SESSION_ONE" == cs_test_* ]] || { echo "::error::Non-test Stripe session returned; payment not attempted"; exit 1; }
+          [[ "$SESSION_ONE" == "$SESSION_TWO" ]] || { echo "::error::Duplicate session mismatch"; exit 1; }
+          [[ "$REF_ONE" == "$REF_TWO" ]] || { echo "::error::Duplicate reference mismatch"; exit 1; }
+          [[ "$REUSED" == "true" ]] || { echo "::error::Second checkout was not reused"; exit 1; }
+
+          jq -r '.url' checkout-1.json > checkout-url.txt
+          echo "Duplicate protection passed for ${REF_ONE} / ${SESSION_ONE}"
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Complete Stripe hosted checkout
+        shell: bash
+        run: |
+          cat > stripe-checkout-e2e.mjs <<'JS'
+          import fs from 'node:fs';
+          import { chromium } from 'playwright';
+
+          const checkoutUrl = fs.readFileSync('checkout-url.txt', 'utf8').trim();
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({ locale: 'en-GB' });
+
+          async function findLocator(selectors, timeoutMs = 30000) {
+            const deadline = Date.now() + timeoutMs;
+            while (Date.now() < deadline) {
+              for (const frame of page.frames()) {
+                for (const selector of selectors) {
+                  const locator = frame.locator(selector).first();
+                  if (await locator.count()) {
+                    try {
+                      if (await locator.isVisible()) return locator;
+                    } catch {
+                      // Navigation race; retry.
+                    }
+                  }
+                }
+              }
+              await page.waitForTimeout(250);
+            }
+            return null;
+          }
+
+          async function fillAny(label, selectors, value, required = true) {
+            const locator = await findLocator(selectors, required ? 45000 : 4000);
+            if (!locator) {
+              if (required) throw new Error(`Could not find ${label}`);
+              console.log(`Optional field not shown: ${label}`);
+              return null;
+            }
+            await locator.fill(value);
+            console.log(`Filled ${label}`);
+            return locator;
+          }
+
+          try {
+            await page.goto(checkoutUrl, { waitUntil: 'domcontentloaded', timeout: 120000 });
+            await page.waitForTimeout(4000);
+            console.log(`Stripe page: ${await page.title()}`);
+
+            const gbpButton = await findLocator(['button:has-text("£747.50")'], 5000);
+            if (gbpButton) {
+              await gbpButton.click();
+              console.log('Selected GBP £747.50');
+            }
+
+            await fillAny('telephone', [
+              'input[name="phoneNumber"]',
+              'input[type="tel"]'
+            ], '07700900123');
+
+            await fillAny('card number', [
+              'input[name="cardNumber"]',
+              'input[autocomplete="cc-number"]',
+              'input[aria-label*="card number" i]'
+            ], '4242424242424242');
+
+            await fillAny('card expiry', [
+              'input[name="cardExpiry"]',
+              'input[autocomplete="cc-exp"]',
+              'input[aria-label*="expiration" i]',
+              'input[aria-label*="expiry" i]'
+            ], '1234');
+
+            await fillAny('card security code', [
+              'input[name="cardCvc"]',
+              'input[autocomplete="cc-csc"]',
+              'input[aria-label*="security code" i]',
+              'input[aria-label*="cvc" i]'
+            ], '123');
+
+            await fillAny('billing name', [
+              'input[name="billingName"]',
+              'input[autocomplete="cc-name"]'
+            ], 'DFP Stripe Test', false);
+
+            const address = await fillAny('address line 1', [
+              'input[name="billingAddressLine1"]',
+              'input[autocomplete="address-line1"]'
+            ], '1 Test Street', false);
+            if (address) await address.press('Escape').catch(() => {});
+
+            await fillAny('town or city', [
+              'input[name="billingLocality"]',
+              'input[autocomplete="address-level2"]',
+              'input[placeholder*="Town" i]',
+              'input[placeholder*="city" i]'
+            ], 'London');
+
+            await fillAny('postcode', [
+              'input[name="billingPostalCode"]',
+              'input[autocomplete="postal-code"]'
+            ], 'SW1A 1AA');
+
+            await page.screenshot({ path: 'stripe-checkout-before-submit.png', fullPage: true });
+
+            const submit = await findLocator([
+              'button[type="submit"]',
+              'button:has-text("Pay")'
+            ], 30000);
+            if (!submit) throw new Error('Could not find Stripe payment button');
+
+            await submit.click();
+            await page.waitForURL(/digital-footprint\.uk\/checkout\/success/, { timeout: 120000 });
+            const successUrl = page.url();
+            fs.writeFileSync('success-url.txt', successUrl);
+            console.log(`Checkout redirected successfully: ${successUrl}`);
+            await page.screenshot({ path: 'stripe-checkout-success.png', fullPage: true });
+          } catch (error) {
+            console.error(error);
+            const alerts = await page.locator('[role="alert"]').allTextContents().catch(() => []);
+            console.error('Visible alerts:', alerts);
+            await page.screenshot({ path: 'stripe-checkout-failure.png', fullPage: true }).catch(() => {});
+            throw error;
+          } finally {
+            await browser.close();
+          }
+          JS
+
+          node stripe-checkout-e2e.mjs
+
+      - name: Confirm signed webhook updated the order
+        shell: bash
+        run: |
+          set -euo pipefail
+          REF=$(jq -r '.projectReference' checkout-1.json)
+          SESSION=$(jq -r '.sessionId' checkout-1.json)
+          STATUS_URL="https://zjqftnkrmqhmbrtkvafy.supabase.co/functions/v1/dfp-website-checkout-status?ref=${REF}&session_id=${SESSION}"
+
+          for ATTEMPT in $(seq 1 20); do
+            HTTP_CODE=$(curl --silent --show-error \
+              --output status.json \
+              --write-out '%{http_code}' \
+              --header 'Origin: https://digital-footprint.uk' \
+              "$STATUS_URL")
+
+            PAYMENT_STATUS=$(jq -r '.payment_status // empty' status.json)
+            echo "Status attempt ${ATTEMPT}: HTTP ${HTTP_CODE}, payment_status=${PAYMENT_STATUS:-missing}"
+
+            if [[ "$HTTP_CODE" == "200" && "$PAYMENT_STATUS" == "paid" ]]; then
+              jq . status.json
+              echo "Signed Stripe webhook updated the order successfully"
+              exit 0
+            fi
+            sleep 3
+          done
+
+          echo "::error::Order was not marked paid after the Stripe Checkout completion"
+          cat status.json
+          exit 1
+
+      - name: Upload diagnostic screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stripe-e2e-v2-diagnostics
+          path: |
+            checkout-1.json
+            checkout-2.json
+            status.json
+            success-url.txt
+            stripe-checkout-*.png
+          if-no-files-found: ignore
+          retention-days: 1
