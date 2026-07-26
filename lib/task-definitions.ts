@@ -84,7 +84,7 @@ export const VALID_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   ready: ['in_progress', 'planned', 'cancelled'],
   in_progress: ['blocked', 'awaiting_review', 'complete', 'cancelled'],
   blocked: ['in_progress', 'ready', 'cancelled'],
-  awaiting_review: ['changes_required', 'approved', 'complete', 'in_progress'],
+  awaiting_review: ['changes_required', 'complete', 'in_progress'],
   changes_required: ['in_progress', 'awaiting_review', 'cancelled'],
   complete: ['archived', 'in_progress'],
   cancelled: ['backlog', 'archived'],
