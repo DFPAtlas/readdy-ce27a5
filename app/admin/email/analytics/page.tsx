@@ -53,13 +53,13 @@ export default function AnalyticsDashboard() {
     execQuery = execQuery.gte('created_at', dateStart);
     const { data: executions } = await execQuery;
 
-    let campaignQuery = supabase.from('email_campaigns').select('*').order('created_at', { ascending: false }).limit(20);
+    const campaignQuery = supabase.from('email_campaigns').select('*').order('created_at', { ascending: false }).limit(20);
     const { data: campaignData } = await campaignQuery;
 
-    let autoQuery = supabase.from('email_automations').select('*').order('created_at', { ascending: false }).limit(20);
+    const autoQuery = supabase.from('email_automations').select('*').order('created_at', { ascending: false }).limit(20);
     const { data: autoData } = await autoQuery;
 
-    let txQuery = supabase.from('email_transactional_mappings').select('*');
+    const txQuery = supabase.from('email_transactional_mappings').select('*');
     const { data: txData } = await txQuery;
 
     const { data: brandData } = await supabase.from('email_brand_kits').select('id, name');
