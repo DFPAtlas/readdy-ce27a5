@@ -91,8 +91,6 @@ function ClientsContent() {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [creatingClient, setCreatingClient] = useState(false);
 
-  const [statusUpdating, setStatusUpdating] = useState<Record<string, boolean>>({});
-  const [leadUpdating, setLeadUpdating] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -151,8 +149,6 @@ function ClientsContent() {
         setStaffMap(map);
       }
 
-      await fetchClients(() => cancelled);
-      await fetchStats(() => cancelled);
     }
     init();
     return () => { cancelled = true; };
@@ -189,7 +185,7 @@ function ClientsContent() {
     return q;
   }, [searchQuery, statusFilter, leadFilter, sortMode, page, profile]);
 
-  const fetchClients = async (cancelled: () => boolean) => {
+  const fetchClients = useCallback(async (cancelled: () => boolean) => {
     setLoadError('');
     const q = buildQuery();
     const { data, error, count } = await q;
@@ -210,9 +206,9 @@ function ClientsContent() {
     setTotalCount(count || 0);
     setLoading(false);
     setRefreshing(false);
-  };
+  }, [buildQuery]);
 
-  const fetchStats = async (cancelled: () => boolean) => {
+  const fetchStats = useCallback(async (cancelled: () => boolean) => {
     const [activeRes, totalRes, projectsRes] = await Promise.all([
       supabase.from('clients').select('id', { count: 'exact', head: true }).eq('status', 'active'),
       supabase.from('clients').select('id', { count: 'exact', head: true }),
@@ -226,7 +222,7 @@ function ClientsContent() {
       total: totalRes.count || 0,
       totalProjects: totalProjectCount,
     });
-  };
+  }, []);
 
   useEffect(() => {
     if (!profile) return;
@@ -234,7 +230,7 @@ function ClientsContent() {
     fetchClients(() => cancelled);
     fetchStats(() => cancelled);
     return () => { cancelled = true; };
-  }, [searchQuery, statusFilter, leadFilter, sortMode, page, profile]);
+  }, [profile, fetchClients, fetchStats]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -244,39 +240,33 @@ function ClientsContent() {
   };
 
   const handleStatusChange = async (id: string, status: string) => {
-    setStatusUpdating(p => ({ ...p, [id]: true }));
     const { error } = await supabase.from('clients').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) {
       showToast('Failed to update status: ' + error.message, 'error');
-      setStatusUpdating(p => ({ ...p, [id]: false }));
       return;
     }
     setClients(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-    setStatusUpdating(p => ({ ...p, [id]: false }));
     fetchStats(() => false);
     showToast(`Client marked as ${status.replace('_', ' ')}`, 'success');
   };
 
   const handleAssignLead = async (id: string, staffId: string) => {
-    setLeadUpdating(p => ({ ...p, [id]: true }));
     const { error } = await supabase.from('clients').update({ project_lead: staffId || null, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) {
       showToast('Failed to reassign: ' + error.message, 'error');
-      setLeadUpdating(p => ({ ...p, [id]: false }));
       return;
     }
     setClients(prev => prev.map(c => c.id === id ? { ...c, project_lead: staffId || null } : c));
-    setLeadUpdating(p => ({ ...p, [id]: false }));
     showToast(staffId ? 'Relationship lead assigned' : 'Lead unassigned', 'success');
   };
 
-  const handleClientCreated = (clientId: string) => {
+  const handleClientCreated = () => {
     setCreatingClient(false);
     handleRefresh();
     showToast('Client created successfully', 'success');
   };
 
-  const handleClientEdited = (clientId: string) => {
+  const handleClientEdited = () => {
     setEditingClient(null);
     handleRefresh();
     showToast('Client updated successfully', 'success');
@@ -472,7 +462,6 @@ function ClientsContent() {
                         key={client.id}
                         client={client}
                         staffMap={staffMap}
-                        canEdit={canEdit}
                         onSelect={() => setSelectedClient(client)}
                       />
                     ))}
@@ -607,10 +596,9 @@ function FilterSelect({ value, onChange, options }: {
   );
 }
 
-function ClientTableRow({ client, staffMap, canEdit, onSelect }: {
+function ClientTableRow({ client, staffMap, onSelect }: {
   client: Client;
   staffMap: Record<string, StaffInfo>;
-  canEdit: boolean;
   onSelect: () => void;
 }) {
   const statusStyle = getStatusStyle(client.status);
