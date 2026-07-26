@@ -8,6 +8,7 @@ export async function generateStaticParams() {
   ];
 }
 
-export default function RequestDetailPage({ params }: { params: { id: string } }) {
-  return <RequestDetail requestId={params.id} />;
+export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  return <RequestDetail requestId={resolvedParams.id} />;
 }
