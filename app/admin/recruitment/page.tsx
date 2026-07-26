@@ -7,7 +7,7 @@ import AdminShell from '@/components/admin/AdminShell';
 import {
   useCareersVacancies, useCareerApplications, useCareersMetrics,
   vacancyStatusConfig, applicationStatusConfig,
-  VACANCY_STATUSES, EMPLOYMENT_TYPES, WORK_LOCATION_TYPES, VACANCY_DEPARTMENTS, APPLICATION_STATUSES,
+  VACANCY_STATUSES, APPLICATION_STATUSES,
   employmentTypeConfig, workLocationTypeConfig,
 } from '@/hooks/useCmsData';
 
@@ -16,6 +16,10 @@ const TABS = [
   { key: 'vacancies', label: 'Vacancies', icon: 'ri-briefcase-line' },
   { key: 'applications', label: 'Applications', icon: 'ri-file-user-line' },
 ];
+
+function getConfigEntry<K extends string, T>(config: Record<K, T>, key: string): T | undefined {
+  return Object.prototype.hasOwnProperty.call(config, key) ? config[key as K] : undefined;
+}
 
 export default function RecruitmentPage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -82,7 +86,7 @@ export default function RecruitmentPage() {
                   ) : (
                     <div className="space-y-2">
                       {vacancies.slice(0, 5).map(v => {
-                        const sc = vacancyStatusConfig[v.vacancy_status] || { label: v.vacancy_status, color: '#94A3B8' };
+                        const sc = getConfigEntry(vacancyStatusConfig, v.vacancy_status) || { label: v.vacancy_status, color: '#94A3B8' };
                         return (
                           <div key={v.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/[0.03]">
                             <span className="text-sm text-white truncate">{v.title}</span>
@@ -104,7 +108,7 @@ export default function RecruitmentPage() {
                   ) : (
                     <div className="space-y-2">
                       {applications.slice(0, 5).map(a => {
-                        const sc = applicationStatusConfig[a.application_status] || { label: a.application_status, color: '#94A3B8' };
+                        const sc = getConfigEntry(applicationStatusConfig, a.application_status) || { label: a.application_status, color: '#94A3B8' };
                         return (
                           <div key={a.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/[0.03]">
                             <div className="min-w-0">
@@ -149,14 +153,14 @@ export default function RecruitmentPage() {
                     </thead>
                     <tbody>
                       {vacancies.map(v => {
-                        const sc = vacancyStatusConfig[v.vacancy_status] || { label: v.vacancy_status, color: '#94A3B8' };
+                        const sc = getConfigEntry(vacancyStatusConfig, v.vacancy_status) || { label: v.vacancy_status, color: '#94A3B8' };
                         return (
                           <tr key={v.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02]">
                             <td className="px-5 py-3 text-sm font-medium text-white">{v.title}</td>
                             <td className="px-5 py-3 text-xs text-slate-400 font-mono">{v.reference || '-'}</td>
                             <td className="px-5 py-3 text-xs text-slate-400">{v.department || '-'}</td>
-                            <td className="px-5 py-3 text-xs text-slate-400">{employmentTypeConfig[v.employment_type]?.label || v.employment_type}</td>
-                            <td className="px-5 py-3 text-xs text-slate-400">{workLocationTypeConfig[v.work_location_type]?.label || v.work_location_type}</td>
+                            <td className="px-5 py-3 text-xs text-slate-400">{getConfigEntry(employmentTypeConfig, v.employment_type)?.label || v.employment_type}</td>
+                            <td className="px-5 py-3 text-xs text-slate-400">{getConfigEntry(workLocationTypeConfig, v.work_location_type)?.label || v.work_location_type}</td>
                             <td className="px-5 py-3">
                               <select
                                 value={v.vacancy_status}
@@ -215,7 +219,7 @@ export default function RecruitmentPage() {
                     </thead>
                     <tbody>
                       {applications.map(a => {
-                        const sc = applicationStatusConfig[a.application_status] || { label: a.application_status, color: '#94A3B8' };
+                        const sc = getConfigEntry(applicationStatusConfig, a.application_status) || { label: a.application_status, color: '#94A3B8' };
                         return (
                           <tr key={a.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02]">
                             <td className="px-5 py-3 text-sm font-medium text-white">{a.candidate_name}</td>
