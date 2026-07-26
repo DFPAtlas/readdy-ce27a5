@@ -225,7 +225,7 @@ export default function EnhancedSendTestModal({ template, document, brandKitId, 
     >
       <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
         className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl w-full max-w-xl my-4"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-5 border-b border-[rgba(255,255,255,0.08)]">
           <div>
