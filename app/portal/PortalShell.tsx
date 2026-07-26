@@ -260,9 +260,9 @@ export default function PortalShell({ children }: PortalShellProps) {
             >
               <Icon className="h-5 w-5 shrink-0" />
               <span className="truncate">{item.label}</span>
-              {'badge' in item && item.badge > 0 && (
+              {'badge' in item && (item.badge ?? 0) > 0 && (
                 <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[#7C3AED]/25 px-1.5 text-[10px] font-bold text-[#C4B5FD]">
-                  {item.badge > 99 ? '99+' : item.badge}
+                  {(item.badge ?? 0) > 99 ? '99+' : item.badge}
                 </span>
               )}
             </Link>
