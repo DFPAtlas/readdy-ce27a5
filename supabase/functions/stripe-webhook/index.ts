@@ -1,233 +1,302 @@
+import Stripe from "npm:stripe@22.1.1";
+import { createClient } from "npm:@supabase/supabase-js@2.106.2";
 
-import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
+const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
-};
+type AdminClient = ReturnType<typeof createClient>;
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const NOTIFICATION_EMAIL = Deno.env.get("NOTIFICATION_EMAIL") || "your-email@example.com";
+function objectId(event: Stripe.Event): string | null {
+  const object = event.data.object;
+  return typeof object === "object" && object && "id" in object
+    ? String(object.id)
+    : null;
+}
 
-async function sendPaymentNotification(paymentDetails: {
-  type: string;
-  amount: number;
-  currency: string;
-  customerEmail: string;
-  description: string;
-  invoiceId?: string;
-  milestoneId?: string;
-}) {
-  if (!RESEND_API_KEY) {
-    console.log("Resend API key not configured, skipping email notification");
-    return;
+function paymentIntentId(value: string | Stripe.PaymentIntent | null): string | null {
+  if (!value) return null;
+  return typeof value === "string" ? value : value.id;
+}
+
+async function completeInvoicePayment(
+  admin: AdminClient,
+  session: Stripe.Checkout.Session,
+  event: Stripe.Event,
+): Promise<void> {
+  const invoiceId = session.metadata?.invoice_id || session.metadata?.invoiceId;
+  if (!invoiceId) throw new Error("Invoice checkout is missing invoice_id metadata");
+  if (session.payment_status !== "paid") {
+    throw new Error("Invoice checkout session is not marked paid");
+  }
+  if ((session.currency ?? "").toLowerCase() !== "gbp") {
+    throw new Error("Unexpected invoice checkout currency");
   }
 
-  const formattedAmount = new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: paymentDetails.currency.toUpperCase(),
-  }).format(paymentDetails.amount / 100);
+  const { data: invoice, error: invoiceError } = await admin
+    .from("invoices")
+    .select("id, amount, total, amount_paid, amount_outstanding, currency, status")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (invoiceError || !invoice) {
+    throw new Error("Invoice metadata does not match a database record");
+  }
 
-  const emailHtml = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #10b981; border-bottom: 2px solid #10b981; padding-bottom: 10px;">
-        💰 Payment Received!
-      </h2>
-      
-      <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <p style="margin: 10px 0; font-size: 24px; font-weight: bold; color: #10b981;">${formattedAmount}</p>
-        <p style="margin: 10px 0;"><strong>Payment Type:</strong> ${paymentDetails.type}</p>
-        <p style="margin: 10px 0;"><strong>Customer Email:</strong> <a href="mailto:${paymentDetails.customerEmail}">${paymentDetails.customerEmail}</a></p>
-        <p style="margin: 10px 0;"><strong>Description:</strong> ${paymentDetails.description}</p>
-        ${paymentDetails.invoiceId ? `<p style="margin: 10px 0;"><strong>Invoice ID:</strong> ${paymentDetails.invoiceId}</p>` : ""}
-        ${paymentDetails.milestoneId ? `<p style="margin: 10px 0;"><strong>Milestone ID:</strong> ${paymentDetails.milestoneId}</p>` : ""}
-      </div>
-      
-      <div style="background: #ecfdf5; border: 1px solid #10b981; padding: 15px; border-radius: 8px; text-align: center;">
-        <p style="margin: 0; color: #065f46; font-weight: 500;">Payment successfully processed via Stripe</p>
-      </div>
-      
-      <p style="color: #9ca3af; font-size: 12px; margin-top: 30px; text-align: center;">
-        This notification was sent automatically when a payment was received.
-      </p>
-    </div>
-  `;
+  const total = Number(invoice.total ?? invoice.amount);
+  const paid = Number(invoice.amount_paid ?? 0);
+  const outstanding = Number(invoice.amount_outstanding ?? Math.max(0, total - paid));
+  const expectedMinor = Math.round(outstanding * 100);
+  if (!Number.isSafeInteger(expectedMinor) || session.amount_total !== expectedMinor) {
+    throw new Error("Invoice payment amount mismatch");
+  }
+  if (String(invoice.currency || "GBP").toLowerCase() !== "gbp") {
+    throw new Error("Invoice database currency mismatch");
+  }
 
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: "Payment Notifications <onboarding@resend.dev>",
-        to: [NOTIFICATION_EMAIL],
-        subject: `💰 Payment Received: ${formattedAmount} - ${paymentDetails.type}`,
-        html: emailHtml,
-      }),
+  const intentId = paymentIntentId(session.payment_intent);
+  if (!intentId) throw new Error("Paid invoice checkout has no PaymentIntent");
+
+  const { error: rpcError } = await admin.rpc("record_stripe_invoice_payment", {
+    p_invoice_id: invoiceId,
+    p_amount_minor: session.amount_total,
+    p_currency: session.currency,
+    p_payment_intent_id: intentId,
+    p_event_id: event.id,
+    p_checkout_session_id: session.id,
+    p_paid_at: new Date(event.created * 1000).toISOString(),
+  });
+  if (rpcError) throw rpcError;
+}
+
+async function completeMilestonePayment(
+  admin: AdminClient,
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const milestoneId = session.metadata?.milestone_id;
+  if (!milestoneId) throw new Error("Milestone checkout is missing milestone_id metadata");
+  if (session.payment_status !== "paid") {
+    throw new Error("Milestone checkout session is not marked paid");
+  }
+  if ((session.currency ?? "").toLowerCase() !== "gbp") {
+    throw new Error("Unexpected milestone checkout currency");
+  }
+
+  const { data: milestone, error: milestoneError } = await admin
+    .from("milestones")
+    .select("id, amount, payment_status")
+    .eq("id", milestoneId)
+    .maybeSingle();
+  if (milestoneError || !milestone) {
+    throw new Error("Milestone metadata does not match a database record");
+  }
+  const expectedMinor = Math.round(Number(milestone.amount) * 100);
+  if (!Number.isSafeInteger(expectedMinor) || session.amount_total !== expectedMinor) {
+    throw new Error("Milestone payment amount mismatch");
+  }
+
+  const intentId = paymentIntentId(session.payment_intent);
+  if (!intentId) throw new Error("Paid milestone checkout has no PaymentIntent");
+
+  const { error: updateError } = await admin
+    .from("milestones")
+    .update({
+      payment_status: "paid",
+      paid_at: new Date().toISOString(),
+      stripe_payment_id: intentId,
+      stripe_checkout_session_id: session.id,
+    })
+    .eq("id", milestone.id)
+    .neq("payment_status", "paid");
+  if (updateError) throw updateError;
+}
+
+async function recordFailedPayment(
+  admin: AdminClient,
+  intent: Stripe.PaymentIntent,
+  event: Stripe.Event,
+): Promise<void> {
+  const invoiceId = intent.metadata?.invoice_id;
+  if (!invoiceId) return;
+
+  const { data: invoice, error: invoiceError } = await admin
+    .from("invoices")
+    .select("id, client_id, currency")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (invoiceError || !invoice) throw new Error("Failed PaymentIntent invoice was not found");
+
+  const { error: insertError } = await admin.from("payments").insert({
+    invoice_id: invoice.id,
+    client_id: invoice.client_id,
+    amount: Number(intent.amount) / 100,
+    currency: String(intent.currency || invoice.currency || "GBP").toUpperCase(),
+    payment_date: new Date(event.created * 1000).toISOString(),
+    method: "stripe",
+    status: "failed",
+    provider: "stripe",
+    provider_payment_id: intent.id,
+    provider_event_id: event.id,
+    idempotency_key: `stripe-event:${event.id}`,
+    reconciliation_state: "unmatched",
+    failure_reason: intent.last_payment_error?.message?.slice(0, 1000) || "Payment failed",
+  });
+  if (insertError?.code !== "23505" && insertError) throw insertError;
+}
+
+async function recordRefunds(
+  admin: AdminClient,
+  charge: Stripe.Charge,
+  event: Stripe.Event,
+): Promise<void> {
+  const intentId = paymentIntentId(charge.payment_intent);
+  if (!intentId) return;
+
+  for (const refund of charge.refunds?.data ?? []) {
+    if (refund.status !== "succeeded") continue;
+    const { error: rpcError } = await admin.rpc("record_stripe_refund", {
+      p_payment_intent_id: intentId,
+      p_event_id: event.id,
+      p_refund_id: refund.id,
+      p_amount_minor: refund.amount,
+      p_currency: refund.currency,
+      p_reason: refund.reason || "requested_by_customer",
+      p_refunded_at: new Date(refund.created * 1000).toISOString(),
     });
-
-    if (!res.ok) {
-      const data = await res.json();
-      console.error("Failed to send payment notification:", data);
-    }
-  } catch (error) {
-    console.error("Error sending payment notification:", error);
+    if (rpcError) throw rpcError;
   }
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+Deno.serve(async (req: Request) => {
+  if (req.method !== "POST") {
+    return Response.json({ error: "Method not allowed" }, { status: 405 });
+  }
+  if (!STRIPE_SECRET_KEY || !STRIPE_WEBHOOK_SECRET || !SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    console.error("stripe-webhook missing required secrets");
+    return Response.json({ error: "Webhook is not configured" }, { status: 503 });
+  }
+
+  const signature = req.headers.get("stripe-signature");
+  if (!signature) {
+    return Response.json({ error: "Missing Stripe signature" }, { status: 400 });
+  }
+
+  const rawBody = await req.text();
+  const stripe = new Stripe(STRIPE_SECRET_KEY);
+  let event: Stripe.Event;
+  try {
+    event = await stripe.webhooks.constructEventAsync(
+      rawBody,
+      signature,
+      STRIPE_WEBHOOK_SECRET,
+      undefined,
+      Stripe.createSubtleCryptoProvider(),
+    );
+  } catch (error) {
+    console.error(
+      "Stripe signature verification failed",
+      error instanceof Error ? error.message : error,
+    );
+    return Response.json({ error: "Invalid webhook signature" }, { status: 400 });
+  }
+
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { error: ledgerError } = await admin.from("stripe_webhook_events").insert({
+    event_id: event.id,
+    event_type: event.type,
+    status: "processing",
+    object_id: objectId(event),
+  });
+  if (ledgerError?.code === "23505") {
+    const { data: existing, error: existingError } = await admin
+      .from("stripe_webhook_events")
+      .select("status")
+      .eq("event_id", event.id)
+      .maybeSingle();
+    if (existingError || !existing) {
+      return Response.json({ error: "Unable to read webhook ledger" }, { status: 500 });
+    }
+    if (existing.status === "processed") {
+      return Response.json({ received: true, duplicate: true });
+    }
+    if (existing.status === "processing") {
+      return Response.json({ error: "Webhook event is already processing" }, { status: 409 });
+    }
+    const { error: retryError } = await admin
+      .from("stripe_webhook_events")
+      .update({ status: "processing", processed_at: null, error_message: null })
+      .eq("event_id", event.id)
+      .eq("status", "failed");
+    if (retryError) {
+      return Response.json({ error: "Unable to retry webhook event" }, { status: 500 });
+    }
+  }
+  if (ledgerError && ledgerError.code !== "23505") {
+    console.error("Unable to create Stripe event ledger entry", ledgerError);
+    return Response.json({ error: "Unable to record webhook" }, { status: 500 });
   }
 
   try {
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
-      apiVersion: "2023-10-16",
-    });
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    const body = await req.text();
-    const signature = req.headers.get("stripe-signature");
-    const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-
-    let event: Stripe.Event;
-
-    if (webhookSecret && signature) {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    } else {
-      event = JSON.parse(body);
-    }
-
     switch (event.type) {
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const invoiceId = session.metadata?.invoiceId;
-        const milestoneId = session.metadata?.milestone_id;
-        const paymentType = session.metadata?.type;
-
-        if (paymentType === "milestone_payment" && milestoneId && session.payment_status === "paid") {
-          await supabase
-            .from("milestones")
-            .update({
-              payment_status: "paid",
-              paid_at: new Date().toISOString(),
-              stripe_payment_id: session.payment_intent as string,
-            })
-            .eq("id", milestoneId);
-
-          const { data: milestone } = await supabase
-            .from("milestones")
-            .select("title, amount")
-            .eq("id", milestoneId)
-            .maybeSingle();
-
-          await sendPaymentNotification({
-            type: "Milestone Payment",
-            amount: session.amount_total || 0,
-            currency: session.currency || "gbp",
-            customerEmail: session.customer_email || "Unknown",
-            description: milestone ? `Milestone: ${milestone.title}` : "Milestone Payment",
-            milestoneId: milestoneId,
-          });
-        } else if (invoiceId && session.payment_status === "paid") {
-          await supabase
-            .from("invoices")
-            .update({
-              status: "paid",
-              paid_at: new Date().toISOString(),
-              stripe_payment_intent_id: session.payment_intent as string,
-            })
-            .eq("id", invoiceId);
-
-          await sendPaymentNotification({
-            type: session.mode === "subscription" ? "Subscription Payment" : "One-time Payment",
-            amount: session.amount_total || 0,
-            currency: session.currency || "gbp",
-            customerEmail: session.customer_email || "Unknown",
-            description: `Invoice #${invoiceId}`,
-            invoiceId: invoiceId,
-          });
-        } else if (session.mode === "subscription" && session.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-          
-          await supabase
-            .from("subscriptions")
-            .update({
-              status: "active",
-              stripe_subscription_id: subscription.id,
-              next_billing_date: new Date(subscription.current_period_end * 1000).toISOString(),
-            })
-            .eq("client_id", session.client_reference_id);
-
-          await sendPaymentNotification({
-            type: "Subscription Payment",
-            amount: session.amount_total || 0,
-            currency: session.currency || "gbp",
-            customerEmail: session.customer_email || "Unknown",
-            description: "Subscription Activated",
-          });
+        if (session.payment_status !== "paid") {
+          // Delayed payment methods complete through async_payment_succeeded.
+          break;
+        }
+        const type = session.metadata?.type;
+        if (type === "invoice_payment" || session.metadata?.invoice_id) {
+          await completeInvoicePayment(admin, session, event);
+        } else if (type === "milestone_payment") {
+          await completeMilestonePayment(admin, session);
         }
         break;
       }
-
-      case "invoice.paid": {
-        const invoice = event.data.object as Stripe.Invoice;
-        if (invoice.subscription) {
-          await supabase
-            .from("subscriptions")
-            .update({
-              status: "active",
-              next_billing_date: new Date(invoice.lines.data[0]?.period?.end * 1000).toISOString(),
-            })
-            .eq("stripe_subscription_id", invoice.subscription as string);
-
-          await sendPaymentNotification({
-            type: "Subscription Renewal",
-            amount: invoice.amount_paid,
-            currency: invoice.currency,
-            customerEmail: invoice.customer_email || "Unknown",
-            description: invoice.lines.data[0]?.description || "Monthly Subscription",
-          });
-        }
+      case "payment_intent.payment_failed": {
+        await recordFailedPayment(
+          admin,
+          event.data.object as Stripe.PaymentIntent,
+          event,
+        );
         break;
       }
-
-      case "customer.subscription.deleted": {
-        const subscription = event.data.object as Stripe.Subscription;
-        await supabase
-          .from("subscriptions")
-          .update({ status: "cancelled" })
-          .eq("stripe_subscription_id", subscription.id);
+      case "charge.refunded": {
+        await recordRefunds(admin, event.data.object as Stripe.Charge, event);
         break;
       }
-
-      case "customer.subscription.updated": {
-        const subscription = event.data.object as Stripe.Subscription;
-        await supabase
-          .from("subscriptions")
-          .update({
-            status: subscription.status === "active" ? "active" : subscription.status,
-            next_billing_date: new Date(subscription.current_period_end * 1000).toISOString(),
-          })
-          .eq("stripe_subscription_id", subscription.id);
+      default:
         break;
-      }
     }
 
-    return new Response(JSON.stringify({ received: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const { error: processedError } = await admin
+      .from("stripe_webhook_events")
+      .update({
+        status: "processed",
+        processed_at: new Date().toISOString(),
+        error_message: null,
+      })
+      .eq("event_id", event.id);
+    if (processedError) throw processedError;
+
+    return Response.json({ received: true });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const message = error instanceof Error ? error.message : "Unknown webhook processing error";
+    await admin
+      .from("stripe_webhook_events")
+      .update({
+        status: "failed",
+        processed_at: new Date().toISOString(),
+        error_message: message.slice(0, 2000),
+      })
+      .eq("event_id", event.id);
+    console.error("Stripe webhook processing failed", {
+      eventId: event.id,
+      eventType: event.type,
+      message,
+    });
+    return Response.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 });
