@@ -8,6 +8,7 @@ export async function generateStaticParams() {
   ];
 }
 
-export default function ClientDetailPage({ params }: { params: { id: string } }) {
-  return <Client360Workspace clientId={params.id} />;
+export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  return <Client360Workspace clientId={resolvedParams.id} />;
 }
