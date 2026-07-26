@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type MouseEvent } from 'react';
 import { motion } from '@/components/motion';
 import { X, User, Mail, Building2, Phone, FileText, Loader2, Globe, MapPin, Hash } from 'lucide-react';
 
@@ -64,7 +64,7 @@ export default function ClientForm({ client, onClose, onSave }: ClientFormProps)
     >
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
         className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-bold text-white">{client ? 'Edit Client' : 'Add New Client'}</h3>
