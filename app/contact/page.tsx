@@ -39,15 +39,19 @@ export default function ContactPage() {
     const params = new URLSearchParams(window.location.search);
     const needValue = params.get('need');
     const needLabel = params.get('need_label');
-    if (needValue && needLabel && needLabelMap[needValue]) {
-      setSelectedNeed({ value: needValue, label: needLabelMap[needValue] });
+    const packageParam = params.get('package');
+    const resolvedLabel = needLabel || (needValue && needLabelMap[needValue] ? needLabelMap[needValue] : null);
+    if (needValue && resolvedLabel) {
+      setSelectedNeed({ value: needValue, label: resolvedLabel });
       const service = needServiceMap[needValue] || '';
-      setFormData(prev => ({
+      const baseMessage = service
+        ? `I selected: "${resolvedLabel}". I'd like to discuss this with the team.`
+        : `I selected: "${resolvedLabel}". I'm looking for guidance on the best next step.`;
+      const packageNote = packageParam ? `\n\nPackage of interest: ${packageParam}` : '';
+      setFormData((prev) => ({
         ...prev,
         service: service || prev.service,
-        message: service
-          ? `I selected: "${needLabelMap[needValue]}". I'd like to discuss this with the team.`
-          : `I selected: "${needLabelMap[needValue]}". I'm looking for guidance on the best next step.`,
+        message: baseMessage + packageNote,
       }));
     }
   }, []);

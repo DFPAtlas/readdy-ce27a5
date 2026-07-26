@@ -402,15 +402,16 @@ export interface ProductRegistry {
 export function useProductRegistry(options?: { visibility?: string }) {
   const [products, setProducts] = useState<ProductRegistry[]>([]);
   const [loading, setLoading] = useState(true);
+  const visibility = options?.visibility;
 
   const fetch = useCallback(async () => {
     setLoading(true);
     let q = supabase.from('product_registry').select('*').order('sort_order');
-    if (options?.visibility) q = q.eq('public_visibility', options.visibility);
+    if (visibility) q = q.eq('public_visibility', visibility);
     const { data } = await q;
     setProducts((data || []) as ProductRegistry[]);
     setLoading(false);
-  }, [options?.visibility]);
+  }, [visibility]);
 
   useEffect(() => { fetch(); }, [fetch]);
 

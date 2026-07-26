@@ -111,6 +111,75 @@ async function completeMilestonePayment(
   if (updateError) throw updateError;
 }
 
+async function completeWebsiteStartingPayment(
+  admin: AdminClient,
+  session: Stripe.Checkout.Session,
+  event: Stripe.Event,
+): Promise<void> {
+  const projectReference = session.metadata?.project_reference;
+  if (!projectReference) throw new Error("Website checkout is missing project_reference metadata");
+  if (session.payment_status !== "paid") {
+    throw new Error("Website checkout session is not marked paid");
+  }
+  if ((session.currency ?? "").toLowerCase() !== "gbp") {
+    throw new Error("Unexpected website checkout currency");
+  }
+
+  const { data: order, error: orderError } = await admin
+    .from("dfp_checkout_orders")
+    .select("id, starting_payment_minor, payment_status, project_reference")
+    .eq("project_reference", projectReference)
+    .maybeSingle();
+
+  if (orderError || !order) {
+    throw new Error("Website checkout order not found for project_reference");
+  }
+
+  if (order.payment_status === "paid") {
+    console.log("Order already marked paid, skipping", { projectReference });
+    return;
+  }
+
+  if (!Number.isSafeInteger(order.starting_payment_minor) || session.amount_total !== order.starting_payment_minor) {
+    throw new Error("Website starting payment amount mismatch");
+  }
+
+  const intentId = paymentIntentId(session.payment_intent);
+  if (!intentId) throw new Error("Paid website checkout has no PaymentIntent");
+
+  const { error: updateError } = await admin
+    .from("dfp_checkout_orders")
+    .update({
+      payment_status: "paid",
+      project_status: "confirmed",
+      stripe_payment_intent_id: intentId,
+      stripe_checkout_session_id: session.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", order.id)
+    .neq("payment_status", "paid");
+
+  if (updateError) throw updateError;
+
+  const { error: paymentInsertError } = await admin.from("payments").insert({
+    invoice_id: null,
+    client_id: null,
+    amount: session.amount_total ? session.amount_total / 100 : 0,
+    currency: String(session.currency || "gbp").toUpperCase(),
+    payment_date: new Date(event.created * 1000).toISOString(),
+    method: "stripe",
+    status: "completed",
+    provider: "stripe",
+    provider_payment_id: intentId,
+    provider_event_id: event.id,
+    idempotency_key: `stripe-event:${event.id}`,
+    reconciliation_state: "matched",
+  });
+  if (paymentInsertError?.code !== "23505" && paymentInsertError) {
+    console.error("Failed to insert payment record", paymentInsertError);
+  }
+}
+
 async function recordFailedPayment(
   admin: AdminClient,
   intent: Stripe.PaymentIntent,
@@ -144,6 +213,41 @@ async function recordFailedPayment(
   if (insertError?.code !== "23505" && insertError) throw insertError;
 }
 
+async function handlePaymentIntentFailed(
+  admin: AdminClient,
+  intent: Stripe.PaymentIntent,
+  event: Stripe.Event,
+): Promise<void> {
+  const projectReference = intent.metadata?.project_reference;
+  if (!projectReference) return;
+
+  const paymentType = intent.metadata?.payment_type;
+  if (paymentType !== "website_starting_payment") return;
+
+  const { data: order, error: orderError } = await admin
+    .from("dfp_checkout_orders")
+    .select("id, payment_status")
+    .eq("project_reference", projectReference)
+    .maybeSingle();
+
+  if (orderError || !order) return;
+
+  if (order.payment_status === "paid") return;
+
+  const { error: updateError } = await admin
+    .from("dfp_checkout_orders")
+    .update({
+      payment_status: "payment_failed",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", order.id)
+    .eq("payment_status", "pending");
+
+  if (updateError) {
+    console.error("Failed to update order payment status to failed", updateError);
+  }
+}
+
 async function recordRefunds(
   admin: AdminClient,
   charge: Stripe.Charge,
@@ -154,6 +258,7 @@ async function recordRefunds(
 
   for (const refund of charge.refunds?.data ?? []) {
     if (refund.status !== "succeeded") continue;
+
     const { error: rpcError } = await admin.rpc("record_stripe_refund", {
       p_payment_intent_id: intentId,
       p_event_id: event.id,
@@ -244,23 +349,39 @@ Deno.serve(async (req: Request) => {
       case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.payment_status !== "paid") {
-          // Delayed payment methods complete through async_payment_succeeded.
           break;
         }
         const type = session.metadata?.type;
-        if (type === "invoice_payment" || session.metadata?.invoice_id) {
+        if (type === "website_starting_payment") {
+          await completeWebsiteStartingPayment(admin, session, event);
+        } else if (type === "invoice_payment" || session.metadata?.invoice_id) {
           await completeInvoicePayment(admin, session, event);
         } else if (type === "milestone_payment") {
           await completeMilestonePayment(admin, session);
         }
         break;
       }
+      case "checkout.session.expired": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const projectReference = session.metadata?.project_reference;
+        const type = session.metadata?.type;
+        if (type === "website_starting_payment" && projectReference) {
+          const { error: updateError } = await admin
+            .from("dfp_checkout_orders")
+            .update({
+              payment_status: "cancelled",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("project_reference", projectReference)
+            .eq("payment_status", "pending");
+          if (updateError) console.error("Failed to mark order cancelled on expiry", updateError);
+        }
+        break;
+      }
       case "payment_intent.payment_failed": {
-        await recordFailedPayment(
-          admin,
-          event.data.object as Stripe.PaymentIntent,
-          event,
-        );
+        const intent = event.data.object as Stripe.PaymentIntent;
+        await handlePaymentIntentFailed(admin, intent, event);
+        await recordFailedPayment(admin, intent, event);
         break;
       }
       case "charge.refunded": {
@@ -300,4 +421,3 @@ Deno.serve(async (req: Request) => {
     return Response.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 });
-
