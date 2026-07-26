@@ -16,41 +16,46 @@ interface OrderData {
   remaining_balance_minor: number;
   second_milestone_minor: number;
   final_milestone_minor: number;
-  customer_email: string;
   payment_status: string;
-  customer_name: string;
 }
 
 type PageState = 'loading' | 'paid' | 'processing' | 'failed' | 'not_found';
 
+const MAX_STATUS_ATTEMPTS = 10;
+const STATUS_RETRY_DELAY_MS = 2000;
+
 function SuccessContent() {
   const searchParams = useSearchParams();
   const ref = searchParams.get('ref') || '';
+  const sessionId = searchParams.get('session_id') || '';
 
   const [state, setState] = useState<PageState>('loading');
   const [orderData, setOrderData] = useState<OrderData | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    if (!ref) {
+    if (!ref || !sessionId) {
       setState('not_found');
       return;
     }
 
     let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-    async function fetchOrder() {
+    async function fetchOrder(attempt = 1) {
       try {
         const res = await fetch(
-          `${SUPABASE_URL}/functions/v1/dfp-website-checkout-status?ref=${encodeURIComponent(ref)}`,
+          `${SUPABASE_URL}/functions/v1/dfp-website-checkout-status?ref=${encodeURIComponent(ref)}&session_id=${encodeURIComponent(sessionId)}`,
+          { cache: 'no-store' },
         );
         if (!res.ok) {
           if (!cancelled) {
-            setState('failed');
+            setState(res.status === 404 ? 'not_found' : 'failed');
             setErrorMessage('We could not retrieve your payment status.');
           }
           return;
         }
+
         const data = await res.json();
         if (cancelled) return;
 
@@ -63,23 +68,37 @@ function SuccessContent() {
 
         if (data.payment_status === 'paid') {
           setState('paid');
-        } else if (data.payment_status === 'pending' || data.payment_status === 'processing') {
-          setState('processing');
-        } else {
-          setState('failed');
-          setErrorMessage('Your payment could not be confirmed at this time.');
+          return;
         }
+
+        if (data.payment_status === 'pending' || data.payment_status === 'processing') {
+          setState('processing');
+          if (attempt < MAX_STATUS_ATTEMPTS) {
+            retryTimer = setTimeout(() => fetchOrder(attempt + 1), STATUS_RETRY_DELAY_MS);
+          }
+          return;
+        }
+
+        setState('failed');
+        setErrorMessage('Your payment could not be confirmed at this time.');
       } catch {
         if (!cancelled) {
-          setState('failed');
-          setErrorMessage('A network error occurred. Please try refreshing the page.');
+          if (attempt < MAX_STATUS_ATTEMPTS) {
+            retryTimer = setTimeout(() => fetchOrder(attempt + 1), STATUS_RETRY_DELAY_MS);
+          } else {
+            setState('failed');
+            setErrorMessage('A network error occurred. Please try refreshing the page.');
+          }
         }
       }
     }
 
     fetchOrder();
-    return () => { cancelled = true; };
-  }, [ref]);
+    return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [ref, sessionId]);
 
   if (state === 'loading') {
     return (
@@ -101,7 +120,7 @@ function SuccessContent() {
         </div>
         <h1 className="text-2xl font-bold text-[#F5F7FA] mb-4">Order not found</h1>
         <p className="text-[#AAB4C3] mb-8">
-          We could not find a checkout order matching this reference. If you just completed a payment, it may take a moment to appear.
+          This confirmation link is incomplete or no longer matches a checkout order. Please use the return link supplied by Stripe.
         </p>
         <Link
           href="/pricing"
@@ -128,7 +147,7 @@ function SuccessContent() {
             Your project is officially underway.
           </h1>
           <p className="text-[#AAB4C3] max-w-lg mx-auto">
-            Thank you, {orderData.customer_name}. We have received your starting payment and will be in touch shortly.
+            We have received your starting payment and will be in touch shortly. A confirmation will be sent to the email address used at checkout.
           </p>
         </div>
 
@@ -151,10 +170,6 @@ function SuccessContent() {
             <div className="flex justify-between text-sm">
               <span className="text-[#AAB4C3]">Remaining project balance</span>
               <span className="text-[#F5F7FA]">{formatPriceMinor(orderData.remaining_balance_minor)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-[#AAB4C3]">Contact email</span>
-              <span className="text-[#F5F7FA]">{orderData.customer_email}</span>
             </div>
           </div>
         </div>
@@ -202,7 +217,7 @@ function SuccessContent() {
         </div>
         <h1 className="text-2xl font-bold text-[#F5F7FA] mb-4">Your payment is still processing.</h1>
         <p className="text-[#AAB4C3] mb-8">
-          Confirmation will be emailed once Stripe confirms the payment. This typically takes a few moments.
+          We are checking for Stripe&apos;s confirmation automatically. This normally takes only a few moments.
         </p>
         <p className="text-sm text-[#64748B]">
           If you have not received confirmation within 30 minutes, please{' '}
