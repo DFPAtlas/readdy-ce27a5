@@ -326,7 +326,7 @@ export default function EmailShell({ children }: { children: React.ReactNode }) 
             <div className="flex items-center gap-2">
               <div className="relative email-search-panel">
                 <button
-                  onClick={(e) => { e.stopPropagation(); setSearchOpen(!searchOpen); }}
+                  onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); setSearchOpen(!searchOpen); }}
                   className="hidden sm:flex items-center gap-2 pl-3 pr-2 py-2 bg-white/[0.04] border border-[rgba(255,255,255,0.06)] rounded-xl text-sm text-slate-400 hover:text-white hover:border-[rgba(255,255,255,0.12)] transition-all cursor-pointer group"
                 >
                   <Search className="w-4 h-4 text-slate-500 group-hover:text-slate-300 shrink-0" />
@@ -340,7 +340,7 @@ export default function EmailShell({ children }: { children: React.ReactNode }) 
                     <motion.div
                       initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
                       className="absolute right-0 top-11 w-80 bg-[#1a1a1e] border border-[rgba(255,255,255,0.1)] rounded-2xl shadow-2xl overflow-hidden z-50"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
                     >
                       <div className="p-3 border-b border-[rgba(255,255,255,0.06)]">
                         <div className="relative">
@@ -394,7 +394,7 @@ export default function EmailShell({ children }: { children: React.ReactNode }) 
 
               <div className="relative profile-panel">
                 <button
-                  onClick={(e) => { e.stopPropagation(); setProfileOpen(!profileOpen); setNotificationOpen(false); }}
+                  onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); setProfileOpen(!profileOpen); setNotificationOpen(false); }}
                   className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-xl border border-[rgba(255,255,255,0.08)] hover:border-[#06B6D4]/30 transition-all cursor-pointer"
                 >
                   <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#06B6D4] to-[#22D3EE] flex items-center justify-center text-white text-xs font-bold">
