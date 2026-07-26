@@ -87,8 +87,10 @@ export default function CampaignsPage() {
     const [field, dir] = sortBy.split('-');
     const multiplier = dir === 'desc' ? -1 : 1;
     if (field === 'name') return multiplier * (a.name || '').localeCompare(b.name || '');
-    const aTime = new Date((a as Record<string, string>)[field] || 0).getTime();
-    const bTime = new Date((b as Record<string, string>)[field] || 0).getTime();
+    const aDate = field === 'created_at' ? a.created_at : a.updated_at;
+    const bDate = field === 'created_at' ? b.created_at : b.updated_at;
+    const aTime = new Date(aDate || 0).getTime();
+    const bTime = new Date(bDate || 0).getTime();
     return multiplier * (aTime - bTime);
   });
 
@@ -239,7 +241,7 @@ export default function CampaignsPage() {
                 <motion.div
                   initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
                   className="absolute right-0 top-12 w-64 bg-[#1a1a1e] border border-[rgba(255,255,255,0.1)] rounded-2xl shadow-2xl p-4 z-50 space-y-4"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
                 >
                   <div>
                     <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Status</label>
@@ -364,7 +366,7 @@ export default function CampaignsPage() {
                             <Edit3 className="w-4 h-4" />
                           </Link>
                           <div className="relative more-menu">
-                            <button onClick={(e) => { e.stopPropagation(); setMoreOpenId(moreOpenId === campaign.id ? null : campaign.id); }}
+                            <button onClick={(e) => { e.stopPropagation(); setMoreOpenId(moreOpenId === campaign.id ? null : campaign.id ?? null); }}
                               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.04] text-slate-400 hover:text-white transition-colors cursor-pointer"
                             >
                               <MoreHorizontal className="w-4 h-4" />
@@ -373,7 +375,7 @@ export default function CampaignsPage() {
                               {moreOpenId === campaign.id && (
                                 <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
                                   className="absolute right-0 top-10 w-44 bg-[#1a1a1e] border border-[rgba(255,255,255,0.1)] rounded-xl shadow-2xl overflow-hidden z-50"
-                                  onClick={(e) => e.stopPropagation()}
+                                  onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
                                 >
                                   <Link href={`/admin/email/campaigns/${campaign.id}`} onClick={() => setMoreOpenId(null)} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-slate-300 hover:bg-white/[0.04] transition-colors cursor-pointer">
                                     <Edit3 className="w-3.5 h-3.5" /> Edit
