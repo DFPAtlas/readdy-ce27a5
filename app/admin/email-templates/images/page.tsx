@@ -350,7 +350,7 @@ export default function EmailImagesPage() {
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                 <button
-                  onClick={(e) => { e.stopPropagation(); toggleSelect(img.id); }}
+                  onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); toggleSelect(img.id); }}
                   className={`absolute top-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                     selectedImages.has(img.id)
                       ? 'bg-[#06B6D4] text-white'
@@ -362,14 +362,14 @@ export default function EmailImagesPage() {
 
                 <div className="absolute bottom-2 left-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={(e) => { e.stopPropagation(); copyUrl(img.public_url, img.id); }}
+                    onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); copyUrl(img.public_url, img.id); }}
                     className="flex-1 py-1.5 bg-black/60 backdrop-blur-sm rounded-lg text-[10px] font-medium text-white flex items-center justify-center gap-1 cursor-pointer hover:bg-black/80 transition-colors whitespace-nowrap"
                   >
                     {copiedId === img.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                     {copiedId === img.id ? 'Copied' : 'Copy URL'}
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); setDeleteConfirm(img.id); }}
+                    onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); setDeleteConfirm(img.id); }}
                     className="py-1.5 px-2 bg-red-500/60 backdrop-blur-sm rounded-lg text-white flex items-center justify-center cursor-pointer hover:bg-red-500 transition-colors"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -388,7 +388,7 @@ export default function EmailImagesPage() {
 
                 <div className="relative">
                   <button
-                    onClick={(e) => { e.stopPropagation(); setAssigningTemplate({ imageId: img.id, templateId: img.template_id || '' }); }}
+                    onClick={(e: React.MouseEvent<HTMLElement>) => { e.stopPropagation(); setAssigningTemplate({ imageId: img.id, templateId: img.template_id || '' }); }}
                     className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] border border-[rgba(255,255,255,0.08)] text-slate-400 hover:text-white hover:border-[rgba(255,255,255,0.15)] transition-all cursor-pointer"
                   >
                     <Link2 className="w-3 h-3 shrink-0" />
@@ -400,7 +400,7 @@ export default function EmailImagesPage() {
                       <motion.div
                         initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
                         className="absolute bottom-full left-0 right-0 mb-1 bg-[#0F172A] border border-[rgba(255,255,255,0.1)] rounded-xl shadow-xl p-2 z-10"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
                       >
                         <div className="flex gap-1.5">
                           <select
@@ -444,7 +444,7 @@ export default function EmailImagesPage() {
           >
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl max-w-sm w-full p-6"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
