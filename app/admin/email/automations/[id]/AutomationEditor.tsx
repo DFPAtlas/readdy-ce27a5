@@ -54,6 +54,12 @@ const WIZARD_STEPS: { key: WizardStep; label: string }[] = [
 
 function generateId() { return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15); }
 
+function readTriggerConfigValue(config: TriggerConfig | null, key: string): string {
+  if (!config) return '';
+  const value = Reflect.get(config, key);
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+}
+
 export default function AutomationEditor({ automationId }: { automationId: string | null }) {
   const router = useRouter();
   const { profile, sessionUser } = useAdminProfile();
@@ -510,7 +516,10 @@ export default function AutomationEditor({ automationId }: { automationId: strin
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1.5">Category</label>
-                <select value={form.category} onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))} className="w-full px-3 pr-8 py-2.5 bg-white/[0.04] border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 cursor-pointer appearance-none">
+                <select value={form.category} onChange={e => {
+                  const category = AUTOMATION_CATEGORIES.find(({ value }) => value === e.target.value)?.value || 'other';
+                  setForm(prev => ({ ...prev, category }));
+                }} className="w-full px-3 pr-8 py-2.5 bg-white/[0.04] border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 cursor-pointer appearance-none">
                   {AUTOMATION_CATEGORIES.map(c => (
                     <option key={c.value} value={c.value}>{c.label}</option>
                   ))}
@@ -565,7 +574,7 @@ export default function AutomationEditor({ automationId }: { automationId: strin
                     <label className="block text-xs text-slate-400 mb-1">{f.label} {f.required && '*'}</label>
                     <input
                       type={f.type === 'number' ? 'number' : 'text'}
-                      value={(form.trigger_config as Record<string, unknown>)[f.key] as string || ''}
+                      value={readTriggerConfigValue(form.trigger_config, f.key)}
                       onChange={e => updateTriggerField(f.key, e.target.value)}
                       className="w-full px-3 py-2.5 bg-white/[0.04] border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4]/30"
                     />
