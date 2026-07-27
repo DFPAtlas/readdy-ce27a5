@@ -10,7 +10,6 @@ import {
   Check,
   CheckCircle2,
   ChevronRight,
-  CirclePoundSterling,
   Clock3,
   FileCheck2,
   Inbox,
