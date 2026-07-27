@@ -1,18 +1,12 @@
 import type { Metadata } from 'next';
-import DemoWorkspace from '../DemoWorkspace';
+import BusinessCommandCentreWorkspace from './BusinessCommandCentreWorkspace';
 
 export const metadata: Metadata = {
   title: 'Business Command Centre Demo | Digital Footprint',
-  description: 'Explore a simulated business operations dashboard from Digital Footprint.',
+  description:
+    'Explore a simulated business operations dashboard for projects, team workload, tasks, revenue and cash flow.',
 };
 
 export default function BusinessCommandCentreDemoPage() {
-  return (
-    <DemoWorkspace
-      type="command"
-      eyebrow="Interactive dashboard"
-      title="Business Command Centre"
-      description="Explore a simulated operations workspace for projects, performance, team capacity and priority actions."
-    />
-  );
+  return <BusinessCommandCentreWorkspace />;
 }
