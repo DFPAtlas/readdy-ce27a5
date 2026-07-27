@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import AILeadSalesWorkspace from './AILeadSalesWorkspace';
+import AILeadSalesClient from './AILeadSalesClient';
 
 export const metadata: Metadata = {
   title: 'AI Lead and Sales System Demo | Digital Footprint',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function AILeadSystemDemoPage() {
-  return <AILeadSalesWorkspace />;
+  return <AILeadSalesClient />;
 }
