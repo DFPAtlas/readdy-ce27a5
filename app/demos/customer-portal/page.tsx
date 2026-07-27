@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import CustomerProjectPortalWorkspace from './CustomerProjectPortalWorkspace';
+import CustomerProjectPortalClient from './CustomerProjectPortalClient';
 
 export const metadata: Metadata = {
   title: 'Customer Project Portal Demo | Digital Footprint',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function CustomerPortalDemoPage() {
-  return <CustomerProjectPortalWorkspace />;
+  return <CustomerProjectPortalClient />;
 }
