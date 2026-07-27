@@ -435,7 +435,15 @@ export default function AILeadSalesWorkspace() {
   };
 
   const moveStage = (stage: LeadStage) => {
-    updateSelected({ stage });
+    const syncedState: Partial<LeadState> =
+      stage === 'New enquiry'
+        ? { stage }
+        : stage === 'Qualified'
+          ? { stage, qualified: true }
+          : stage === 'Reply ready'
+            ? { stage, qualified: true, reply: 'approved' }
+            : { stage, qualified: true, reply: 'approved', proposal: 'sent' };
+    updateSelected(syncedState);
     setActivity(`Moved ${selectedLead.company} to ${stage}.`);
   };
 
