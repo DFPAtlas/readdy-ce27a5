@@ -68,7 +68,7 @@ export default function Footer() {
               <li><Link href="/who-we-help" className="text-sm text-slate-500 hover:text-[#F97316] transition-colors cursor-pointer">Who We Help</Link></li>
               <li><Link href="/team" className="text-sm text-slate-500 hover:text-[#F97316] transition-colors cursor-pointer">Team</Link></li>
               <li><Link href="/products" className="text-sm text-slate-500 hover:text-[#F97316] transition-colors cursor-pointer">Portfolio</Link></li>
-              <li><Link href="/demos" className="text-sm text-slate-500 hover:text-[#F97316] transition-colors cursor-pointer">Demo Centre</Link></li>
+              <li><Link href="/demos" className="text-sm text-slate-500 hover:text-[#F97316] transition-colors cursor-pointer">Demo Lab</Link></li>
               <li><Link href="/partners" className="text-sm text-slate-500 hover:text-[#F97316] transition-colors cursor-pointer">Partners</Link></li>
               <li><Link href="/careers" className="text-sm text-slate-500 hover:text-[#F97316] transition-colors cursor-pointer">Careers</Link></li>
               <li><Link href="/blog" className="text-sm text-slate-500 hover:text-[#F97316] transition-colors cursor-pointer">Insights</Link></li>
