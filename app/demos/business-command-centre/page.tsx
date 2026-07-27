@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import BusinessCommandCentreWorkspace from './BusinessCommandCentreWorkspace';
+import BusinessCommandCentreClient from './BusinessCommandCentreClient';
 
 export const metadata: Metadata = {
   title: 'Business Command Centre Demo | Digital Footprint',
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function BusinessCommandCentreDemoPage() {
-  return <BusinessCommandCentreWorkspace />;
+  return <BusinessCommandCentreClient />;
 }
