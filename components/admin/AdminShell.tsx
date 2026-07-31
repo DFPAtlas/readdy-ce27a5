@@ -87,6 +87,7 @@ const navGroups = [
       { href: '/admin/uat/testers', icon: ClipboardCheck, label: 'Testers' },
       { href: '/admin/uat/payments', icon: DollarSign, label: 'Payments' },
       { href: '/admin/uat/reports', icon: TrendingUp, label: 'Reports' },
+      { href: '/admin/uat/agent', icon: Bot, label: 'AI UAT Agent' },
     ],
   },
   {
