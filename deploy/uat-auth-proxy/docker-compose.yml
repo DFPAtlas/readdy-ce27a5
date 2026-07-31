@@ -1,0 +1,46 @@
+services:
+  uat-auth-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: dfp-uat-auth-proxy
+
+    restart: unless-stopped
+
+    env_file:
+      - /opt/dfp-uat/secrets/uat-auth-proxy.env
+
+    read_only: true
+
+    tmpfs:
+      - /tmp
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    networks:
+      - dfp-uat-network
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3200/healthz')
+          .then(response => {
+            if (!response.ok) process.exit(1);
+          })
+          .catch(() => process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  dfp-uat-network:
+    external: true
