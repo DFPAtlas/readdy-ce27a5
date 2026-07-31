@@ -2,16 +2,17 @@
 
 import { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const VIDEO_URL = 'https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/4f863c50-93dd-4847-9d19-9bf2f89658ff_Firefly-Create-a-cinematic-15-second-seamless-loop-background-video-for-a-premium-digital-technology.mp4';
 const POSTER_URL = 'https://readdy.ai/api/search-image?query=A%20premium%20dark%20navy%20technology%20background%20with%20a%20glowing%20bright%20cyan%20digital%20footprint%20at%20centre%20abstract%20holographic%20dashboard%20panels%20and%20interface%20elements%20floating%20on%20deep%20blue-black%20space%20subtle%20circuit%20traces%20radiating%20from%20the%20footprint%20soft%20ambient%20cyan%20light%20reflections%20clean%20minimal%20futuristic%20corporate%20aesthetic%20no%20text%20high%20contrast%20dark%20moody%20atmosphere&width=1920&height=1080&seq=dfp-video-poster-v5-theme&orientation=landscape';
 
 const PHASES = [
-  { letter: 'C', word: 'Conception', desc: 'Strategy, research and planning your digital foundation', color: '#06B6D4' },
-  { letter: 'D', word: 'Development', desc: 'Building platforms, AI systems and cloud infrastructure', color: '#06B6D4' },
-  { letter: 'D', word: 'Deployment', desc: 'Launching live operations with security and scale', color: '#F97316' },
-  { letter: 'M', word: 'Management', desc: 'Ongoing monitoring, support and operational excellence', color: '#F97316' },
-  { letter: 'G', word: 'Growth', desc: 'Continuous improvement, expansion and optimisation', color: '#F97316' },
+  { letter: 'C', word: 'Conception', desc: 'Strategy, research and planning your digital foundation', color: '#06B6D4', href: '/#how-we-work' },
+  { letter: 'D', word: 'Development', desc: 'Building platforms, AI systems and cloud infrastructure', color: '#06B6D4', href: '/#how-we-work' },
+  { letter: 'D', word: 'Deployment', desc: 'Launching live operations with security and scale', color: '#F97316', href: '/#how-we-work' },
+  { letter: 'M', word: 'Management', desc: 'Ongoing monitoring, support and operational excellence', color: '#F97316', href: '/#infrastructure-management' },
+  { letter: 'G', word: 'Growth', desc: 'Continuous improvement, expansion and optimisation', color: '#F97316', href: '/#ways-to-work' },
 ];
 
 export default function VideoHeroSection() {
@@ -25,6 +26,7 @@ export default function VideoHeroSection() {
   const [showExplain, setShowExplain] = useState(false);
   const [explainVisible, setExplainVisible] = useState(false);
   const [scrollDone, setScrollDone] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mountedRef = useRef(false);
@@ -77,9 +79,15 @@ export default function VideoHeroSection() {
       setVideoError(true);
     };
 
+    const onTimeUpdate = () => {
+      if (!mountedRef.current || !vid.duration) return;
+      setVideoProgress((vid.currentTime / vid.duration) * 100);
+    };
+
     vid.addEventListener('loadeddata', onLoaded);
     vid.addEventListener('ended', onEnded);
     vid.addEventListener('error', onError);
+    vid.addEventListener('timeupdate', onTimeUpdate);
 
     if (vid.readyState >= 2 && mountedRef.current) {
       setVideoReady(true);
@@ -92,6 +100,7 @@ export default function VideoHeroSection() {
       vid.removeEventListener('loadeddata', onLoaded);
       vid.removeEventListener('ended', onEnded);
       vid.removeEventListener('error', onError);
+      vid.removeEventListener('timeupdate', onTimeUpdate);
     };
   }, []);
 
@@ -236,9 +245,10 @@ export default function VideoHeroSection() {
 
             <div className="flex flex-col gap-3">
               {PHASES.map((item, i) => (
-                <div
+                <Link
                   key={item.letter + item.word}
-                  className="flex items-center gap-4 sm:gap-5 text-left"
+                  href={item.href}
+                  className="flex items-center gap-4 sm:gap-5 text-left group cursor-pointer pointer-events-auto"
                   style={{
                     opacity: explainVisible ? 1 : 0,
                     transform: explainVisible ? 'translateX(0)' : 'translateX(-40px)',
@@ -246,7 +256,7 @@ export default function VideoHeroSection() {
                   }}
                 >
                   <div
-                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-2 flex-shrink-0"
+                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-2 flex-shrink-0 transition-all duration-300 group-hover:scale-110"
                     style={{ borderColor: item.color, backgroundColor: `${item.color}12` }}
                   >
                     <span className="font-bold text-base sm:text-lg" style={{ color: item.color }}>
@@ -254,14 +264,15 @@ export default function VideoHeroSection() {
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="text-white font-semibold text-sm sm:text-base mr-2">
+                    <span className="text-white font-semibold text-sm sm:text-base mr-2 group-hover:text-white transition-colors duration-200">
                       {item.word}
                     </span>
-                    <span className="text-white/40 text-xs sm:text-sm">
+                    <span className="text-white/40 text-xs sm:text-sm group-hover:text-white/60 transition-colors duration-200">
                       {item.desc}
                     </span>
                   </div>
-                </div>
+                  <i className="ri-arrow-right-s-line w-4 h-4 flex items-center justify-center text-white/0 group-hover:text-white/50 group-hover:translate-x-1 transition-all duration-200 flex-shrink-0" />
+                </Link>
               ))}
             </div>
 
@@ -303,6 +314,20 @@ export default function VideoHeroSection() {
           <div className="w-px h-5 bg-gradient-to-b from-white/20 to-transparent" />
         </button>
       </div>
+
+      {/* Progress bar */}
+      {videoReady && !videoEnded && (
+        <div className="absolute bottom-0 left-0 right-0 z-30 h-[3px] bg-white/[0.06]">
+          <div
+            className="h-full transition-none"
+            style={{
+              width: `${videoProgress}%`,
+              background: 'linear-gradient(90deg, #06B6D4, #F97316)',
+              boxShadow: '0 0 8px rgba(6,182,212,0.6)',
+            }}
+          />
+        </div>
+      )}
 
       <style jsx>{`
         @keyframes dfpScrollWheel {

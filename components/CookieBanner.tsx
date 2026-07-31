@@ -18,21 +18,27 @@ export default function CookieBanner() {
   const [selected, setSelected] = useState<ConsentCategory[]>(['necessary']);
   const bannerRef = useRef<HTMLDivElement>(null);
   const firstFocusRef = useRef<HTMLButtonElement>(null);
+  const mountedSafeRef = useRef(true);
+
+  useEffect(() => {
+    mountedSafeRef.current = true;
+    return () => { mountedSafeRef.current = false; };
+  }, []);
 
   useEffect(() => {
     try {
       const existing = localStorage.getItem(CONSENT_STORAGE_KEY);
       if (!existing) {
-        setVisible(true);
+        if (mountedSafeRef.current) setVisible(true);
         return;
       }
       const parsed = JSON.parse(existing) as ConsentState;
       if (!parsed.version || parsed.version !== CONSENT_VERSION) {
-        setVisible(true);
+        if (mountedSafeRef.current) setVisible(true);
         return;
       }
     } catch {
-      setVisible(true);
+      if (mountedSafeRef.current) setVisible(true);
     }
   }, []);
 

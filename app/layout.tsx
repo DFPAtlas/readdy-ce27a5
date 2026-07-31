@@ -77,18 +77,7 @@ export default function RootLayout({
           {children}
           <CookieBanner />
         </ThemeProvider>
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script 
-          src="https://readdy.ai/api/public/assistant/widget?projectId=9c829bf4-c727-45a7-99f8-358e1780c66a"
-          async
-          data-mode="hybrid"
-          data-voice-show-transcript="true"
-          data-theme="light"
-          data-size="compact"
-          data-accent-color="#06B6D4"
-          data-button-base-color="#F97316"
-          data-button-accent-color="#FFFFFF"
-        />
+
       </body>
     </html>
   );

@@ -118,8 +118,13 @@ function MotionFactory(tag: keyof JSX.IntrinsicElements | 'i') {
 
     useEffect(() => {
       mountedRef.current = true;
-      if (!mounted) setMounted(true);
-      return () => { mountedRef.current = false; };
+      const rafId = requestAnimationFrame(() => {
+        if (mountedRef.current && !mounted) setMounted(true);
+      });
+      return () => {
+        mountedRef.current = false;
+        cancelAnimationFrame(rafId);
+      };
     }, []);
 
     useEffect(() => {

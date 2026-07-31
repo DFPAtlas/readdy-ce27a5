@@ -1,19 +1,33 @@
 "use client";
 
 import Script from "next/script";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { hasConsentFor, getConsentState } from "@/lib/analytics";
 import type { ConsentState } from "@/lib/analytics-definitions";
 import { CONSENT_CATEGORIES, CONSENT_STORAGE_KEY } from "@/lib/analytics-definitions";
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
+declare global {
+  interface Window {
+    GA_LOADED?: boolean;
+    gtag?: (...args: any[]) => void;
+  }
+}
+
 export default function GoogleAnalytics() {
   const [consentReady, setConsentReady] = useState(false);
   const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     const checkConsent = () => {
+      if (!mountedRef.current) return;
       const hasGiven = hasConsentFor('analytics');
       setAnalyticsAllowed(hasGiven);
       setConsentReady(true);

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
@@ -18,6 +19,7 @@ import {
   Trophy,
   UserRound,
   WalletCards,
+  FileText,
 } from 'lucide-react';
 
 const benefits = [
@@ -42,7 +44,28 @@ const rewards = [
   { level: 'Critical', amount: 'Reviewed individually', note: 'Payment, security, account or data issue', className: 'text-rose-600' },
 ];
 
+const TOTAL_STEPS = 9;
+
+interface SavedDraft {
+  step: number;
+  data?: { legalName?: string; email?: string };
+}
+
 export default function UATTestingPage() {
+  const [savedDraft, setSavedDraft] = useState<SavedDraft | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('uat_application_draft');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.step === 'number') {
+          setSavedDraft({ step: parsed.step, data: parsed.data });
+        }
+      }
+    } catch {}
+  }, []);
+
   return (
     <main id="main-content" className="min-h-screen bg-[#fbfcff] text-[#17325c]">
       <Header />
@@ -52,10 +75,6 @@ export default function UATTestingPage() {
         <div className="pointer-events-none absolute right-0 top-24 h-80 w-80 rounded-full bg-[#dce8d4]/60 blur-3xl" />
         <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 pb-16 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:pb-20">
           <div className="relative z-10">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700">
-              <span className="h-2 w-2 rounded-full bg-sky-500" />
-              DFP UAT Tester Network
-            </div>
             <h1 className="max-w-2xl font-serif text-5xl font-semibold leading-[0.98] tracking-[-0.04em] text-[#17325c] sm:text-6xl lg:text-7xl">
               Parents <span className="text-[#8ca579]">Make</span><br />Brilliant Testers
             </h1>
@@ -63,11 +82,34 @@ export default function UATTestingPage() {
             <p className="mt-7 max-w-xl text-lg leading-8 text-slate-600">
               Test websites, apps and online services from home. Find genuine bugs, share useful feedback and earn rewards for accepted reports.
             </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <a href="#apply-form" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2878d0] px-6 py-4 font-semibold text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-[#1e68b9]">
-                Apply to Become a Tester <ArrowRight className="h-4 w-4" />
-              </a>
-              <a href="#payments" className="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-6 py-4 font-semibold text-[#2878d0] transition hover:bg-sky-50">
+
+            {savedDraft && (
+              <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 flex-shrink-0">
+                    <FileText className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[#17325c]">You have a saved application</p>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                      You reached step {savedDraft.step} of {TOTAL_STEPS}{savedDraft.data?.legalName ? ` as ${savedDraft.data.legalName.split(' ')[0]}` : ''}. Pick up right where you left off.
+                    </p>
+                    <Link
+                      href="/uat-testing/apply"
+                      className="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-700 whitespace-nowrap cursor-pointer"
+                    >
+                      Continue your application <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className={`${savedDraft ? 'mt-4' : 'mt-9'} flex flex-col gap-3 sm:flex-row`}>
+              <Link href="/uat-testing/apply" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2878d0] px-6 py-4 font-semibold text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-[#1e68b9] whitespace-nowrap cursor-pointer">
+                {savedDraft ? 'Start a New Application' : 'Apply to Become a Tester'} <ArrowRight className="h-4 w-4" />
+              </Link>
+              <a href="#payments" className="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-white px-6 py-4 font-semibold text-[#2878d0] transition hover:bg-sky-50 whitespace-nowrap cursor-pointer">
                 <Info className="h-4 w-4" /> How Payments Work
               </a>
             </div>
@@ -131,8 +173,8 @@ export default function UATTestingPage() {
           </div>
 
           <div className="mt-12 grid items-center gap-6 rounded-3xl bg-[#17325c] p-7 text-white lg:grid-cols-[1fr_auto] lg:p-10">
-            <div><div className="flex items-center gap-3"><MonitorSmartphone className="h-7 w-7 text-sky-300" /><p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-200">Tester portal preview</p></div><h2 className="mt-3 font-serif text-3xl font-semibold">See how assignments, reports and rewards will be managed</h2><p className="mt-3 max-w-3xl text-slate-300">The preview uses sample information while tester authentication and live data connections are completed.</p></div>
-            <Link href="/uat-testing/portal" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-4 font-semibold text-[#17325c] transition hover:bg-sky-50">Open Portal Preview <ArrowRight className="h-4 w-4" /></Link>
+            <div><div className="flex items-center gap-3"><MonitorSmartphone className="h-7 w-7 text-sky-300" /><p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-200">Start testing today</p></div><h2 className="mt-3 font-serif text-3xl font-semibold">Ready to become a DFP UAT Tester?</h2><p className="mt-3 max-w-3xl text-slate-300">Apply now — no sign-in needed. Fill in your details and we will review your application.</p></div>
+            <Link href="/uat-testing/apply" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-4 font-semibold text-[#17325c] transition hover:bg-sky-50 whitespace-nowrap cursor-pointer">Start My Application <ArrowRight className="h-4 w-4" /></Link>
           </div>
         </div>
       </section>

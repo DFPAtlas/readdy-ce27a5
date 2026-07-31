@@ -20,6 +20,8 @@ import {
   Bell,
   ChevronDown,
   Search,
+  FileText,
+  TestTube,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -110,6 +112,13 @@ export default function StaffShell({ children }: { children: React.ReactNode }) 
         { href: '/staff/leads', icon: UserCircle, label: 'Leads' },
         { href: '/staff/clients', icon: Users, label: 'Clients' },
         { href: '/staff/messages', icon: MessageSquare, label: 'Messages' },
+      ],
+    },
+    {
+      label: 'UAT',
+      items: [
+        { href: '/staff/uat/applications', icon: FileText, label: 'Applications' },
+        { href: '/staff/uat/terms', icon: FileText, label: 'Legal Agreements' },
       ],
     },
     {

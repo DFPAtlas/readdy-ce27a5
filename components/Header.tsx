@@ -223,6 +223,7 @@ export default function Header() {
     { href: '/about', label: 'About DFP', icon: 'ri-information-line' },
     { href: '/team', label: 'Meet the Team', icon: 'ri-team-line' },
     { href: '/careers', label: 'Careers', icon: 'ri-briefcase-line' },
+    { href: '/uat-testing', label: 'UAT TestLab', icon: 'ri-bug-line' },
   ];
 
   const clientLoginDropdown = [

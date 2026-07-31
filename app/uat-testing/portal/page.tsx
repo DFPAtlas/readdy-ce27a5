@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CalendarDays, CheckCircle2, Clock3, Gauge, MessageCircle, Play, Send, WalletCards } from 'lucide-react';
+import { ArrowRight, CalendarDays, CheckCircle2, Clock3, Gauge, MessageCircle, Play, Send, WalletCards } from 'lucide-react';
 import { dashboardStats, demoAssignments, demoReports } from '@/lib/uatDemoData';
 
 const statusTone: Record<string, string> = {
@@ -21,6 +21,21 @@ export default function UATTesterPortalPage() {
         <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm">
           <CalendarDays className="h-5 w-5 text-[#2878d0]" /><div><p className="text-xs text-slate-400">Example payout schedule</p><p className="text-sm font-semibold">Twice monthly</p></div>
         </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-[#2878d0]/20 bg-gradient-to-r from-[#edf5ff] to-[#eef4e9] p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#2878d0]/10">
+            <Gauge className="h-5 w-5 text-[#2878d0]" />
+          </div>
+          <div>
+            <p className="font-semibold text-[#17325c]">Already an approved tester?</p>
+            <p className="text-sm text-slate-500">Jump to your live dashboard with real jobs, assignments and earnings.</p>
+          </div>
+        </div>
+        <Link href="/uat/dashboard" className="inline-flex items-center gap-2 rounded-xl bg-[#2878d0] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-[#1e68b9] whitespace-nowrap cursor-pointer shrink-0">
+          Go to Live Dashboard <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

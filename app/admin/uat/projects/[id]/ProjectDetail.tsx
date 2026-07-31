@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Edit, Save, Loader2, AlertCircle, Globe, ExternalLink, Server,
-  Plus, Trash2, CheckCircle, XCircle, X, ChevronDown, Archive, Power,
+  Plus, Trash2, CheckCircle, XCircle, X, ChevronDown, Archive, Power, BarChart3,
 } from 'lucide-react';
 import AdminShell from '../../../../../components/admin/AdminShell';
 
@@ -319,6 +319,9 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                   </button>
                   <button onClick={handleArchiveProject} className="px-3 py-2 bg-white/5 border border-[rgba(255,255,255,0.06)] rounded-xl text-xs text-slate-400 hover:text-amber-400 cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
                     <Archive className="w-3.5 h-3.5" /> {project.status === 'archived' ? 'Reactivate' : 'Archive'}
+                  </button>
+                  <button onClick={() => router.push(`/admin/uat/projects/${projectId}/matches`)} className="px-3 py-2 bg-white/5 border border-[rgba(255,255,255,0.06)] rounded-xl text-xs text-slate-400 hover:text-[#06B6D4] hover:border-[#06B6D4]/20 cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
+                    <BarChart3 className="w-3.5 h-3.5" /> Matches
                   </button>
                 </>
               )}
