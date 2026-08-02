@@ -272,6 +272,76 @@ async function recordRefunds(
   }
 }
 
+interface DfpSubscriptionPlan {
+  key: string;
+  name: string;
+  amountMinor: number;
+}
+
+const DFP_SUBSCRIPTION_PLANS: Record<string, DfpSubscriptionPlan> = {
+  "price_1TxYdKEvwddKcZGPFPpg1mAW": { key: "ai_workflow_monthly", name: "Workflow Starter Monthly", amountMinor: 14900 },
+  "price_1TxYdLEvwddKcZGPdwANCbTk": { key: "ai_business_monthly", name: "Business Automation Monthly", amountMinor: 29900 },
+  "price_1TxYdLEvwddKcZGPOkJdw2H9": { key: "ai_workforce_monthly", name: "AI Workforce Monthly", amountMinor: 59900 },
+  "price_1TxYdLEvwddKcZGPOCvVQKFz": { key: "care_essential", name: "Essential Care", amountMinor: 7900 },
+  "price_1TxYdMEvwddKcZGPzjgqNahD": { key: "care_business", name: "Business Care", amountMinor: 14900 },
+  "price_1TxYdMEvwddKcZGPjXmrSWF1": { key: "care_priority", name: "Priority Care", amountMinor: 29900 },
+  "price_1TxYdOEvwddKcZGPUdnRZuCl": { key: "monthly_seo", name: "Monthly SEO", amountMinor: 39500 },
+};
+
+async function syncDfpSubscription(
+  admin: AdminClient,
+  subscription: Stripe.Subscription,
+): Promise<void> {
+  const item = subscription.items.data[0];
+  const priceId = item?.price?.id;
+  const plan = priceId ? DFP_SUBSCRIPTION_PLANS[priceId] : undefined;
+  if (!plan) throw new Error("Subscription uses an unknown DFP Stripe price");
+
+  const clientId = subscription.metadata?.client_id;
+  const userId = subscription.metadata?.user_id;
+  if (!clientId || !userId) throw new Error("Subscription metadata is missing client_id or user_id");
+
+  const periodEndSeconds = Number(
+    (subscription as unknown as { current_period_end?: number }).current_period_end ??
+      (item as unknown as { current_period_end?: number })?.current_period_end ??
+      0,
+  );
+  const values = {
+    client_id: clientId,
+    owner_id: userId,
+    name: plan.name,
+    amount: plan.amountMinor / 100,
+    currency: "GBP",
+    interval: "month",
+    billing_cycle: "monthly",
+    provider: "stripe",
+    status: subscription.status,
+    stripe_subscription_id: subscription.id,
+    next_billing_date: periodEndSeconds > 0
+      ? new Date(periodEndSeconds * 1000).toISOString()
+      : null,
+    cancellation_date: subscription.status === "canceled" ? new Date().toISOString() : null,
+    notes: `Stripe plan: ${plan.key}`,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: existing, error: lookupError } = await admin
+    .from("subscriptions")
+    .select("id")
+    .eq("stripe_subscription_id", subscription.id)
+    .limit(1)
+    .maybeSingle();
+  if (lookupError) throw lookupError;
+
+  if (existing) {
+    const { error } = await admin.from("subscriptions").update(values).eq("id", existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await admin.from("subscriptions").insert(values);
+    if (error) throw error;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
@@ -348,10 +418,19 @@ Deno.serve(async (req: Request) => {
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const type = session.metadata?.type;
+        if (type === "dfp_subscription") {
+          const subscriptionId = typeof session.subscription === "string"
+            ? session.subscription
+            : session.subscription?.id;
+          if (!subscriptionId) throw new Error("Subscription Checkout has no subscription ID");
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          await syncDfpSubscription(admin, subscription);
+          break;
+        }
         if (session.payment_status !== "paid") {
           break;
         }
-        const type = session.metadata?.type;
         if (type === "website_starting_payment") {
           await completeWebsiteStartingPayment(admin, session, event);
         } else if (type === "invoice_payment" || session.metadata?.invoice_id) {
@@ -359,6 +438,12 @@ Deno.serve(async (req: Request) => {
         } else if (type === "milestone_payment") {
           await completeMilestonePayment(admin, session);
         }
+        break;
+      }
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        await syncDfpSubscription(admin, event.data.object as Stripe.Subscription);
         break;
       }
       case "checkout.session.expired": {
