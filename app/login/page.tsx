@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import GuidanceModal from './GuidanceModal';
@@ -78,7 +77,7 @@ export default function LoginGatewayPage() {
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-4">
               <Link href="/" className="inline-block mb-6">
-                <Image
+                <img
                   src="https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/eee9f9ba-b907-488b-a1a8-f6d02534a71b_compressed_Remove-Background-Keep-Foot-Logo.webp"
                   alt="Digital Footprint Logo"
                   width={56}

@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from '@/components/motion';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { productStatusConfig, ctaTypeIcons } from '@/lib/cms-definitions';
+import { submitEnquiry, makeIdempotencyKey } from '@/lib/submit-enquiry';
+import ProductCTASection from './ProductCTASection';
 
 interface ProductDetailProps {
   slug: string;
 }
-
-const FORM_SUBMIT_ADDR = 'https://readdy.ai/api/form/d9en41edn0rfb35c672g';
 
 export default function ProductDetail({ slug }: ProductDetailProps) {
   const [product, setProduct] = useState<any>(null);
@@ -18,14 +18,23 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [formError, setFormError] = useState('');
   const [showInterestForm, setShowInterestForm] = useState(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     async function load() {
       const { data } = await supabase.from('product_registry').select('*').eq('slug', slug).maybeSingle();
+      if (cancelled) return;
       setProduct(data);
       setLoading(false);
     }
     load();
+    return () => { cancelled = true; };
   }, [slug]);
 
   const handleInterestSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -38,20 +47,28 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
     setFormError('');
     formData.delete('contact_alt');
     try {
-      const res = await fetch(FORM_SUBMIT_ADDR, { method: 'POST', body: new URLSearchParams(formData as any).toString(), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-      const text = await res.text();
-      let parsed: any;
-      try { parsed = JSON.parse(text); } catch { parsed = {}; }
-      const serverMsg = parsed?.meta?.message || parsed?.message || '';
-      if (res.ok && parsed?.code === 'OK') {
+      const result = await submitEnquiry('leads', {
+        name: (formData.get('name') as string) || '',
+        email: (formData.get('email') as string) || '',
+        company_name: (formData.get('company') as string) || null,
+        contact_role: (formData.get('role') as string) || null,
+        service_interest: (formData.get('product') as string) || null,
+        message: (formData.get('reason') as string) || null,
+        enquiry_type: 'product_enquiry',
+        enquiry_data: { product_slug: (formData.get('product_slug') as string) || null },
+        source: 'product_page',
+        status: 'new',
+        stage: 'new',
+        consent_contact: true,
+        idempotency_key: makeIdempotencyKey(),
+      }, true);
+
+      if (result.code === 'OK') {
         setFormStatus('success');
         form.reset();
-        setTimeout(() => { setShowInterestForm(false); setFormStatus('idle'); }, 2500);
-      } else if (serverMsg.includes('spam') || (parsed?.meta?.detail || '').includes('spam')) {
-        setFormError('Your submission could not be processed. Please try again.');
-        setFormStatus('error');
+        setTimeout(() => { if (mountedRef.current) { setShowInterestForm(false); setFormStatus('idle'); } }, 2500);
       } else {
-        setFormError(serverMsg || 'Something went wrong. Please try again.');
+        setFormError(result.message);
         setFormStatus('error');
       }
     } catch {
@@ -89,33 +106,8 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
   const industries = product.industries || [];
   const accentColor = statusCfg.color;
   const ctaIcon = ctaTypeIcons[product.primary_cta_type] || 'ri-arrow-right-line';
-  const ctaType = product.primary_cta_type;
-  const ctaUrl = product.primary_cta_url;
 
-  const CTA_BUTTON = () => {
-    if (!ctaType || ctaType === 'none') return null;
-    const label = product.primary_cta_label || 'Learn More';
-
-    if (ctaType === 'visit_product' && ctaUrl && ctaUrl.startsWith('http')) {
-      return (
-        <a href={ctaUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all cursor-pointer whitespace-nowrap border hover:bg-slate-50" style={{ color: accentColor, borderColor: `${accentColor}30` }}>
-          {label} <i className="ri-external-link-line w-4 h-4 flex items-center justify-center" />
-        </a>
-      );
-    }
-    if (ctaType === 'register_interest' || ctaType === 'join_early_access') {
-      return (
-        <button onClick={() => setShowInterestForm(true)} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white transition-all cursor-pointer whitespace-nowrap hover:opacity-90" style={{ backgroundColor: accentColor }}>
-          {label} <i className={`${ctaIcon} w-4 h-4 flex items-center justify-center`} />
-        </button>
-      );
-    }
-    return (
-      <Link href={ctaUrl || '/contact'} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white transition-all cursor-pointer whitespace-nowrap hover:opacity-90" style={{ backgroundColor: accentColor }}>
-        {label} <i className={`${ctaIcon} w-4 h-4 flex items-center justify-center`} />
-      </Link>
-    );
-  };
+  const handleShowInterestForm = () => setShowInterestForm(true);
 
   return (
     <div className="min-h-screen pt-24 bg-white text-slate-800">
@@ -211,7 +203,16 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                 <p className="text-slate-500 mb-6 max-w-xl mx-auto">
                   {product.product_status === 'Live' ? `Visit ${product.product_name} to see it in action.` : `Register your interest and we will keep you updated.`}
                 </p>
-                <CTA_BUTTON />
+                <ProductCTASection
+                  accentColor={accentColor}
+                  productName={product.product_name}
+                  productStatus={product.product_status}
+                  ctaType={product.primary_cta_type}
+                  ctaLabel={product.primary_cta_label}
+                  ctaUrl={product.primary_cta_url}
+                  ctaIcon={ctaIcon}
+                  onShowInterestForm={handleShowInterestForm}
+                />
               </div>
             </motion.div>
 
@@ -253,7 +254,16 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-slate-100 space-y-3">
-                  <CTA_BUTTON />
+                  <ProductCTASection
+                  accentColor={accentColor}
+                  productName={product.product_name}
+                  productStatus={product.product_status}
+                  ctaType={product.primary_cta_type}
+                  ctaLabel={product.primary_cta_label}
+                  ctaUrl={product.primary_cta_url}
+                  ctaIcon={ctaIcon}
+                  onShowInterestForm={handleShowInterestForm}
+                />
                   {product.secondary_cta_label && (
                     <Link
                       href={product.secondary_cta_url || '/contact'}

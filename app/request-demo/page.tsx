@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { trackConversion } from '@/lib/analytics';
+import { submitEnquiry, makeIdempotencyKey } from '@/lib/submit-enquiry';
 
 interface ProductRef {
   id: string;
@@ -46,60 +47,40 @@ function RequestDemoContent() {
     setFormError('');
 
     try {
-      const body = new URLSearchParams();
-      body.append('name', formData.get('name') as string);
-      body.append('email', formData.get('email') as string);
-      body.append('company', formData.get('company') as string);
-      body.append('job_role', formData.get('job_role') as string);
-      body.append('product', formData.get('product') as string);
-      body.append('main_goal', formData.get('main_goal') as string);
-      body.append('current_challenge', formData.get('current_challenge') as string);
-      body.append('org_size', formData.get('org_size') as string);
-      body.append('preferred_format', formData.get('preferred_format') as string);
-      body.append('preferred_contact', formData.get('preferred_contact') as string);
-      body.append('timezone', formData.get('timezone') as string);
-      body.append('availability', formData.get('availability') as string);
-      body.append('reason', formData.get('reason') as string);
+      const result = await submitEnquiry('leads', {
+        name: formData.get('name') as string,
+        email: formData.get('email') as string,
+        company_name: formData.get('company') as string || null,
+        contact_role: formData.get('job_role') as string || null,
+        service_interest: formData.get('product') as string || null,
+        message: [formData.get('main_goal'), formData.get('current_challenge')].filter(Boolean).join('\n\n') || null,
+        source: 'demo_request',
+        stage: 'new',
+        status: 'new',
+        priority: 'medium',
+        consent_contact: true,
+        enquiry_type: 'demo_request',
+        enquiry_data: {
+          product: formData.get('product') as string || null,
+          demo_slug: preselectedDemo || null,
+          main_goal: formData.get('main_goal') as string || null,
+          current_challenge: formData.get('current_challenge') as string || null,
+          org_size: formData.get('org_size') as string || null,
+          preferred_format: formData.get('preferred_format') as string || null,
+          preferred_contact: formData.get('preferred_contact') as string || null,
+          timezone: formData.get('timezone') as string || null,
+          availability: formData.get('availability') as string || null,
+          reason: formData.get('reason') as string || null,
+        },
+        idempotency_key: makeIdempotencyKey(),
+      }, true);
 
-      const response = await fetch('https://readdy.ai/api/form/d9enb3oo4b7spa5ij1ig', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString(),
-      });
-
-      const responseText = await response.text();
-      let parsed: any;
-      try { parsed = JSON.parse(responseText); } catch { parsed = null; }
-
-      if (response.ok && parsed?.code === 'OK') {
+      if (result.code === 'OK') {
         setFormState('success');
         form.reset();
         trackConversion('demo_request', `demo_${formData.get('email') as string}_${Date.now()}`, { product_key: formData.get('product') as string || undefined, demo_key: preselectedDemo || undefined });
-
-        try {
-          const { data: existing } = await supabase
-            .from('leads')
-            .select('id')
-            .eq('email', formData.get('email') as string)
-            .maybeSingle();
-
-          if (!existing) {
-            await supabase.from('leads').insert({
-              name: formData.get('name') as string,
-              email: formData.get('email') as string,
-              company_name: formData.get('company') as string || null,
-              contact_role: formData.get('job_role') as string || null,
-              service_interest: formData.get('product') as string || null,
-              source: 'website_form',
-              stage: 'new',
-              priority: 'medium',
-              consent_contact: true,
-            });
-          }
-        } catch {}
       } else {
-        const serverMsg = parsed?.meta?.message || parsed?.message || responseText;
-        setFormError(serverMsg || 'Something went wrong. Please try again.');
+        setFormError(result.message);
         setFormState('error');
       }
     } catch {

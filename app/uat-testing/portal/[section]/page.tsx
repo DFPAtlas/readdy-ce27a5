@@ -1,4 +1,16 @@
 import { notFound } from 'next/navigation';
+
+export async function generateStaticParams() {
+  return [
+    { section: 'assignments' },
+    { section: 'reports' },
+    { section: 'payments' },
+    { section: 'messages' },
+    { section: 'resources' },
+    { section: 'profile' },
+  ];
+}
+
 import { BookOpen, Bug, CheckCircle2, Clock3, CreditCard, FileCheck2, Mail, MessageCircle, MonitorSmartphone, Plus, ShieldCheck, Smartphone, UserRound, WalletCards } from 'lucide-react';
 import { demoAssignments, demoMessages, demoPayments, demoReports, demoResources } from '@/lib/uatDemoData';
 

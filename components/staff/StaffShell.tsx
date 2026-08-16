@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from '@/components/motion';
 import { supabase } from '@/lib/supabase';
+import SessionExpiryBanner from '@/components/admin/SessionExpiryBanner';
 import {
   LayoutDashboard,
   Users,
@@ -23,7 +24,6 @@ import {
   FileText,
   TestTube,
 } from 'lucide-react';
-import Image from 'next/image';
 
 interface NavGroup {
   label: string;
@@ -172,7 +172,7 @@ export default function StaffShell({ children }: { children: React.ReactNode }) 
       <aside className="hidden lg:flex flex-col w-[248px] h-screen fixed left-0 top-0 z-40 bg-[#1E293B] border-r border-[rgba(255,255,255,0.08)]">
         <div className="p-5 border-b border-[rgba(255,255,255,0.08)]">
           <Link href="/staff/dashboard" className="flex items-center gap-3 cursor-pointer">
-            <Image
+            <img
               src="https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/eee9f9ba-b907-488b-a1a8-f6d02534a71b_compressed_Remove-Background-Keep-Foot-Logo.webp"
               alt="Logo"
               width={34}
@@ -216,7 +216,7 @@ export default function StaffShell({ children }: { children: React.ReactNode }) 
             >
               <div className="p-5 border-b border-[rgba(255,255,255,0.08)] flex items-center justify-between">
                 <Link href="/staff/dashboard" className="flex items-center gap-3 cursor-pointer" onClick={() => setSidebarOpen(false)}>
-                  <Image src="https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/eee9f9ba-b907-488b-a1a8-f6d02534a71b_compressed_Remove-Background-Keep-Foot-Logo.webp" alt="Logo" width={34} height={34} className="object-contain rounded-lg" />
+                  <img src="https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/eee9f9ba-b907-488b-a1a8-f6d02534a71b_compressed_Remove-Background-Keep-Foot-Logo.webp" alt="Logo" width={34} height={34} className="object-contain rounded-lg" />
                   <span className="font-bold text-sm text-white">Digital-Footprint</span>
                 </Link>
                 <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white cursor-pointer">
@@ -299,6 +299,8 @@ export default function StaffShell({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </header>
+
+        <SessionExpiryBanner loginPath="/staff/login" portalName="staff portal" />
 
         <main className="p-4 lg:p-6">
           {children}

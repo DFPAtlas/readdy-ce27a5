@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useStaffDetail, useStaffTeams, useApprovalAuthority, useTempAccess } from '@/hooks/useStaffData';
@@ -11,7 +11,7 @@ const TABS = [
   'Access History', 'Activity', 'Settings',
 ];
 
-export default function StaffDetailPage() {
+function StaffDetailPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const staffId = params.id as string;
@@ -272,5 +272,17 @@ export default function StaffDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function StaffDetailPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin" />
+      </div>
+    }>
+      <StaffDetailPageContent />
+    </Suspense>
   );
 }

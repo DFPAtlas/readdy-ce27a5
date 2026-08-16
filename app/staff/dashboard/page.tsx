@@ -190,6 +190,7 @@ export default function StaffDashboardPage() {
       const clientIds = [...new Set(projectsRes.data.map(p => p.client_id).filter(Boolean))];
       if (clientIds.length > 0) {
         const { data: clientsData } = await supabase.from('clients').select('id, company_name').in('id', clientIds);
+        if (cancelled()) return;
         if (clientsData) {
           clientsData.forEach(c => projectClientMap.set(c.id, c.company_name || ''));
         }
@@ -206,6 +207,7 @@ export default function StaffDashboardPage() {
       const threadIds = messagesRes.data.filter(m => m.project_id).map(m => m.project_id);
       if (threadIds.length > 0) {
         const { data: threadProjects } = await supabase.from('projects').select('id, name').in('id', [...new Set(threadIds)]);
+        if (cancelled()) return;
         if (threadProjects) threadProjects.forEach(p => threadProjectMap.set(p.id, p.name));
       }
       const requests: ClientRequest[] = messagesRes.data.slice(0, 10).map(m => ({
@@ -217,9 +219,11 @@ export default function StaffDashboardPage() {
         project_name: threadProjectMap.get(m.project_id) || projectMap.get(m.project_id),
         type: 'message',
       }));
+      if (cancelled()) return;
       setClientRequests(requests);
       setUnreadMessages(messagesRes.data.length);
     }
+    if (cancelled()) return;
     setRequestsLoading(false);
 
     const nowStr = new Date().toISOString();
@@ -228,6 +232,7 @@ export default function StaffDashboardPage() {
         ...t,
         project_name: projectMap.get(t.project_id),
       }));
+      if (cancelled()) return;
       setTasks(enriched);
 
       let dueCount = 0;
@@ -240,6 +245,7 @@ export default function StaffDashboardPage() {
       setDueToday(dueCount);
       setOverdue(overCount);
     }
+    if (cancelled()) return;
     setTasksLoading(false);
 
     if (projectsRes.data) {
@@ -253,6 +259,7 @@ export default function StaffDashboardPage() {
         if (isRisk) riskCount++;
         return { ...p, next_milestone_due: null };
       });
+      if (cancelled()) return;
       setProjects(enrichedProjects);
       setProjectsAtRisk(riskCount);
 
@@ -266,6 +273,7 @@ export default function StaffDashboardPage() {
           .order('due_date', { ascending: true, nullsFirst: false })
           .limit(activeProjectIds.length);
 
+        if (cancelled()) return;
         if (nextMilestones) {
           const seenProjects = new Set<string>();
           nextMilestones.forEach(m => {
@@ -281,6 +289,7 @@ export default function StaffDashboardPage() {
         }
       }
     }
+    if (cancelled()) return;
     setProjectsLoading(false);
 
     if (milestonesRes.data) {
@@ -288,8 +297,10 @@ export default function StaffDashboardPage() {
         .filter(m => m.due_date)
         .map(m => ({ ...m, project_name: projectMap.get(m.project_id) }))
         .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
+      if (cancelled()) return;
       setSchedule(scheduleItems);
     }
+    if (cancelled()) return;
     setScheduleLoading(false);
 
     if (activityRes.data) {
@@ -297,6 +308,7 @@ export default function StaffDashboardPage() {
       const actorMap = new Map<string, string>();
       if (actorIds.length > 0) {
         const { data: actors } = await supabase.from('staff_profiles').select('id, full_name').in('id', actorIds);
+        if (cancelled()) return;
         if (actors) actors.forEach(a => actorMap.set(a.id, a.full_name || 'Staff'));
       }
 
@@ -305,8 +317,10 @@ export default function StaffDashboardPage() {
         project_name: projectMap.get(a.project_id),
         actor_name: a.actor_id ? (actorMap.get(a.actor_id) || 'Staff') : 'System',
       }));
+      if (cancelled()) return;
       setActivities(enriched);
     }
+    if (cancelled()) return;
     setActivityLoading(false);
   };
 

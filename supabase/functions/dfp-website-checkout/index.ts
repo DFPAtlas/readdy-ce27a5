@@ -55,7 +55,6 @@ interface WebsitePackageDef {
   secondMilestoneMinor: number;
   finalMilestoneMinor: number;
   currency: string;
-  stripeProductId: string;
 }
 
 interface ExistingOrder {
@@ -77,7 +76,6 @@ const PACKAGE_CATALOGUE: Record<string, WebsitePackageDef> = {
     secondMilestoneMinor: 44850,
     finalMilestoneMinor: 29900,
     currency: "gbp",
-    stripeProductId: "prod_UxTamCwdOAaIne",
   },
   growth: {
     id: "growth",
@@ -87,7 +85,6 @@ const PACKAGE_CATALOGUE: Record<string, WebsitePackageDef> = {
     secondMilestoneMinor: 89850,
     finalMilestoneMinor: 59900,
     currency: "gbp",
-    stripeProductId: "prod_UxTaD11bI0G6kP",
   },
   commerce: {
     id: "commerce",
@@ -97,7 +94,6 @@ const PACKAGE_CATALOGUE: Record<string, WebsitePackageDef> = {
     secondMilestoneMinor: 149850,
     finalMilestoneMinor: 99900,
     currency: "gbp",
-    stripeProductId: "prod_UxTam9DB5tPaPn",
   },
 };
 
@@ -432,7 +428,15 @@ Deno.serve(async (req: Request) => {
         price_data: {
           currency: "gbp",
           unit_amount: pkg.depositMinor,
-          product: pkg.stripeProductId,
+          product_data: {
+            name: `DFP ${pkg.name} Website — Starting Payment`,
+            description: `50% starting payment for the ${pkg.name} website package. Full package price: £${(pkg.fullPriceMinor / 100).toFixed(2)}. Remaining balance payable through project milestones.`,
+            metadata: {
+              order_id: orderId,
+              package_id: pkg.id,
+              venture_code: "digital-footprint",
+            },
+          },
         },
       }],
       metadata,

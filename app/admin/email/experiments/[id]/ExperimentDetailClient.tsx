@@ -68,7 +68,7 @@ export default function ExperimentDetailClient({ params }: { params: { id: strin
   const loadExperiment = async () => {
     setLoading(true);
     const { data } = await supabase.from('email_experiments').select('*').eq('id',params.id).maybeSingle();
-    if(data)setExp(data as ExperimentDetail);else router.push('/admin/email/experiments');
+    if(data)setExp(data as ExperimentDetail);else setTimeout(() => router.push('/admin/email/experiments'), 0);
     setLoading(false);
   };
 

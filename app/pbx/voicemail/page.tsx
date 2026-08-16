@@ -2,124 +2,104 @@
 
 import PBXShell from '@/components/pbx/PBXShell';
 import PBXStatusBadge from '@/components/pbx/PBXStatusBadge';
-import PBXDetailDrawer, { DetailRow } from '@/components/pbx/PBXDetailDrawer';
-import { useState } from 'react';
-import { Voicemail, Play, Eye, UserPlus, CheckCircle, Archive, MessageSquare, Ticket } from 'lucide-react';
-
-// TODO: Replace with Supabase - pbx_voicemails table
-const mockVoicemails = [
-  { id: '1', caller: '+44 20 7946 0456', callerName: 'Sarah Williams', calledNumber: '+44 20 7946 0100', time: '2026-07-03 14:05', duration: '0:48', assignedUser: '—', status: 'new', transcription: 'done', aiSummary: 'done' },
-  { id: '2', caller: '+44 20 7946 0234', callerName: 'Unknown', calledNumber: '+44 20 7946 0100', time: '2026-07-03 11:20', duration: '1:12', assignedUser: 'John Doe', status: 'listened', transcription: 'done', aiSummary: 'done' },
-  { id: '3', caller: '+44 20 7946 0789', callerName: 'TechCorp Ltd', calledNumber: '+44 20 7946 0100', time: '2026-07-02 16:45', duration: '0:35', assignedUser: 'Sarah Johnson', status: 'actioned', transcription: 'done', aiSummary: 'done' },
-  { id: '4', caller: '+1 212 555 0199', callerName: 'James Wilson', calledNumber: '+44 20 7946 0101', time: '2026-07-02 09:15', duration: '2:05', assignedUser: '—', status: 'new', transcription: 'pending', aiSummary: 'none' },
-  { id: '5', caller: '+44 20 7946 0321', callerName: 'Unknown', calledNumber: '+44 20 7946 0101', time: '2026-07-01 15:30', duration: '0:22', assignedUser: 'Mike Chen', status: 'archived', transcription: 'done', aiSummary: 'done' },
-];
+import PBXEmptyState from '@/components/pbx/PBXEmptyState';
+import { usePBXVoicemailBoxes, usePBXVoicemailMessages } from '@/hooks/usePBXData';
+import { Voicemail, RefreshCw } from 'lucide-react';
 
 export default function PBXVoicemailPage() {
-  const [voicemails, setVoicemails] = useState(mockVoicemails);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [selected, setSelected] = useState<any>(null);
-  const [filter, setFilter] = useState('all');
+  const { boxes, loading: boxesLoading, refetch: refetchBoxes } = usePBXVoicemailBoxes();
+  const { messages, loading: messagesLoading, refetch: refetchMessages } = usePBXVoicemailMessages();
 
-  const filtered = filter === 'all' ? voicemails : voicemails.filter(v => v.status === filter);
-
-  const updateStatus = (id: string, status: string) => {
-    setVoicemails(voicemails.map(v => v.id === id ? { ...v, status } : v));
-  };
+  const refresh = () => { refetchBoxes(); refetchMessages(); };
 
   return (
     <PBXShell>
       <div className="space-y-5">
-        <div>
-          <h1 className="text-xl font-bold text-white">Voicemail</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Manage voicemail messages</p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          {[
-            { value: 'all', label: 'All' },
-            { value: 'new', label: 'New' },
-            { value: 'listened', label: 'Listened' },
-            { value: 'actioned', label: 'Actioned' },
-            { value: 'archived', label: 'Archived' },
-          ].map(tab => (
-            <button key={tab.value} onClick={() => setFilter(tab.value)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${filter === tab.value ? 'bg-[#06B6D4]/15 text-[#06B6D4]' : 'text-slate-400 bg-white/[0.03] hover:bg-white/5'}`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((vm) => (
-            <div key={vm.id} className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-4 hover:border-[rgba(255,255,255,0.10)] transition-all">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Voicemail className="w-4 h-4 text-[#F59E0B]" />
-                  <div>
-                    <p className="text-sm font-medium text-white">{vm.callerName}</p>
-                    <p className="text-xs text-slate-500 font-mono">{vm.caller}</p>
-                  </div>
-                </div>
-                <PBXStatusBadge status={vm.status} />
-              </div>
-              <div className="space-y-1.5 text-xs mb-3">
-                <div className="flex justify-between"><span className="text-slate-500">To</span><span className="text-slate-300 font-mono">{vm.calledNumber}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Time</span><span className="text-slate-300">{vm.time}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Duration</span><span className="text-slate-300">{vm.duration}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Assigned</span><span className="text-slate-300">{vm.assignedUser}</span></div>
-              </div>
-              <div className="flex items-center gap-1 pt-3 border-t border-[rgba(255,255,255,0.04)]">
-                <button className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-[#06B6D4] hover:bg-white/5 cursor-pointer" title="Play"><Play className="w-3.5 h-3.5" /></button>
-                <button onClick={() => { setSelected(vm); setDetailOpen(true); }} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-[#F59E0B] hover:bg-white/5 cursor-pointer" title="View"><Eye className="w-3.5 h-3.5" /></button>
-                <button onClick={() => updateStatus(vm.id, 'listened')} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-[#10B981] hover:bg-white/5 cursor-pointer" title="Mark Listened"><CheckCircle className="w-3.5 h-3.5" /></button>
-                <button onClick={() => updateStatus(vm.id, 'archived')} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-slate-300 hover:bg-white/5 cursor-pointer ml-auto" title="Archive"><Archive className="w-3.5 h-3.5" /></button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {filtered.length === 0 && (
-          <div className="text-center py-12">
-            <Voicemail className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-            <p className="text-sm text-slate-500">No voicemails found</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-white">Voicemail</h1>
+            <p className="text-sm text-slate-400 mt-0.5">Voicemail boxes and messages</p>
           </div>
-        )}
+          <button onClick={refresh} className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-[rgba(255,255,255,0.08)] text-slate-400 rounded-xl text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer whitespace-nowrap">
+            <RefreshCw className="w-3.5 h-3.5" />Refresh
+          </button>
+        </div>
 
-        <PBXDetailDrawer open={detailOpen} onClose={() => setDetailOpen(false)} title="Voicemail Details">
-          {selected && (
-            <div className="space-y-5">
-              <div>
-                <p className="text-lg font-bold text-white">{selected.callerName}</p>
-                <p className="text-sm text-slate-400 font-mono">{selected.caller}</p>
-              </div>
-              <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-4">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Message Info</h4>
-                <DetailRow label="Called Number" value={selected.calledNumber} mono />
-                <DetailRow label="Duration" value={selected.duration} />
-                <DetailRow label="Status" value={<PBXStatusBadge status={selected.status} />} />
-                <DetailRow label="Assigned To" value={selected.assignedUser} />
-                <DetailRow label="Transcription" value={selected.transcription === 'done' ? 'Complete' : 'Pending'} />
-                <DetailRow label="AI Summary" value={selected.aiSummary === 'done' ? 'Caller following up on contract renewal. Urgent callback requested.' : 'None'} />
-              </div>
-              <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-4">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Transcription</h4>
-                <p className="text-sm text-slate-300 leading-relaxed">
-                  &quot;Hi, this is Sarah Williams calling about the contract renewal we discussed last week. I need to get the updated pricing by end of day tomorrow. Please call me back on this number. Thanks.&quot;
-                </p>
-              </div>
-              <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-4">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Actions</h4>
-                <div className="flex flex-wrap gap-2">
-                  <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-slate-300 border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] transition-colors cursor-pointer"><MessageSquare className="w-3 h-3" /> Send SMS</button>
-                  <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-slate-300 border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] transition-colors cursor-pointer"><Ticket className="w-3 h-3" /> Create Ticket</button>
-                  <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-slate-300 border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] transition-colors cursor-pointer"><UserPlus className="w-3 h-3" /> Assign User</button>
-                </div>
-              </div>
+        <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[rgba(255,255,255,0.06)]">
+            <h3 className="text-sm font-semibold text-white">Voicemail Boxes</h3>
+          </div>
+          {boxesLoading ? (
+            <div className="flex items-center justify-center h-32"><div className="w-7 h-7 border-2 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin" /></div>
+          ) : boxes.length === 0 ? (
+            <PBXEmptyState icon={<Voicemail className="w-7 h-7 text-slate-500" />} title="No voicemail boxes" description="Voicemail boxes are created by Digital-Footprint for each extension during provisioning." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-slate-500 border-b border-[rgba(255,255,255,0.06)]">
+                    <th className="px-5 py-2.5 font-medium">Extension</th>
+                    <th className="px-5 py-2.5 font-medium">Owner</th>
+                    <th className="px-5 py-2.5 font-medium">Notification</th>
+                    <th className="px-5 py-2.5 font-medium">Transcription</th>
+                    <th className="px-5 py-2.5 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {boxes.map((b) => (
+                    <tr key={b.id} className="border-b border-[rgba(255,255,255,0.03)] hover:bg-white/[0.02]">
+                      <td className="px-5 py-2.5 text-slate-300 font-mono text-xs">{b.extension_number || '—'}</td>
+                      <td className="px-5 py-2.5 text-white text-sm">{b.pbx_users?.name || '—'}</td>
+                      <td className="px-5 py-2.5 text-slate-400 text-xs">{b.notification_email || '—'}</td>
+                      <td className="px-5 py-2.5">{b.transcription_enabled ? <span className="text-[#10B981] text-xs">● On</span> : <span className="text-slate-500 text-xs">—</span>}</td>
+                      <td className="px-5 py-2.5"><PBXStatusBadge status={b.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
-        </PBXDetailDrawer>
+        </div>
+
+        <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[rgba(255,255,255,0.06)]">
+            <h3 className="text-sm font-semibold text-white">Messages</h3>
+          </div>
+          {messagesLoading ? (
+            <div className="flex items-center justify-center h-32"><div className="w-7 h-7 border-2 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin" /></div>
+          ) : messages.length === 0 ? (
+            <PBXEmptyState icon={<Voicemail className="w-7 h-7 text-slate-500" />} title="No voicemail messages" description="Voicemail messages appear here once your provider connection is live and recording calls." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-slate-500 border-b border-[rgba(255,255,255,0.06)]">
+                    <th className="px-5 py-2.5 font-medium">Received</th>
+                    <th className="px-5 py-2.5 font-medium">Caller</th>
+                    <th className="px-5 py-2.5 font-medium">Called</th>
+                    <th className="px-5 py-2.5 font-medium">Duration</th>
+                    <th className="px-5 py-2.5 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {messages.map((m) => (
+                    <tr key={m.id} className="border-b border-[rgba(255,255,255,0.03)] hover:bg-white/[0.02]">
+                      <td className="px-5 py-2.5 text-slate-400 font-mono text-xs">{m.received_at ? new Date(m.received_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                      <td className="px-5 py-2.5 text-slate-300 font-mono text-xs">{m.caller_number || '—'}</td>
+                      <td className="px-5 py-2.5 text-slate-300 font-mono text-xs">{m.called_number || '—'}</td>
+                      <td className="px-5 py-2.5 text-slate-400 font-mono text-xs">{m.duration_seconds != null ? `${Math.floor(m.duration_seconds / 60)}:${String(m.duration_seconds % 60).padStart(2, '0')}` : '—'}</td>
+                      <td className="px-5 py-2.5"><PBXStatusBadge status={m.is_read ? 'listened' : 'new'} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-[#1E293B]/50 rounded-xl border border-[rgba(255,255,255,0.04)] p-4">
+          <p className="text-xs text-slate-500">Voicemail recordings are stored in private storage and only accessible to authorised users.</p>
+        </div>
       </div>
     </PBXShell>
   );

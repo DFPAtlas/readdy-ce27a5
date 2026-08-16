@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 import {
   Monitor, CheckCircle2, AlertTriangle, XCircle, Clock,
-  Play, Eye, Plus, Search, Filter, ChevronDown, ArrowRight,
-  Sparkles, Zap, Image, ShieldCheck,
+  Play, Eye, Plus, Search, ArrowRight,
+  Sparkles, Image, ShieldCheck,
 } from 'lucide-react';
 
 const PRESET_LABELS: Record<string, string> = {
@@ -21,7 +22,7 @@ const PRESET_LABELS: Record<string, string> = {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   waiting: { label: 'Waiting', color: 'text-slate-400', bg: 'bg-slate-400/10', icon: Clock },
-  running: { label: 'Running', color: 'text-sky-400', bg: 'bg-sky-400/10', icon: Zap },
+  running: { label: 'Running', color: 'text-sky-400', bg: 'bg-sky-400/10', icon: Play },
   needs_review: { label: 'Needs Review', color: 'text-amber-400', bg: 'bg-amber-400/10', icon: AlertTriangle },
   passed: { label: 'Passed', color: 'text-emerald-400', bg: 'bg-emerald-400/10', icon: CheckCircle2 },
   passed_warnings: { label: 'Passed (Warnings)', color: 'text-yellow-400', bg: 'bg-yellow-400/10', icon: AlertTriangle },
@@ -30,26 +31,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   cancelled: { label: 'Cancelled', color: 'text-slate-500', bg: 'bg-slate-500/10', icon: XCircle },
   expired: { label: 'Expired', color: 'text-slate-500', bg: 'bg-slate-500/10', icon: Clock },
 };
-
-const MOCK_TESTS = [
-  { id: '1', name: 'Welcome Template - Core Check', source_type: 'template', source_name: 'Welcome Email v3', status: 'passed', preset: 'core', client_count: 8, passed_count: 8, failed_count: 0, warning_count: 0, created_at: '2026-07-18T14:30:00Z', language: 'en' },
-  { id: '2', name: 'Monthly Newsletter - Full Matrix', source_type: 'campaign', source_name: 'July Newsletter', status: 'needs_review', preset: 'full', client_count: 16, passed_count: 12, failed_count: 1, warning_count: 3, created_at: '2026-07-18T10:15:00Z', language: 'en' },
-  { id: '3', name: 'Invoice Reminder - Quick', source_type: 'transactional', source_name: 'Invoice Due Reminder', status: 'passed_warnings', preset: 'quick', client_count: 4, passed_count: 3, failed_count: 0, warning_count: 1, created_at: '2026-07-17T16:45:00Z', language: 'en' },
-  { id: '4', name: 'Welcome DE - Core Clients', source_type: 'template', source_name: 'Willkommen Email v2', status: 'running', preset: 'core', client_count: 8, passed_count: 0, failed_count: 0, warning_count: 0, created_at: '2026-07-19T09:00:00Z', language: 'de' },
-  { id: '5', name: 'Dark Mode Audit - All Newsletters', source_type: 'template', source_name: 'Newsletter Base', status: 'failed', preset: 'dark_mode', client_count: 6, passed_count: 2, failed_count: 4, warning_count: 0, created_at: '2026-07-16T11:20:00Z', language: 'en' },
-  { id: '6', name: 'Outlook Desktop Focus', source_type: 'campaign', source_name: 'Q3 Promo', status: 'passed', preset: 'outlook', client_count: 5, passed_count: 5, failed_count: 0, warning_count: 0, created_at: '2026-07-15T08:00:00Z', language: 'en' },
-  { id: '7', name: 'Arabic RTL - Full Check', source_type: 'template', source_name: 'Welcome AR', status: 'needs_review', preset: 'full', client_count: 16, passed_count: 10, failed_count: 2, warning_count: 4, created_at: '2026-07-15T13:10:00Z', language: 'ar' },
-  { id: '8', name: 'Images Blocked Test', source_type: 'template', source_name: 'Brand Header v1', status: 'passed', preset: 'images_blocked', client_count: 4, passed_count: 4, failed_count: 0, warning_count: 0, created_at: '2026-07-14T17:30:00Z', language: 'en' },
-];
-
-const STAT_CARDS = [
-  { key: 'waiting', label: 'Waiting', icon: Clock, color: 'text-slate-400', bg: 'bg-slate-400/10', count: 1 },
-  { key: 'running', label: 'Running', icon: Zap, color: 'text-sky-400', bg: 'bg-sky-400/10', count: 1 },
-  { key: 'passed', label: 'Passed', icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-400/10', count: 3 },
-  { key: 'warnings', label: 'With Warnings', icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-400/10', count: 1 },
-  { key: 'failed', label: 'Failed', icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10', count: 1 },
-  { key: 'regressions', label: 'Recent Regressions', icon: AlertTriangle, color: 'text-orange-400', bg: 'bg-orange-400/10', count: 2 },
-];
 
 const SOURCE_TYPE_LABELS: Record<string, string> = {
   template: 'Template',
@@ -60,17 +41,99 @@ const SOURCE_TYPE_LABELS: Record<string, string> = {
   plain_text: 'Plain Text',
 };
 
+interface RenderTest {
+  id: string;
+  name: string;
+  source_type: string;
+  source_name: string;
+  status: string;
+  preset: string;
+  client_count: number;
+  passed_count: number;
+  failed_count: number;
+  warning_count: number;
+  created_at: string | null;
+  language: string;
+}
+
+function summaryCount(v: unknown, key: string): number {
+  if (v && typeof v === 'object') {
+    const obj = v as Record<string, unknown>;
+    if (typeof obj[key] === 'number') return obj[key] as number;
+  }
+  return 0;
+}
+
 export default function RenderTestsDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
+  const [tests, setTests] = useState<RenderTest[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = MOCK_TESTS.filter((t) => {
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('email_render_tests')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      const rows = ((data || []) as Record<string, unknown>[]).map((t) => ({
+        id: t.id as string,
+        name: (t.name as string) || 'Untitled test',
+        source_type: (t.source_type as string) || 'template',
+        source_name: (t.source_id as string) || '—',
+        status: (t.status as string) || 'waiting',
+        preset: (t.preset as string) || 'core',
+        client_count: typeof t.client_count === 'number' ? (t.client_count as number) : 0,
+        passed_count: summaryCount(t.results_summary, 'passed'),
+        failed_count: summaryCount(t.results_summary, 'failed'),
+        warning_count: summaryCount(t.results_summary, 'warning'),
+        created_at: (t.created_at as string) || null,
+        language: (t.language as string) || 'en',
+      }));
+      setTests(rows);
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const filtered = tests.filter((t) => {
     if (statusFilter !== 'all' && t.status !== statusFilter) return false;
     if (sourceFilter !== 'all' && t.source_type !== sourceFilter) return false;
     if (searchQuery && !t.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
+
+  const waiting = tests.filter((t) => t.status === 'waiting').length;
+  const running = tests.filter((t) => t.status === 'running').length;
+  const passed = tests.filter((t) => t.status === 'passed' || t.status === 'accepted_exception').length;
+  const warnings = tests.filter((t) => t.status === 'passed_warnings').length;
+  const failed = tests.filter((t) => t.status === 'failed').length;
+  const regressions = tests.filter((t) => t.failed_count > 0 || t.status === 'failed').length;
+
+  const statCards = [
+    { key: 'waiting', label: 'Waiting', icon: Clock, color: 'text-slate-400', bg: 'bg-slate-400/10', count: waiting },
+    { key: 'running', label: 'Running', icon: Play, color: 'text-sky-400', bg: 'bg-sky-400/10', count: running },
+    { key: 'passed', label: 'Passed', icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-400/10', count: passed },
+    { key: 'warnings', label: 'With Warnings', icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-400/10', count: warnings },
+    { key: 'failed', label: 'Failed', icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10', count: failed },
+    { key: 'regressions', label: 'Regressions', icon: AlertTriangle, color: 'text-orange-400', bg: 'bg-orange-400/10', count: regressions },
+  ];
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="h-24 bg-[#121215] rounded-xl animate-pulse" />
+          ))}
+        </div>
+        <div className="h-72 bg-[#121215] rounded-2xl animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -96,7 +159,7 @@ export default function RenderTestsDashboard() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {STAT_CARDS.map((card) => {
+        {statCards.map((card) => {
           const Icon = card.icon;
           return (
             <div key={card.key} className="bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-xl p-4">
@@ -150,86 +213,84 @@ export default function RenderTestsDashboard() {
       </div>
 
       <div className="bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[rgba(255,255,255,0.06)]">
-                <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Test</th>
-                <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Source</th>
-                <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Preset</th>
-                <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Clients</th>
-                <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Language</th>
-                <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Date</th>
-                <th className="text-right px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((test) => {
-                const st = STATUS_CONFIG[test.status];
-                const StatusIcon = st.icon;
-                return (
-                  <tr key={test.id} className="border-b border-[rgba(255,255,255,0.03)] hover:bg-white/[0.02] transition-colors">
-                    <td className="px-5 py-4">
-                      <Link href={`/admin/email/render-tests/${test.id}`} className="text-sm font-medium text-white hover:text-violet-400 transition-colors cursor-pointer">
-                        {test.name}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="text-xs text-slate-400">{SOURCE_TYPE_LABELS[test.source_type]}</span>
-                      <span className="text-xs text-slate-500 ml-1">— {test.source_name}</span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="text-xs text-slate-400">{PRESET_LABELS[test.preset] || test.preset}</span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-white font-medium">{test.passed_count}/{test.client_count}</span>
-                        {test.failed_count > 0 && <span className="text-xs text-red-400">{test.failed_count} failed</span>}
-                        {test.warning_count > 0 && <span className="text-xs text-amber-400">{test.warning_count} warn</span>}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="text-xs text-slate-400 uppercase">{test.language || 'en'}</span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold ${st.color} ${st.bg}`}>
-                        <StatusIcon className="w-3 h-3" />
-                        {st.label}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="text-xs text-slate-400">
-                        {new Date(test.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Link
-                          href={`/admin/email/render-tests/${test.id}`}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
-                          title="View Results"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Link>
-                        {test.status === 'waiting' && (
-                          <button className="w-8 h-8 flex items-center justify-center rounded-lg text-sky-400 hover:text-white hover:bg-sky-400/10 transition-all cursor-pointer" title="Start Test">
-                            <Play className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {filtered.length === 0 && (
-          <div className="text-center py-12">
+        {filtered.length === 0 ? (
+          <div className="text-center py-16">
             <Monitor className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-            <p className="text-sm text-slate-400">No render tests found</p>
-            <p className="text-xs text-slate-500 mt-1">Create your first render test to check email-client compatibility</p>
+            <p className="text-sm text-slate-400">{tests.length === 0 ? 'No render tests recorded yet' : 'No render tests match your filters'}</p>
+            {tests.length === 0 && (
+              <p className="text-xs text-slate-500 mt-1">Create your first render test to check email-client compatibility</p>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                  <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Test</th>
+                  <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Source</th>
+                  <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Preset</th>
+                  <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Clients</th>
+                  <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Language</th>
+                  <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Date</th>
+                  <th className="text-right px-5 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((test) => {
+                  const st = STATUS_CONFIG[test.status] || STATUS_CONFIG.waiting;
+                  const StatusIcon = st.icon;
+                  return (
+                    <tr key={test.id} className="border-b border-[rgba(255,255,255,0.03)] hover:bg-white/[0.02] transition-colors">
+                      <td className="px-5 py-4">
+                        <Link href={`/admin/email/render-tests/${test.id}`} className="text-sm font-medium text-white hover:text-violet-400 transition-colors cursor-pointer">
+                          {test.name}
+                        </Link>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-xs text-slate-400">{SOURCE_TYPE_LABELS[test.source_type] || test.source_type}</span>
+                        <span className="text-xs text-slate-500 ml-1">— {test.source_name}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-xs text-slate-400">{PRESET_LABELS[test.preset] || test.preset}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-white font-medium">{test.passed_count}/{test.client_count}</span>
+                          {test.failed_count > 0 && <span className="text-xs text-red-400">{test.failed_count} failed</span>}
+                          {test.warning_count > 0 && <span className="text-xs text-amber-400">{test.warning_count} warn</span>}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-xs text-slate-400 uppercase">{test.language || 'en'}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold ${st.color} ${st.bg}`}>
+                          <StatusIcon className="w-3 h-3" />
+                          {st.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-xs text-slate-400">
+                          {test.created_at ? new Date(test.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Link
+                            href={`/admin/email/render-tests/${test.id}`}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
+                            title="View Results"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

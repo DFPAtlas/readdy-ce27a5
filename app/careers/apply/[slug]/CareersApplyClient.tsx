@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { notifyLeadSubmission } from '@/lib/submit-enquiry';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { motion } from '@/components/motion';
@@ -62,12 +63,10 @@ export default function CareersApplyClient({ slug }: { slug: string }) {
     setFormError('');
 
     try {
-      const { data: existing, error: dupError } = await supabase
-        .from('career_applications')
-        .select('id')
-        .eq('vacancy_id', vacancy?.id)
-        .eq('candidate_email', formValues.email)
-        .maybeSingle();
+      const { data: isDuplicate, error: dupError } = await supabase.rpc('has_career_application', {
+        p_vacancy_id: vacancy?.id,
+        p_email: formValues.email,
+      });
 
       if (dupError) {
         setFormError('Unable to verify your application. Please try again.');
@@ -75,13 +74,13 @@ export default function CareersApplyClient({ slug }: { slug: string }) {
         return;
       }
 
-      if (existing) {
+      if (isDuplicate) {
         setFormError('It looks like you have already submitted an application for this role. If you need to update your application or withdraw, please contact us.');
         setFormState('error');
         return;
       }
 
-      const { error: appError } = await supabase.from('career_applications').insert({
+      const { data: insertedApp, error: appError } = await supabase.from('career_applications').insert({
         vacancy_id: vacancy?.id,
         candidate_name: formValues.fullName,
         candidate_email: formValues.email,
@@ -93,9 +92,9 @@ export default function CareersApplyClient({ slug }: { slug: string }) {
         adjustment_request: formValues.adjustmentRequest || null,
         future_opportunity_consent: formValues.futureConsent,
         source: 'careers_page',
-        application_status: 'Submitted',
+        application_status: 'submitted',
         submitted_at: new Date().toISOString(),
-      });
+      }).select('id');
 
       if (appError) {
         setFormError(appError.message);
@@ -103,27 +102,8 @@ export default function CareersApplyClient({ slug }: { slug: string }) {
         return;
       }
 
-      const payload = new FormData(e.currentTarget);
-      payload.delete('website_alt');
-
-      const formResponse = await fetch('https://readdy.ai/api/form/d9enji564bc39gr2q6hg', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(payload as unknown as Record<string, string>).toString(),
-      });
-
-      const responseText = await formResponse.text();
-      let parsed: Record<string, unknown> | null = null;
-      try { parsed = JSON.parse(responseText); } catch {}
-
-      if (!formResponse.ok || !parsed || parsed.code !== 'OK') {
-        const serverMsg = (parsed && (parsed as Record<string, unknown>).meta && ((parsed as Record<string, unknown>).meta as Record<string, unknown>).message)
-          || (parsed && (parsed as Record<string, unknown>).message)
-          || responseText
-          || 'An error occurred. Please try again.';
-        setFormError(typeof serverMsg === 'string' ? serverMsg : 'An error occurred. Please try again.');
-        setFormState('error');
-        return;
+      if (insertedApp?.[0]?.id) {
+        notifyLeadSubmission('career_applications', insertedApp[0].id);
       }
 
       try {

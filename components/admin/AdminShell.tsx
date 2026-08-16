@@ -16,6 +16,7 @@ import {
   Stethoscope, Command, ListTodo, Palette, BarChart3, Headphones,
 } from 'lucide-react';
 import CommandPaletteWrapper from './CommandPaletteWrapper';
+import SessionExpiryBanner from './SessionExpiryBanner';
 
 const navGroups = [
   {
@@ -80,14 +81,14 @@ const navGroups = [
       { href: '/admin/uat', icon: Bug, label: 'UAT Control Room' },
       { href: '/admin/uat/projects', icon: FolderKanban, label: 'Projects' },
       { href: '/admin/uat/jobs', icon: Briefcase, label: 'Jobs' },
-      { href: '/admin/uat/applications', icon: FileText, label: 'Applications' },
+      { href: '/admin/uat/applications', icon: FileText, label: 'Job Applications' },
+      { href: '/admin/uat/tester-applications', icon: Users, label: 'Tester Applications' },
       { href: '/admin/uat/assignments', icon: ClipboardCheck, label: 'Assignments' },
       { href: '/admin/uat/feedback', icon: Bug, label: 'Feedback & Triage' },
       { href: '/admin/uat/environments', icon: Server, label: 'Environments' },
       { href: '/admin/uat/testers', icon: ClipboardCheck, label: 'Testers' },
       { href: '/admin/uat/payments', icon: DollarSign, label: 'Payments' },
       { href: '/admin/uat/reports', icon: TrendingUp, label: 'Reports' },
-      { href: '/admin/uat/agent', icon: Bot, label: 'AI UAT Agent' },
     ],
   },
   {
@@ -124,6 +125,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const [profileOpen, setProfileOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const { profile, sessionUser, loading: profileLoading } = useAdminProfile();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const userInitials = profile?.full_name
     ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -166,6 +168,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   }, []);
 
   const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
     await supabase.auth.signOut();
     router.replace('/admin/login');
   };
@@ -253,10 +257,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <div className="p-3 border-t border-[rgba(255,255,255,0.08)]">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer w-full"
+          disabled={loggingOut}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer w-full disabled:opacity-50"
         >
           <LogOut className="w-[16px] h-[16px] shrink-0" />
-          <span>Logout</span>
+          <span>{loggingOut ? 'Signing out...' : 'Logout'}</span>
         </button>
       </div>
     </>
@@ -345,8 +350,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                         <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-white/5 hover:text-white transition-colors cursor-pointer">
                           View Website
                         </Link>
-                        <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer w-full">
-                          <LogOut className="w-4 h-4" /> Logout
+                        <button onClick={handleLogout} disabled={loggingOut} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer w-full disabled:opacity-50">
+                          <LogOut className="w-4 h-4" /> {loggingOut ? 'Signing out...' : 'Logout'}
                         </button>
                       </div>
                     </motion.div>
@@ -356,6 +361,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </header>
+
+        <SessionExpiryBanner loginPath="/admin/login" portalName="admin portal" />
 
         <div className="p-6 lg:p-8">
           {children}

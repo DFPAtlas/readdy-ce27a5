@@ -1,7 +1,10 @@
+'use client';
+
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { AnimatePresence, motion } from '@/components/motion';
 import { NotificationDropdown } from '@/components/portal/NotificationDropdown';
+import SessionExpiryBanner from '@/components/admin/SessionExpiryBanner';
 import {
   ChevronDown,
   FileText,
@@ -95,7 +98,7 @@ export default function PortalShell({ children }: PortalShellProps) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return;
       if (!session) {
-        setTimeout(() => router.replace('/portal/login'), 0);
+        setTimeout(() => { if (!cancelled) router.replace('/portal/login'); }, 0);
         return;
       }
 
@@ -118,7 +121,7 @@ export default function PortalShell({ children }: PortalShellProps) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return;
       if (event === 'SIGNED_OUT' || !session) {
-        setTimeout(() => router.replace('/portal/login'), 0);
+        setTimeout(() => { if (!cancelled) router.replace('/portal/login'); }, 0);
       }
     });
 
@@ -388,6 +391,8 @@ export default function PortalShell({ children }: PortalShellProps) {
             </div>
           </div>
         </header>
+
+        <SessionExpiryBanner loginPath="/portal/login" portalName="client portal" />
 
         <main id="main-content" className="px-4 py-6 sm:px-6 lg:px-8 lg:py-7">
           {children}

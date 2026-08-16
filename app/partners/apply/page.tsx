@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { partnerTypeConfig } from '@/lib/cms-definitions';
+import { submitEnquiry } from '@/lib/submit-enquiry';
 
 function ApplyForm() {
   const searchParams = useSearchParams();
@@ -32,29 +33,27 @@ function ApplyForm() {
     setFormError('');
 
     try {
-      const payload = new URLSearchParams();
-      for (const [key, value] of formData.entries()) {
-        if (key !== 'contact_alt') {
-          payload.append(key, value as string);
-        }
-      }
+      const result = await submitEnquiry('partner_applications', {
+        application_type: formData.get('application_type') as string,
+        company_name: (formData.get('company_name') as string) || null,
+        applicant_name: (formData.get('applicant_name') as string) || null,
+        email: (formData.get('email') as string) || null,
+        telephone: (formData.get('telephone') as string) || null,
+        website: (formData.get('website') as string) || null,
+        region: (formData.get('region') as string) || null,
+        proposed_relationship: (formData.get('proposed_relationship') as string) || null,
+        experience_summary: (formData.get('experience_summary') as string) || null,
+        conflict_declaration: (formData.get('conflict_declaration') as string) || null,
+        privacy_acknowledged_at: formData.get('privacy_acknowledged') === 'on' ? new Date().toISOString() : null,
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+      }, true);
 
-      const response = await fetch('https://readdy.ai/api/form/d9engvmdn0rfb35c6780', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: payload.toString(),
-      });
-
-      const responseText = await response.text();
-      let parsed: any;
-      try { parsed = JSON.parse(responseText); } catch { parsed = null; }
-
-      if (response.ok && parsed?.code === 'OK') {
+      if (result.code === 'OK') {
         setFormState('success');
         form.reset();
       } else {
-        const serverMsg = parsed?.meta?.message || parsed?.message || responseText || 'Something went wrong. Please try again.';
-        setFormError(serverMsg);
+        setFormError(result.message);
         setFormState('error');
       }
     } catch {

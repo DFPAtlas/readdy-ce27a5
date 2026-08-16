@@ -89,7 +89,7 @@ export default function UATTesterTermsPage() {
         .maybeSingle();
 
       if (existing) {
-        router.replace('/uat-testing/terms/complete');
+        setTimeout(() => router.replace('/uat-testing/terms/complete'), 0);
         return;
       }
 
@@ -166,7 +166,7 @@ export default function UATTesterTermsPage() {
 
       if (!response.ok) {
         if (data.alreadyAccepted) {
-          router.replace('/uat-testing/terms/complete');
+          setTimeout(() => router.replace('/uat-testing/terms/complete'), 0);
           return;
         }
         setServerError(data.error || data.detail || 'Submission failed. Please try again.');

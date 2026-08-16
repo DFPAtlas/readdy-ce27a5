@@ -21,13 +21,20 @@ export default function BusinessSystemSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const latestProgress = useRef(0);
+  const mountedRef = useRef(true);
 
   const flush = useCallback(() => {
     rafRef.current = null;
+    if (!mountedRef.current) return;
     const progress = latestProgress.current;
     const layer = Math.floor(progress * layers.length);
     setActiveLayer(Math.min(layer, layers.length - 1));
     setDataPulsePos(Math.min(progress, 1));
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
   }, []);
 
   useEffect(() => {
@@ -109,8 +116,8 @@ export default function BusinessSystemSection() {
             style={{
               transform: `translateY(calc(${dataPulsePos * 100}% - 2.5px))`,
               top: 0,
-              backgroundColor: activeLayer < layers.length ? layers[Math.min(activeLayer, layers.length - 1)].color : '#06B6D4',
-              boxShadow: `0 0 12px ${layers[Math.min(activeLayer, layers.length - 1)].color}80`,
+              backgroundColor: layers.length > 0 && activeLayer < layers.length ? (layers[Math.min(activeLayer, layers.length - 1)]?.color ?? '#06B6D4') : '#06B6D4',
+              boxShadow: `0 0 12px ${(layers.length > 0 && activeLayer < layers.length ? (layers[Math.min(activeLayer, layers.length - 1)]?.color ?? '#06B6D4') : '#06B6D4')}80`,
               opacity: dataPulsePos > 0 ? 1 : 0,
               transition: 'background-color 400ms ease, box-shadow 400ms ease, opacity 400ms ease',
             }}

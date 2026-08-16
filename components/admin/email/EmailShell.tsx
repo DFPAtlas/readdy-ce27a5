@@ -63,6 +63,7 @@ export default function EmailShell({ children }: { children: React.ReactNode }) 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ id: string; name: string; category: string }[]>([]);
   const [searching, setSearching] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const { profile, sessionUser } = useAdminProfile();
 
   const userInitials = profile?.full_name
@@ -104,8 +105,11 @@ export default function EmailShell({ children }: { children: React.ReactNode }) 
   }, []);
 
   const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
     await supabase.auth.signOut();
     router.replace('/admin/login');
+    router.refresh();
   };
 
   const handleSearch = useCallback(async (q: string) => {
@@ -233,10 +237,11 @@ export default function EmailShell({ children }: { children: React.ReactNode }) 
         </button>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer w-full"
+          disabled={loggingOut}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer w-full disabled:opacity-50"
         >
           <LogOut className="w-[16px] h-[16px] shrink-0" />
-          {!collapsed && <span>Logout</span>}
+          {!collapsed && <span>{loggingOut ? 'Signing out...' : 'Logout'}</span>}
         </button>
       </div>
     </>
@@ -417,8 +422,8 @@ export default function EmailShell({ children }: { children: React.ReactNode }) 
                         <Link href="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-white/[0.04] hover:text-white transition-colors cursor-pointer">
                           View Website
                         </Link>
-                        <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer w-full">
-                          <LogOut className="w-4 h-4" /> Logout
+                        <button onClick={handleLogout} disabled={loggingOut} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer w-full disabled:opacity-50">
+                          <LogOut className="w-4 h-4" /> {loggingOut ? 'Signing out...' : 'Logout'}
                         </button>
                       </div>
                     </motion.div>

@@ -2,9 +2,9 @@ import TicketDetail from './TicketDetail';
 
 export async function generateStaticParams() {
   return [
-    { id: 'placeholder-1' },
-    { id: 'placeholder-2' },
-    { id: 'placeholder-3' },
+    { id: '1' },
+    { id: '2' },
+    { id: '3' },
   ];
 }
 

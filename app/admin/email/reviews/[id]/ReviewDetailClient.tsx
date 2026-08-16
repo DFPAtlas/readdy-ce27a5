@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 import {
   ArrowLeft, FileCheck, Users, Clock, MessageSquare, CheckCircle2, XCircle,
   RotateCcw, Ban, Eye, ExternalLink, ShieldCheck, AlertTriangle,
-  ChevronDown, MoreVertical, Send, Plus, Copy, History
+  ChevronDown, MoreVertical, Send, Plus, Copy, History, Loader2,
 } from 'lucide-react';
 
 interface Reviewer {
@@ -14,7 +15,7 @@ interface Reviewer {
   email: string;
   company: string;
   role: string;
-  reviewerType: 'required' | 'optional' | 'observer';
+  reviewerType: string;
   accessStatus: string;
   decision: string | null;
   decisionAt: string | null;
@@ -55,48 +56,7 @@ interface ReviewDetail {
   createdAt: string;
   round: number;
   previousReviewId: string | null;
-  reviewers: Reviewer[];
 }
-
-const MOCK_DETAIL: ReviewDetail = {
-  id: 'rev-1',
-  name: 'Q3 Welcome Campaign',
-  sourceType: 'campaign',
-  sourceName: 'Welcome Series v3',
-  sourceVersion: 'v3.2.1',
-  brand: 'Digital Footprint',
-  language: 'en',
-  reviewType: 'campaign_signoff',
-  status: 'in_review',
-  approvalPolicy: 'all_required',
-  dueDate: '2026-07-25',
-  instructions: 'Please review the Q3 welcome campaign including all three email variants (desktop, mobile, plain text). Pay special attention to the new CTA placement and the updated brand colours. Legal footer has already been approved in a separate review.',
-  subject: 'Welcome to Digital Footprint — Let\'s Get Started',
-  previewText: 'Your account is ready. Here\'s everything you need to know to hit the ground running.',
-  owner: 'Alex Chen',
-  createdBy: 'Alex Chen',
-  createdAt: '2026-07-18T10:30:00Z',
-  round: 1,
-  previousReviewId: null,
-  reviewers: [
-    { id: 'rvr-1', displayName: 'Sarah Mitchell', email: 'sarah@clientcorp.com', company: 'ClientCorp', role: 'Marketing Director', reviewerType: 'required', accessStatus: 'reviewing', decision: 'approved', decisionAt: '2026-07-21T14:30:00Z', decisionNote: 'Looks great. Love the new CTA placement.', lastViewed: '2026-07-21T14:25:00Z' },
-    { id: 'rvr-2', displayName: 'Tom Harris', email: 'tom@clientcorp.com', company: 'ClientCorp', role: 'Product Owner', reviewerType: 'required', accessStatus: 'reviewing', decision: 'changes_requested', decisionAt: '2026-07-21T16:10:00Z', decisionNote: 'The pricing mention in email 2 needs updating to reflect Q3 rates. Also the mobile CTA button is slightly cut off on iPhone SE.', lastViewed: '2026-07-21T16:05:00Z' },
-    { id: 'rvr-3', displayName: 'Rachel Kim', email: 'rachel@clientcorp.com', company: 'ClientCorp', role: 'Legal Counsel', reviewerType: 'required', accessStatus: 'verified', decision: null, decisionAt: null, decisionNote: null, lastViewed: null },
-    { id: 'rvr-4', displayName: 'James Ng', email: 'james@clientcorp.com', company: 'ClientCorp', role: 'Brand Manager', reviewerType: 'optional', accessStatus: 'viewed', decision: null, decisionAt: null, decisionNote: null, lastViewed: '2026-07-20T11:00:00Z' },
-    { id: 'rvr-5', displayName: 'Priya Shah', email: 'priya@agency.com', company: 'Agency', role: 'Account Manager', reviewerType: 'observer', accessStatus: 'viewed', decision: 'acknowledged', decisionAt: '2026-07-20T09:15:00Z', decisionNote: null, lastViewed: '2026-07-20T09:10:00Z' },
-  ],
-};
-
-const MOCK_COMMENTS: Comment[] = [
-  { id: 'cmt-1', author: 'Tom Harris', authorType: 'reviewer', body: 'The pricing mention in email 2 — currently shows £49/mo but Q3 rate is £59/mo. Please update before finalising.', sourceLocation: 'Email 2 — Pricing Section', sourceType: 'section', status: 'open', visibility: 'all', createdAt: '2026-07-21T16:10:00Z', replies: [
-    { id: 'cmt-1a', author: 'Alex Chen', authorType: 'internal', body: 'Thanks Tom — will update the pricing and send a new snapshot for review.', sourceLocation: null, sourceType: null, status: 'resolved', visibility: 'all', createdAt: '2026-07-21T17:00:00Z', replies: [] },
-  ]},
-  { id: 'cmt-2', author: 'Tom Harris', authorType: 'reviewer', body: 'Mobile preview shows the CTA button slightly cut off on narrow viewports. Might need to adjust padding for screens under 375px wide.', sourceLocation: 'Mobile Preview — CTA Button', sourceType: 'mobile_preview', status: 'open', visibility: 'all', createdAt: '2026-07-21T16:12:00Z', replies: [] },
-  { id: 'cmt-3', author: 'Sarah Mitchell', authorType: 'reviewer', body: 'Really like the hero image choice — the gradient works well with the updated brand palette. Approved from my side!', sourceLocation: 'Email 1 — Hero Section', sourceType: 'section', status: 'open', visibility: 'all', createdAt: '2026-07-21T14:32:00Z', replies: [
-    { id: 'cmt-3a', author: 'Alex Chen', authorType: 'internal', body: 'Thanks Sarah! The design team will be happy to hear that.', sourceLocation: null, sourceType: null, status: 'resolved', visibility: 'all', createdAt: '2026-07-21T15:00:00Z', replies: [] },
-  ]},
-  { id: 'cmt-4', author: 'Alex Chen', authorType: 'internal', body: 'Internal note: legal has pre-approved the footer content. No need to wait for Rachel on that part specifically.', sourceLocation: null, sourceType: null, status: 'open', visibility: 'internal_only', createdAt: '2026-07-21T10:00:00Z', replies: [] },
-];
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
   pending: { label: 'Pending', color: 'text-slate-400', bg: 'bg-slate-400/10 border-slate-400/20' },
@@ -132,21 +92,160 @@ const POLICY_LABELS: Record<string, string> = {
   external_then_internal: 'External Then Final Internal',
 };
 
-export default function ReviewDetailClient() {
-  const [review] = useState<ReviewDetail>(MOCK_DETAIL);
-  const [comments] = useState<Comment[]>(MOCK_COMMENTS);
+interface ActivityEvent {
+  action: string;
+  detail: string;
+  time: string;
+  color: string;
+}
+
+export default function ReviewDetailClient({ id }: { id: string }) {
+  const [review, setReview] = useState<ReviewDetail | null>(null);
+  const [reviewers, setReviewers] = useState<Reviewer[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'preview' | 'comments' | 'activity'>('overview');
   const [newComment, setNewComment] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      const [pkgRes, reviewersRes, commentsRes] = await Promise.all([
+        supabase.from('email_review_packages').select('*').eq('id', id).maybeSingle(),
+        supabase.from('email_review_reviewers').select('*').eq('review_id', id).order('sort_order', { ascending: true }).limit(500),
+        supabase.from('email_review_comments').select('*').eq('review_id', id).order('created_at', { ascending: true }).limit(1000),
+      ]);
+
+      if (cancelled) return;
+      const pkg = pkgRes.data;
+      if (pkg) {
+        setReview({
+          id: pkg.id as string,
+          name: (pkg.name as string) || 'Untitled review',
+          sourceType: (pkg.source_type as string) || 'template',
+          sourceName: (pkg.source_id as string) || '—',
+          sourceVersion: (pkg.source_version as string) || '—',
+          brand: (pkg.brand as string) || '—',
+          language: (pkg.language as string) || 'en',
+          reviewType: (pkg.review_type as string) || 'content',
+          status: (pkg.status as string) || 'draft',
+          approvalPolicy: (pkg.approval_policy as string) || 'all_required',
+          dueDate: (pkg.due_date as string) || null,
+          instructions: (pkg.instructions as string) || '',
+          subject: (pkg.subject as string) || '—',
+          previewText: (pkg.preview_text as string) || '—',
+          owner: (pkg.owner as string) || '—',
+          createdBy: (pkg.created_by as string) || '—',
+          createdAt: (pkg.created_at as string) || '',
+          round: typeof pkg.review_round === 'number' ? (pkg.review_round as number) : 1,
+          previousReviewId: (pkg.previous_review_id as string) || null,
+        });
+      } else {
+        setReview(null);
+      }
+
+      const reviewerRows = ((reviewersRes.data || []) as Record<string, unknown>[]).map((r) => ({
+        id: r.id as string,
+        displayName: (r.display_name as string) || 'Reviewer',
+        email: (r.email as string) || '—',
+        company: (r.company as string) || '—',
+        role: (r.role as string) || '—',
+        reviewerType: (r.reviewer_type as string) || 'required',
+        accessStatus: (r.access_status as string) || 'pending',
+        decision: (r.decision as string) || null,
+        decisionAt: (r.decision_at as string) || null,
+        decisionNote: (r.decision_note as string) || null,
+        lastViewed: (r.last_viewed_at as string) || null,
+      }));
+      setReviewers(reviewerRows);
+
+      const nameById = new Map<string, string>();
+      reviewerRows.forEach((r) => nameById.set(r.id, r.displayName));
+
+      const rawComments = (commentsRes.data || []) as Record<string, unknown>[];
+      const commentRows: Comment[] = rawComments.map((c) => {
+        const authorId = (c.author_id as string) || '';
+        const isReviewer = nameById.has(authorId);
+        return {
+          id: c.id as string,
+          author: isReviewer ? (nameById.get(authorId) as string) : 'Internal',
+          authorType: isReviewer ? 'reviewer' : 'internal',
+          body: (c.body as string) || '',
+          sourceLocation: (c.source_location as string) || null,
+          sourceType: (c.source_type as string) || null,
+          status: (c.status as string) || 'open',
+          visibility: (c.visibility as string) || 'all',
+          createdAt: (c.created_at as string) || '',
+          replies: [],
+        };
+      });
+
+      const byId = new Map<string, Comment>();
+      const topLevel: Comment[] = [];
+      commentRows.forEach((c) => byId.set(c.id, c));
+      rawComments.forEach((c, i) => {
+        const parentId = (c.parent_comment_id as string) || null;
+        const node = commentRows[i];
+        if (parentId && byId.has(parentId)) {
+          byId.get(parentId)!.replies.push(node);
+        } else {
+          topLevel.push(node);
+        }
+      });
+      setComments(topLevel);
+
+      const events: ActivityEvent[] = [];
+      if (pkg && pkg.created_at) {
+        events.push({ action: 'Review package created', detail: `${(pkg.name as string) || 'Review'} created`, time: pkg.created_at as string, color: 'text-slate-400' });
+      }
+      reviewerRows.forEach((r) => {
+        if (r.decisionAt) {
+          events.push({ action: 'Decision submitted', detail: `${r.displayName} — ${(r.decision || 'decision').replace(/_/g, ' ')}`, time: r.decisionAt, color: r.decision === 'changes_requested' ? 'text-orange-400' : r.decision === 'rejected' ? 'text-red-400' : 'text-emerald-400' });
+        }
+      });
+      commentRows.forEach((c) => {
+        events.push({ action: 'Comment added', detail: `${c.author}: ${c.body.slice(0, 80)}`, time: c.createdAt, color: 'text-amber-400' });
+      });
+      events.sort((a, b) => (a.time < b.time ? 1 : -1));
+      setActivity(events.slice(0, 20));
+
+      setLoading(false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="w-8 h-8 text-[#06B6D4] animate-spin" />
+      </div>
+    );
+  }
+
+  if (!review) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 gap-3">
+        <FileCheck className="w-10 h-10 text-slate-600" />
+        <p className="text-sm text-slate-400">Review not found</p>
+        <Link href="/admin/email/reviews" className="text-xs text-[#06B6D4] hover:text-[#22D3EE] cursor-pointer">Back to reviews</Link>
+      </div>
+    );
+  }
 
   const rs = REVIEW_STATUS_META[review.status] || REVIEW_STATUS_META.draft;
   const StatusIcon = rs.icon;
 
   const decisionCounts = {
-    approved: review.reviewers.filter((r) => r.decision === 'approved' || r.decision === 'approved_with_comments').length,
-    changes: review.reviewers.filter((r) => r.decision === 'changes_requested').length,
-    rejected: review.reviewers.filter((r) => r.decision === 'rejected').length,
-    pending: review.reviewers.filter((r) => !r.decision || r.decision === 'acknowledged' || r.decision === 'abstained').length,
+    approved: reviewers.filter((r) => r.decision === 'approved' || r.decision === 'approved_with_comments').length,
+    changes: reviewers.filter((r) => r.decision === 'changes_requested').length,
+    rejected: reviewers.filter((r) => r.decision === 'rejected').length,
+    pending: reviewers.filter((r) => !r.decision || r.decision === 'acknowledged' || r.decision === 'abstained').length,
   };
+
+  const requiredReviewers = reviewers.filter((r) => r.reviewerType === 'required');
 
   const tabs = [
     { key: 'overview' as const, label: 'Overview', icon: FileCheck },
@@ -202,7 +301,7 @@ export default function ReviewDetailClient() {
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Instructions</h3>
-                    <p className="text-sm text-slate-300 leading-relaxed">{review.instructions}</p>
+                    <p className="text-sm text-slate-300 leading-relaxed">{review.instructions || 'No instructions provided.'}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -216,49 +315,48 @@ export default function ReviewDetailClient() {
                   </div>
                   <div>
                     <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Reviewers</h3>
-                    <div className="space-y-2">
-                      {review.reviewers.map((rvr) => {
-                        const accessMeta = STATUS_META[rvr.accessStatus] || STATUS_META.pending;
-                        return (
-                          <div key={rvr.id} className="flex items-center justify-between p-3 bg-white/[0.02] border border-[rgba(255,255,255,0.04)] rounded-xl">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#06B6D4]/20 to-[#22D3EE]/10 flex items-center justify-center shrink-0">
-                                <span className="text-xs font-bold text-[#06B6D4]">{rvr.displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium text-white truncate">{rvr.displayName}</p>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[11px] text-slate-500">{rvr.role} · {rvr.company}</span>
-                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${rvr.reviewerType === 'required' ? 'bg-amber-400/10 text-amber-400' : rvr.reviewerType === 'optional' ? 'bg-sky-400/10 text-sky-400' : 'bg-slate-400/10 text-slate-400'}`}>
-                                    {rvr.reviewerType}
-                                  </span>
+                    {reviewers.length === 0 ? (
+                      <p className="text-xs text-slate-500">No reviewers assigned yet</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {reviewers.map((rvr) => {
+                          const accessMeta = STATUS_META[rvr.accessStatus] || STATUS_META.pending;
+                          return (
+                            <div key={rvr.id} className="flex items-center justify-between p-3 bg-white/[0.02] border border-[rgba(255,255,255,0.04)] rounded-xl">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#06B6D4]/20 to-[#22D3EE]/10 flex items-center justify-center shrink-0">
+                                  <span className="text-xs font-bold text-[#06B6D4]">{rvr.displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-white truncate">{rvr.displayName}</p>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] text-slate-500">{rvr.role || '—'} · {rvr.company || '—'}</span>
+                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${rvr.reviewerType === 'required' ? 'bg-amber-400/10 text-amber-400' : rvr.reviewerType === 'optional' ? 'bg-sky-400/10 text-sky-400' : 'bg-slate-400/10 text-slate-400'}`}>
+                                      {rvr.reviewerType}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-3 shrink-0">
-                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${accessMeta.bg} ${accessMeta.color}`}>
-                                {accessMeta.label}
-                              </span>
-                              {rvr.decision && (
-                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                                  rvr.decision === 'approved' || rvr.decision === 'approved_with_comments' ? 'bg-emerald-400/10 text-emerald-400' :
-                                  rvr.decision === 'changes_requested' ? 'bg-orange-400/10 text-orange-400' :
-                                  rvr.decision === 'rejected' ? 'bg-red-400/10 text-red-400' :
-                                  'bg-slate-400/10 text-slate-400'
-                                }`}>
-                                  {rvr.decision.replace(/_/g, ' ')}
+                              <div className="flex items-center gap-3 shrink-0">
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${accessMeta.bg} ${accessMeta.color}`}>
+                                  {accessMeta.label}
                                 </span>
-                              )}
-                              {rvr.decisionNote && (
-                                <div className="hidden lg:block max-w-xs">
-                                  <p className="text-xs text-slate-500 truncate" title={rvr.decisionNote}>{rvr.decisionNote.slice(0, 40)}...</p>
-                                </div>
-                              )}
+                                {rvr.decision && (
+                                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                                    rvr.decision === 'approved' || rvr.decision === 'approved_with_comments' ? 'bg-emerald-400/10 text-emerald-400' :
+                                    rvr.decision === 'changes_requested' ? 'bg-orange-400/10 text-orange-400' :
+                                    rvr.decision === 'rejected' ? 'bg-red-400/10 text-red-400' :
+                                    'bg-slate-400/10 text-slate-400'
+                                  }`}>
+                                    {rvr.decision.replace(/_/g, ' ')}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -273,7 +371,7 @@ export default function ReviewDetailClient() {
                   <div className="bg-white rounded-xl border border-[rgba(255,255,255,0.06)] overflow-hidden shadow-lg">
                     <div className="bg-slate-100 p-6 space-y-4 min-h-[400px]">
                       <div className="bg-white rounded-lg shadow-sm p-4 max-w-md mx-auto">
-                        <div className="text-[9px] text-slate-400 uppercase tracking-wider mb-2">From: Digital Footprint</div>
+                        <div className="text-[9px] text-slate-400 uppercase tracking-wider mb-2">From: {review.brand}</div>
                         <div className="text-sm font-bold text-slate-800 mb-1">{review.subject}</div>
                         <div className="text-xs text-slate-500 mb-3">{review.previewText}</div>
                         <div className="h-2 w-3/4 bg-slate-200 rounded mb-2" />
@@ -293,46 +391,50 @@ export default function ReviewDetailClient() {
               {activeTab === 'comments' && (
                 <div className="space-y-4">
                   <div className="space-y-3">
-                    {comments.map((c) => (
-                      <div key={c.id} className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-xl p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-white">{c.author}</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${c.authorType === 'internal' ? 'bg-violet-400/10 text-violet-400' : 'bg-sky-400/10 text-sky-400'}`}>
-                              {c.authorType === 'internal' ? 'Internal' : 'Reviewer'}
-                            </span>
-                            {c.visibility === 'internal_only' && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-red-400/10 text-red-400">Internal Only</span>
-                            )}
+                    {comments.length === 0 ? (
+                      <p className="text-sm text-slate-500 text-center py-8">No comments yet</p>
+                    ) : (
+                      comments.map((c) => (
+                        <div key={c.id} className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-xl p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-white">{c.author}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${c.authorType === 'internal' ? 'bg-violet-400/10 text-violet-400' : 'bg-sky-400/10 text-sky-400'}`}>
+                                {c.authorType === 'internal' ? 'Internal' : 'Reviewer'}
+                              </span>
+                              {c.visibility === 'internal_only' && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-red-400/10 text-red-400">Internal Only</span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-slate-500">{new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
-                          <span className="text-[11px] text-slate-500">{new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                        {c.sourceLocation && (
-                          <div className="text-[11px] text-[#06B6D4] mb-2">{c.sourceLocation}</div>
-                        )}
-                        <p className="text-sm text-slate-300 leading-relaxed">{c.body}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                            c.status === 'open' ? 'bg-amber-400/10 text-amber-400' :
-                            c.status === 'resolved' ? 'bg-emerald-400/10 text-emerald-400' :
-                            'bg-slate-400/10 text-slate-400'
-                          }`}>{c.status}</span>
-                        </div>
-                        {c.replies.length > 0 && (
-                          <div className="mt-3 ml-6 space-y-2 border-l-2 border-[rgba(255,255,255,0.06)] pl-4">
-                            {c.replies.map((r) => (
-                              <div key={r.id} className="bg-white/[0.03] rounded-lg p-3">
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-xs font-medium text-white">{r.author}</span>
-                                  <span className="text-[10px] text-slate-500">{new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                          {c.sourceLocation && (
+                            <div className="text-[11px] text-[#06B6D4] mb-2">{c.sourceLocation}</div>
+                          )}
+                          <p className="text-sm text-slate-300 leading-relaxed">{c.body}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              c.status === 'open' ? 'bg-amber-400/10 text-amber-400' :
+                              c.status === 'resolved' ? 'bg-emerald-400/10 text-emerald-400' :
+                              'bg-slate-400/10 text-slate-400'
+                            }`}>{c.status}</span>
+                          </div>
+                          {c.replies.length > 0 && (
+                            <div className="mt-3 ml-6 space-y-2 border-l-2 border-[rgba(255,255,255,0.06)] pl-4">
+                              {c.replies.map((r) => (
+                                <div key={r.id} className="bg-white/[0.03] rounded-lg p-3">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs font-medium text-white">{r.author}</span>
+                                    <span className="text-[10px] text-slate-500">{new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                                  </div>
+                                  <p className="text-xs text-slate-400">{r.body}</p>
                                 </div>
-                                <p className="text-xs text-slate-400">{r.body}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <textarea
@@ -351,25 +453,21 @@ export default function ReviewDetailClient() {
 
               {activeTab === 'activity' && (
                 <div className="space-y-3">
-                  {[
-                    { action: 'Decision submitted', detail: 'Tom Harris requested changes', time: '2026-07-21T16:10:00Z', color: 'text-orange-400' },
-                    { action: 'Decision submitted', detail: 'Sarah Mitchell approved', time: '2026-07-21T14:30:00Z', color: 'text-emerald-400' },
-                    { action: 'Review link viewed', detail: 'James Ng viewed the preview', time: '2026-07-20T11:00:00Z', color: 'text-sky-400' },
-                    { action: 'Review link viewed', detail: 'Priya Shah viewed the preview', time: '2026-07-20T09:10:00Z', color: 'text-sky-400' },
-                    { action: 'Invitations sent', detail: '5 reviewer invitations dispatched via email', time: '2026-07-19T08:00:00Z', color: 'text-violet-400' },
-                    { action: 'Snapshot created', detail: 'Immutable snapshot v3.2.1 generated', time: '2026-07-18T10:30:00Z', color: 'text-slate-400' },
-                    { action: 'Review created', detail: 'Q3 Welcome Campaign review package created', time: '2026-07-18T10:30:00Z', color: 'text-slate-400' },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-start gap-3 p-3 bg-white/[0.02] border border-[rgba(255,255,255,0.04)] rounded-xl">
-                      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${item.color}`} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-white">{item.action}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{item.detail}</p>
+                  {activity.length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-8">No activity recorded yet</p>
+                  ) : (
+                    activity.map((item, i) => (
+                      <div key={i} className="flex items-start gap-3 p-3 bg-white/[0.02] border border-[rgba(255,255,255,0.04)] rounded-xl">
+                        <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${item.color}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-white">{item.action}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{item.detail}</p>
+                        </div>
+                        <span className="text-[11px] text-slate-500 shrink-0">{new Date(item.time).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <span className="text-[11px] text-slate-500 shrink-0">{new Date(item.time).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                  ))}
-                  <Link href="/admin/email/reviews/rev-1/activity" className="flex items-center gap-1.5 text-xs text-[#06B6D4] hover:text-[#22D3EE] transition-colors cursor-pointer">
+                    ))
+                  )}
+                  <Link href={`/admin/email/reviews/${id}/activity`} className="flex items-center gap-1.5 text-xs text-[#06B6D4] hover:text-[#22D3EE] transition-colors cursor-pointer">
                     View Full Activity Log <ExternalLink className="w-3 h-3" />
                   </Link>
                 </div>
@@ -412,7 +510,7 @@ export default function ReviewDetailClient() {
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-slate-500">Created</span>
-                <span className="text-xs text-slate-300">{new Date(review.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                <span className="text-xs text-slate-300">{review.createdAt ? new Date(review.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-xs text-slate-500">Owner</span>
@@ -455,9 +553,9 @@ export default function ReviewDetailClient() {
             </div>
             <div className="mt-4 pt-4 border-t border-[rgba(255,255,255,0.06)]">
               <div className="w-full bg-slate-700/50 rounded-full h-2">
-                <div className="bg-emerald-400 h-2 rounded-full" style={{ width: `${review.reviewers.length > 0 ? (decisionCounts.approved / review.reviewers.filter((r) => r.reviewerType === 'required').length) * 100 : 0}%` }} />
+                <div className="bg-emerald-400 h-2 rounded-full" style={{ width: `${requiredReviewers.length > 0 ? (decisionCounts.approved / requiredReviewers.length) * 100 : 0}%` }} />
               </div>
-              <p className="text-[10px] text-slate-500 mt-1.5 text-center">{decisionCounts.approved} of {review.reviewers.filter((r) => r.reviewerType === 'required').length} required approvals</p>
+              <p className="text-[10px] text-slate-500 mt-1.5 text-center">{decisionCounts.approved} of {requiredReviewers.length} required approvals</p>
             </div>
           </div>
 

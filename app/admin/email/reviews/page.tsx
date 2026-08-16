@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 import {
-  FileCheck, Eye, MessageSquare, Clock, Users, AlertTriangle,
-  Plus, Search, ArrowRight, ExternalLink, MoreVertical, XCircle,
-  CheckCircle2, Ban, ShieldCheck, RotateCcw, ChevronDown
+  FileCheck, Eye, MessageSquare, Clock, Users,
+  Plus, Search, ArrowRight, MoreVertical, XCircle,
+  CheckCircle2, Ban, ShieldCheck, RotateCcw,
 } from 'lucide-react';
 
 interface ReviewItem {
@@ -65,40 +66,97 @@ const REVIEW_TYPE_META: Record<string, string> = {
   general_stakeholder: 'Stakeholder',
 };
 
-const MOCK_REVIEWS: ReviewItem[] = [
-  { id: 'rev-1', name: 'Q3 Welcome Campaign', sourceType: 'campaign', sourceName: 'Welcome Series v3', brand: 'Digital Footprint', reviewType: 'campaign_signoff', status: 'in_review', dueDate: '2026-07-25', reviewerCount: 5, decisions: { approved: 2, rejected: 0, changes: 1, pending: 2 }, lastActivity: '2 hours ago', owner: 'Alex Chen', round: 1 },
-  { id: 'rev-2', name: 'Updated Legal Footer', sourceType: 'legal_content', sourceName: 'Global Footer v7', brand: 'All Brands', reviewType: 'legal', status: 'sent', dueDate: '2026-07-28', reviewerCount: 3, decisions: { approved: 0, rejected: 0, changes: 0, pending: 3 }, lastActivity: '5 hours ago', owner: 'Maya Patel', round: 1 },
-  { id: 'rev-3', name: 'Synqoro Product Launch', sourceType: 'template', sourceName: 'Synqoro Launch Email', brand: 'Synqoro', reviewType: 'product_owner', status: 'changes_requested', dueDate: '2026-07-22', reviewerCount: 4, decisions: { approved: 0, rejected: 0, changes: 2, pending: 2 }, lastActivity: '1 day ago', owner: 'James Wilson', round: 2 },
-  { id: 'rev-4', name: 'GuardianHub Onboarding', sourceType: 'template', sourceName: 'GuardianHub Welcome', brand: 'GuardianHub', reviewType: 'content', status: 'approved', dueDate: '2026-07-18', reviewerCount: 3, decisions: { approved: 3, rejected: 0, changes: 0, pending: 0 }, lastActivity: '3 days ago', owner: 'Sarah Kim', round: 1 },
-  { id: 'rev-5', name: 'FR Localisation Pack', sourceType: 'language_variant', sourceName: 'Invoice Template FR', brand: 'Digital Footprint', reviewType: 'localisation', status: 'partially_approved', dueDate: '2026-07-26', reviewerCount: 2, decisions: { approved: 1, rejected: 0, changes: 0, pending: 1 }, lastActivity: '1 day ago', owner: 'Luc Dubois', round: 1 },
-  { id: 'rev-6', name: 'Dark Mode Header', sourceType: 'brand_header', sourceName: 'Brand Header v12', brand: 'QuickGuard', reviewType: 'brand', status: 'draft', dueDate: null, reviewerCount: 2, decisions: { approved: 0, rejected: 0, changes: 0, pending: 2 }, lastActivity: '1 week ago', owner: 'Emma Torres', round: 1 },
-  { id: 'rev-7', name: 'Payment Receipt Redesign', sourceType: 'transactional', sourceName: 'Receipt Template T4', brand: 'Lethub', reviewType: 'accessibility', status: 'expired', dueDate: '2026-07-10', reviewerCount: 2, decisions: { approved: 0, rejected: 0, changes: 0, pending: 2 }, lastActivity: '10 days ago', owner: 'David Park', round: 1 },
-  { id: 'rev-8', name: 'A/B Test Hero CTA', sourceType: 'experiment', sourceName: 'Hero Variant B', brand: 'Digital Footprint', reviewType: 'general_stakeholder', status: 'revoked', dueDate: '2026-07-20', reviewerCount: 3, decisions: { approved: 1, rejected: 0, changes: 0, pending: 2 }, lastActivity: '4 days ago', owner: 'Nina Gupta', round: 1 },
-];
+function decisionKey(decision: string | null): 'approved' | 'rejected' | 'changes' | 'pending' {
+  if (decision === 'approved' || decision === 'approved_with_comments') return 'approved';
+  if (decision === 'rejected') return 'rejected';
+  if (decision === 'changes_requested') return 'changes';
+  return 'pending';
+}
 
 export default function ReviewsDashboard() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = MOCK_REVIEWS.filter((r) => {
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const [packagesRes, reviewersRes] = await Promise.all([
+        supabase.from('email_review_packages').select('*').order('created_at', { ascending: false }).limit(200),
+        supabase.from('email_review_reviewers').select('review_id, decision, decision_at').limit(2000),
+      ]);
+
+      const reviewers = (reviewersRes.data || []) as { review_id: string; decision: string | null; decision_at: string | null }[];
+      const byReview = new Map<string, { reviewerCount: number; decisions: ReviewItem['decisions']; lastActivity: string }>();
+      reviewers.forEach((r) => {
+        const entry = byReview.get(r.review_id) || {
+          reviewerCount: 0,
+          decisions: { approved: 0, rejected: 0, changes: 0, pending: 0 },
+          lastActivity: '',
+        };
+        entry.reviewerCount += 1;
+        entry.decisions[decisionKey(r.decision)] += 1;
+        if (r.decision_at && r.decision_at > entry.lastActivity) entry.lastActivity = r.decision_at;
+        byReview.set(r.review_id, entry);
+      });
+
+      const rows = ((packagesRes.data || []) as Record<string, unknown>[]).map((p) => {
+        const stats = byReview.get(p.id as string);
+        return {
+          id: p.id as string,
+          name: (p.name as string) || 'Untitled review',
+          sourceType: (p.source_type as string) || 'template',
+          sourceName: (p.source_id as string) || '—',
+          brand: (p.brand as string) || '—',
+          reviewType: (p.review_type as string) || 'content',
+          status: (p.status as string) || 'draft',
+          dueDate: (p.due_date as string) || null,
+          reviewerCount: stats?.reviewerCount || 0,
+          decisions: stats?.decisions || { approved: 0, rejected: 0, changes: 0, pending: 0 },
+          lastActivity: stats?.lastActivity || (p.created_at as string) || '',
+          owner: (p.owner as string) || '—',
+          round: typeof p.review_round === 'number' ? (p.review_round as number) : 1,
+        };
+      });
+      setReviews(rows);
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const filtered = reviews.filter((r) => {
     const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase()) || r.sourceName.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
     const matchesType = typeFilter === 'all' || r.reviewType === typeFilter;
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const activeReviews = MOCK_REVIEWS.filter((r) => ['sent','viewed','in_review','partially_approved'].includes(r.status)).length;
-  const pendingApproval = MOCK_REVIEWS.filter((r) => r.status === 'in_review' || r.status === 'partially_approved').length;
-  const changesReq = MOCK_REVIEWS.filter((r) => r.status === 'changes_requested').length;
-  const approved = MOCK_REVIEWS.filter((r) => r.status === 'approved').length;
+  const activeReviews = reviews.filter((r) => ['sent', 'viewed', 'in_review', 'partially_approved'].includes(r.status)).length;
+  const pendingApproval = reviews.filter((r) => r.status === 'in_review' || r.status === 'partially_approved').length;
+  const changesReq = reviews.filter((r) => r.status === 'changes_requested').length;
+  const approved = reviews.filter((r) => r.status === 'approved').length;
 
-  const STATS = [
+  const statCards = [
     { label: 'Active Reviews', value: activeReviews, icon: MessageSquare, color: 'text-amber-400', bg: 'bg-amber-400/10' },
     { label: 'Awaiting Sign-off', value: pendingApproval, icon: Users, color: 'text-violet-400', bg: 'bg-violet-400/10' },
     { label: 'Changes Requested', value: changesReq, icon: RotateCcw, color: 'text-orange-400', bg: 'bg-orange-400/10' },
     { label: 'Approved', value: approved, icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
   ];
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 bg-[#121215] rounded-xl animate-pulse" />
+          ))}
+        </div>
+        <div className="h-80 bg-[#121215] rounded-2xl animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -114,7 +172,7 @@ export default function ReviewsDashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {STATS.map((s) => {
+        {statCards.map((s) => {
           const Icon = s.icon;
           return (
             <div key={s.label} className="bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-xl p-4">
@@ -247,7 +305,7 @@ export default function ReviewsDashboard() {
                       <span className="text-sm text-slate-300">{r.owner}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-xs text-slate-500">{r.lastActivity}</span>
+                      <span className="text-xs text-slate-500">{r.lastActivity ? new Date(r.lastActivity).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.06] text-slate-500 hover:text-white transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
@@ -261,7 +319,7 @@ export default function ReviewsDashboard() {
                 <tr>
                   <td colSpan={9} className="px-5 py-12 text-center">
                     <FileCheck className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-                    <p className="text-sm text-slate-400">No reviews found</p>
+                    <p className="text-sm text-slate-400">{reviews.length === 0 ? 'No reviews created yet' : 'No reviews match your filters'}</p>
                     <p className="text-xs text-slate-500 mt-1">Create a review package to share with external stakeholders</p>
                   </td>
                 </tr>

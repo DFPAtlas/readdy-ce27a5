@@ -6,17 +6,18 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Briefcase, FileText, ClipboardCheck, Bug, DollarSign, Clock,
-  CheckCircle, AlertCircle, ArrowRight, User, Play,
-  ChevronRight, Gauge, WalletCards, MonitorSmartphone, Bell,
+  Briefcase, FileText, ClipboardCheck, Bug, Clock,
+  Play, WalletCards, MonitorSmartphone,
+  ChevronRight, Gauge,
 } from 'lucide-react';
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
-import NotificationDropdown from '@/components/uat/NotificationDropdown';
-
-interface TesterProfile {
-  id: string; user_id: string; full_name: string; email: string;
-  status: string; experience_level: string;
-}
+import { useUATTester } from '@/components/uat/UATTesterProvider';
+import UATStatCard from '@/components/uat/portal/UATStatCard';
+import UATStatusBadge from '@/components/uat/portal/UATStatusBadge';
+import UATEmptyState from '@/components/uat/portal/UATEmptyState';
+import UATSectionHeader from '@/components/uat/portal/UATSectionHeader';
+import UATJobCard from '@/components/uat/portal/UATJobCard';
+import UATAssignmentCard from '@/components/uat/portal/UATAssignmentCard';
 
 interface UatJob {
   id: string; title: string; public_summary: string | null;
@@ -51,19 +52,11 @@ const feedbackStatusColors: Record<string, string> = {
   closed: 'bg-slate-100 text-slate-600',
 };
 
-const paymentStatusColors: Record<string, string> = {
-  unpaid: 'bg-slate-100 text-slate-600',
-  pending: 'bg-amber-100 text-amber-700',
-  approved: 'bg-cyan-100 text-cyan-700',
-  paid: 'bg-emerald-100 text-emerald-700',
-  cancelled: 'bg-rose-100 text-rose-700',
-};
-
 export default function TesterDashboard() {
   const router = useRouter();
-  const [tester, setTester] = useState<TesterProfile | null>(null);
+  const { tester, userId } = useUATTester();
+  const testerId = tester.id;
   const [loading, setLoading] = useState(true);
-  const [blocked, setBlocked] = useState(false);
   const [openJobs, setOpenJobs] = useState<UatJob[]>([]);
   const [activeAssignments, setActiveAssignments] = useState<Assignment[]>([]);
   const [recentFeedback, setRecentFeedback] = useState<any[]>([]);
@@ -72,31 +65,20 @@ export default function TesterDashboard() {
     feedbackCount: 0, totalEarned: 0, pendingPayments: 0,
   });
 
-  const { notifications, toast, unreadCount, markAllRead, markRead, clearAll } = useRealtimeNotifications(tester?.user_id || null);
-
   useEffect(() => {
-    const tid = sessionStorage.getItem('uatTesterId');
-    if (!tid) { setTimeout(() => router.push('/uat-testing'), 0); return; }
-    loadData(tid);
-  }, []);
+    loadData();
+  }, [testerId]);
 
-  const loadData = async (tid: string) => {
-    const { data: t } = await supabase.from('uat_testers').select('id, user_id, full_name, email, status, experience_level').eq('id', tid).maybeSingle();
-    if (!t) { sessionStorage.removeItem('uatTesterId'); setTimeout(() => router.push('/uat-testing'), 0); return; }
-
-    const testerData = t as any;
-    if (testerData.status !== 'approved') { setBlocked(true); setTester(testerData); setLoading(false); return; }
-    setTester(testerData);
-
+  const loadData = async () => {
     const [
       { data: jobs }, { data: apps }, { data: assignments },
       { data: feedback }, { data: payments },
     ] = await Promise.all([
       supabase.from('uat_jobs').select('id, title, public_summary, required_devices, required_experience_level, estimated_hours, pay_amount, pay_type, deadline, project_id').eq('status', 'open').order('created_at', { ascending: false }).limit(5),
-      supabase.from('uat_job_applications').select('id, job_id').eq('tester_id', tid),
-      supabase.from('uat_assignments').select('id, job_id, status, agreed_pay, submitted_at').eq('tester_id', tid).order('created_at', { ascending: false }),
-      supabase.from('uat_feedback').select('id, title, job_id, severity, status, created_at').eq('tester_id', tid).order('created_at', { ascending: false }).limit(5),
-      supabase.from('uat_payments').select('id, total_amount, status').eq('tester_id', tid),
+      supabase.from('uat_job_applications').select('id, job_id').eq('tester_id', testerId),
+      supabase.from('uat_assignments').select('id, job_id, status, agreed_pay, submitted_at').eq('tester_id', testerId).order('created_at', { ascending: false }),
+      supabase.from('uat_feedback').select('id, title, job_id, severity, status, created_at').eq('tester_id', testerId).order('created_at', { ascending: false }).limit(5),
+      supabase.from('uat_payments').select('id, total_amount, status').eq('tester_id', testerId),
     ]);
 
     const appSet = new Set((apps || []).map((a: any) => a.job_id));
@@ -158,336 +140,230 @@ export default function TesterDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
         <div className="w-8 h-8 border-[3px] border-[#2878d0]/20 border-t-[#2878d0] rounded-full animate-spin" />
+        <p className="text-sm text-slate-500">Loading dashboard...</p>
       </div>
     );
   }
 
-  if (blocked) {
-    return (
-      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-8">
-        <div className="bg-white border border-slate-100 rounded-3xl p-12 shadow-sm text-center max-w-md">
-          <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-6">
-            <AlertCircle className="w-8 h-8 text-amber-500" />
-          </div>
-          <h3 className="text-xl font-bold text-[#17325c] mb-2">Account Not Approved</h3>
-          <p className="text-slate-500 mb-6">Your tester account is currently <span className="font-semibold capitalize">{(tester as any)?.status}</span>. You&apos;ll get access once approved.</p>
-          <button onClick={() => router.push('/uat-testing')} className="px-5 py-2.5 bg-[#2878d0] rounded-xl text-sm font-semibold text-white cursor-pointer whitespace-nowrap hover:bg-[#1e6bc0] transition-colors">Back to Home</button>
-        </div>
-      </div>
-    );
-  }
-
-  const statCards = [
-    { label: 'Available Jobs', value: stats.availableJobs, icon: Briefcase, color: '#2878d0', bg: 'bg-sky-100', href: '/uat/jobs' },
-    { label: 'My Applications', value: stats.myApplications, icon: FileText, color: '#7C3AED', bg: 'bg-violet-100', href: '/uat/applications' },
-    { label: 'Active Tests', value: stats.activeTests, icon: ClipboardCheck, color: '#10B981', bg: 'bg-emerald-100', href: '/uat/my-tests' },
-    { label: 'Feedback', value: stats.feedbackCount, icon: Bug, color: '#F59E0B', bg: 'bg-amber-100', href: '/uat/my-feedback' },
-  ];
+  const firstName = tester?.full_name?.split(' ')[0] || 'Tester';
+  const summaryParts: string[] = [];
+  if (stats.activeTests > 0) summaryParts.push(`${stats.activeTests} active assignment${stats.activeTests !== 1 ? 's' : ''}`);
+  if (stats.pendingPayments > 0) summaryParts.push('payments awaiting');
+  if (stats.availableJobs > 0) summaryParts.push(`${stats.availableJobs} new job${stats.availableJobs !== 1 ? 's' : ''} available`);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
-      <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-center text-sm text-amber-900">
-        Welcome to your live tester dashboard. All data shown is real and connected to your account.
+    <>
+      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#789265]">Tester Dashboard</p>
+          <h1 className="mt-2 font-serif text-4xl font-semibold tracking-tight sm:text-5xl text-[#17325c]">
+            Welcome back{', '}
+            <span className="text-[#2878d0]">{firstName}</span>
+          </h1>
+          {summaryParts.length > 0 ? (
+            <p className="mt-2 text-slate-500">You have {summaryParts.join(' and ')}.</p>
+          ) : (
+            <p className="mt-2 text-slate-500">Your testing journey at a glance — jobs, tests, feedback and earnings.</p>
+          )}
+        </div>
+        <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm shrink-0">
+          <WalletCards className="h-5 w-5 text-[#10B981]" />
+          <div>
+            <p className="text-xs text-slate-400">Total earned</p>
+            <p className="text-lg font-bold text-[#17325c]">£{stats.totalEarned.toFixed(2)}</p>
+          </div>
+        </div>
       </div>
 
-      <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-100 bg-white/95 px-5 backdrop-blur lg:px-8">
-        <div className="flex items-center gap-5">
-          <Link href="/uat-testing" className="flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-[#2878d0] whitespace-nowrap">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            UAT Network
-          </Link>
-          <span className="hidden text-sm font-bold text-[#2878d0] sm:inline">DFP <span className="font-normal text-slate-300">/</span> <span className="font-medium text-[#17325c]">Tester Portal</span></span>
-        </div>
-        <div className="flex items-center gap-4">
-          <NotificationDropdown
-            unreadCount={unreadCount}
-            notifications={notifications}
-            markAllRead={markAllRead}
-            markRead={markRead}
-            clearAll={clearAll}
-          />
-          <Link href="/uat/profile" className="flex items-center gap-3 rounded-full bg-white py-1 pl-1 pr-3 hover:bg-slate-50">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8f0e1] font-bold text-[#617a50] text-sm">
-              {tester?.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'TS'}
-            </span>
-            <span className="hidden text-left sm:block">
-              <span className="block text-sm font-semibold">{tester?.full_name || 'Tester'}</span>
-              <span className="block text-xs text-[#789265] capitalize">{tester?.status || 'Active'}</span>
-            </span>
-          </Link>
-        </div>
-      </header>
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <UATStatCard label="Available Jobs" value={stats.availableJobs} icon={Briefcase} color="#2878d0" bg="bg-sky-100" href="/uat/jobs" />
+        <UATStatCard label="My Applications" value={stats.myApplications} icon={FileText} color="#7C3AED" bg="bg-violet-100" href="/uat/applications" />
+        <UATStatCard label="Active Tests" value={stats.activeTests} icon={ClipboardCheck} color="#10B981" bg="bg-emerald-100" href="/uat/my-tests" />
+        <UATStatCard label="Feedback" value={stats.feedbackCount} icon={Bug} color="#F59E0B" bg="bg-amber-100" href="/uat/my-feedback" />
+      </div>
 
-      {toast && (
-        <motion.div
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="fixed top-24 right-6 z-50"
-        >
-          <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-lg max-w-sm">
-            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${toast.type === 'new_job' ? 'bg-sky-100 text-[#2878d0]' : toast.type === 'application_update' ? 'bg-violet-100 text-[#7C3AED]' : 'bg-emerald-100 text-[#10B981]'}`}>
-              {toast.type === 'new_job' ? <Briefcase className="h-5 w-5" /> : toast.type === 'application_update' ? <FileText className="h-5 w-5" /> : <ClipboardCheck className="h-5 w-5" />}
+      {stats.pendingPayments > 0 && (
+        <div className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+              <Clock className="h-5 w-5 text-emerald-600" />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-[#17325c]">{toast.title}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{toast.message}</p>
+            <div>
+              <p className="text-sm font-semibold text-emerald-800">Payments pending</p>
+              <p className="text-xs text-emerald-600">You have £{stats.pendingPayments.toFixed(2)} awaiting payout</p>
             </div>
           </div>
-        </motion.div>
+          <Link href="/uat/payments" className="text-sm font-semibold text-emerald-700 hover:text-emerald-900 whitespace-nowrap">View payments <ChevronRight className="inline h-4 w-4" /></Link>
+        </div>
       )}
 
-      <div className="mx-auto max-w-[1500px] px-5 py-6 sm:px-7 sm:py-8 lg:px-9">
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#789265]">Tester Dashboard</p>
-            <h1 className="mt-2 font-serif text-4xl font-semibold tracking-tight sm:text-5xl text-[#17325c]">
-              Welcome back{', '}
-              <span className="text-[#2878d0]">{tester?.full_name?.split(' ')[0] || 'Tester'}</span>
-            </h1>
-            <p className="mt-2 text-slate-500">Your testing journey at a glance — jobs, tests, feedback and earnings.</p>
-          </div>
-          <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm">
-            <WalletCards className="h-5 w-5 text-[#10B981]" />
-            <div>
-              <p className="text-xs text-slate-400">Total earned</p>
-              <p className="text-lg font-bold text-[#17325c]">£{stats.totalEarned.toFixed(2)}</p>
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-6">
+          <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <UATSectionHeader title="Available Jobs" />
+              <Link href="/uat/jobs" className="text-sm font-semibold text-[#2878d0] hover:underline whitespace-nowrap">View all</Link>
             </div>
-          </div>
-        </div>
-
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {statCards.map(({ label, value, icon: Icon, color, bg, href }, i) => (
-            <motion.button
-              key={label}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06 }}
-              onClick={() => router.push(href)}
-              className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm text-left hover:border-[#2878d0]/20 hover:shadow-md transition-all cursor-pointer group"
-            >
-              <div className={`flex h-14 w-14 items-center justify-center rounded-full ${bg}`} style={{ color }}>
-                <Icon className="h-6 w-6" />
+            {openJobs.length === 0 ? (
+              <UATEmptyState icon={Briefcase} title="No open jobs right now" description="Check back soon for new testing opportunities" actionLabel="Browse Jobs" actionHref="/uat/jobs" />
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {openJobs.map((job) => (
+                  <UATJobCard
+                    key={job.id}
+                    id={job.id}
+                    title={job.title}
+                    projectName={job.project_name}
+                    devices={job.required_devices}
+                    estimatedHours={job.estimated_hours}
+                    payAmount={job.pay_amount}
+                  />
+                ))}
               </div>
-              <div className="flex-1">
-                <p className="text-2xl font-bold text-[#17325c]">{value}</p>
-                <p className="text-sm font-semibold text-slate-600">{label}</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-[#2878d0] transition-colors shrink-0" />
-            </motion.button>
-          ))}
-        </div>
-
-        {stats.pendingPayments > 0 && (
-          <div className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-                <Clock className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-emerald-800">Payments pending</p>
-                <p className="text-xs text-emerald-600">You have £{stats.pendingPayments.toFixed(2)} awaiting payout</p>
-              </div>
-            </div>
-            <Link href="/uat/payments" className="text-sm font-semibold text-emerald-700 hover:text-emerald-900 whitespace-nowrap">View payments <ChevronRight className="inline h-4 w-4" /></Link>
-          </div>
-        )}
-
-        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="space-y-6">
-            <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                <h2 className="font-serif text-2xl font-semibold text-[#17325c]">Available Jobs</h2>
-                <Link href="/uat/jobs" className="text-sm font-semibold text-[#2878d0] hover:underline whitespace-nowrap">View all</Link>
-              </div>
-              {openJobs.length === 0 ? (
-                <div className="px-5 py-12 text-center">
-                  <Briefcase className="mx-auto h-10 w-10 text-slate-300" />
-                  <p className="mt-3 font-medium text-slate-500">No open jobs right now</p>
-                  <p className="mt-1 text-sm text-slate-400">Check back soon for new testing opportunities</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100">
-                  {openJobs.map((job) => (
-                    <div key={job.id} className="grid gap-4 px-5 py-4 md:grid-cols-[minmax(200px,1.5fr)_0.8fr_0.6fr_0.5fr_auto] md:items-center">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky-100">
-                          <MonitorSmartphone className="h-5 w-5 text-[#2878d0]" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-[#17325c] truncate">{job.title}</p>
-                          <p className="mt-1 text-xs text-slate-500">{job.project_name || 'DFP Project'}</p>
-                        </div>
-                      </div>
-                      <p className="text-sm text-slate-500">{job.required_devices?.join(', ') || 'Any device'}</p>
-                      <p className="flex items-center gap-1 text-sm text-slate-500">
-                        <Clock className="h-4 w-4" />{job.estimated_hours ? `${job.estimated_hours}h` : '-'}
-                      </p>
-                      <span className="w-fit rounded-lg bg-[#edf4e8] px-3 py-1 text-sm font-bold text-[#617a50] whitespace-nowrap">
-                        {job.pay_amount ? `£${job.pay_amount}` : '-'}
-                      </span>
-                      <Link href={`/uat/jobs/${job.id}`} className="rounded-xl bg-slate-100 px-4 py-2.5 text-center text-sm font-semibold text-slate-600 hover:bg-[#2878d0] hover:text-white transition-colors whitespace-nowrap">
-                        View
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {activeAssignments.length > 0 && (
-              <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-                <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                  <h2 className="font-serif text-2xl font-semibold text-[#17325c]">Active Tests</h2>
-                  <Link href="/uat/my-tests" className="text-sm font-semibold text-[#2878d0] hover:underline whitespace-nowrap">View all</Link>
-                </div>
-                <div className="divide-y divide-slate-100">
-                  {activeAssignments.map((a) => (
-                    <div key={a.id} className="flex items-center justify-between px-5 py-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-[#17325c] truncate">{a.job_title}</p>
-                          <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${assignmentStatusColors[a.status] || 'bg-slate-100 text-slate-600'}`}>
-                            {a.status}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 text-xs text-slate-500">{a.project_name || 'DFP Project'}</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        {a.agreed_pay && <span className="text-sm font-bold text-[#617a50]">£{a.agreed_pay}</span>}
-                        <Link href={`/uat/my-tests/${a.id}`} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-[#2878d0] hover:text-white transition-colors whitespace-nowrap">Open</Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
             )}
+          </section>
 
+          {activeAssignments.length > 0 && (
             <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                <h2 className="font-serif text-2xl font-semibold text-[#17325c]">Recent Feedback</h2>
-                <Link href="/uat/my-feedback" className="text-sm font-semibold text-[#2878d0] hover:underline whitespace-nowrap">View all</Link>
+                <UATSectionHeader title="Active Tests" />
+                <Link href="/uat/my-tests" className="text-sm font-semibold text-[#2878d0] hover:underline whitespace-nowrap">View all</Link>
               </div>
-              {recentFeedback.length === 0 ? (
-                <div className="px-5 py-12 text-center">
-                  <Bug className="mx-auto h-10 w-10 text-slate-300" />
-                  <p className="mt-3 font-medium text-slate-500">No feedback submitted yet</p>
-                  <p className="mt-1 text-sm text-slate-400">Submit reports from your active tests</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[620px] text-left text-sm">
-                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
-                      <tr>
-                        <th className="px-5 py-3">Title</th>
-                        <th className="px-5 py-3">Severity</th>
-                        <th className="px-5 py-3">Status</th>
-                        <th className="px-5 py-3">Submitted</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {recentFeedback.map((fb) => (
-                        <tr key={fb.id}>
-                          <td className="px-5 py-4">
-                            <p className="font-medium text-[#17325c]">{fb.title}</p>
-                            {fb.job_title && <p className="mt-0.5 text-xs text-slate-400">{fb.job_title}</p>}
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className="text-xs font-semibold capitalize text-slate-600">{fb.severity || '-'}</span>
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${feedbackStatusColors[fb.status] || 'bg-slate-100 text-slate-600'}`}>
-                              {(fb.status || '').replace('_', ' ')}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 text-slate-500 text-xs">
-                            {fb.created_at ? new Date(fb.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-          </div>
-
-          <aside className="space-y-6">
-            <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h2 className="font-serif text-2xl font-semibold text-[#17325c]">Tester Score</h2>
-                <Gauge className="h-5 w-5 text-[#2878d0]" />
-              </div>
-              <div className="mx-auto mt-5 flex h-36 w-36 flex-col items-center justify-center rounded-full border-[10px] border-[#86a66f] bg-white">
-                <span className="text-4xl font-bold text-[#17325c]">--</span>
-                <span className="text-[10px] text-slate-400">Building data</span>
-              </div>
-              <div className="mt-6 space-y-3">
-                {[
-                  { label: 'Assignments completed', value: stats.activeTests },
-                  { label: 'Feedback submitted', value: stats.feedbackCount },
-                  { label: 'Applications sent', value: stats.myApplications },
-                ].map((item) => (
-                  <div key={item.label} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600">{item.label}</span>
-                    <span className="font-semibold text-[#17325c]">{item.value}</span>
-                  </div>
+              <div className="divide-y divide-slate-100">
+                {activeAssignments.map((a) => (
+                  <UATAssignmentCard
+                    key={a.id}
+                    id={a.id}
+                    jobTitle={a.job_title || 'Unknown'}
+                    projectName={a.project_name}
+                    status={a.status}
+                    agreedPay={a.agreed_pay}
+                    statusColors={assignmentStatusColors}
+                  />
                 ))}
               </div>
             </section>
+          )}
 
-            <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h2 className="font-serif text-2xl font-semibold text-[#17325c]">Payments</h2>
-                <WalletCards className="h-5 w-5 text-[#10B981]" />
+          <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <UATSectionHeader title="Recent Feedback" />
+              <Link href="/uat/my-feedback" className="text-sm font-semibold text-[#2878d0] hover:underline whitespace-nowrap">View all</Link>
+            </div>
+            {recentFeedback.length === 0 ? (
+              <UATEmptyState icon={Bug} title="No feedback submitted yet" description="Submit reports from your active tests" />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[620px] text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
+                    <tr>
+                      <th className="px-5 py-3">Title</th>
+                      <th className="px-5 py-3">Severity</th>
+                      <th className="px-5 py-3">Status</th>
+                      <th className="px-5 py-3">Submitted</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {recentFeedback.map((fb) => (
+                      <tr key={fb.id}>
+                        <td className="px-5 py-4">
+                          <p className="font-medium text-[#17325c]">{fb.title}</p>
+                          {fb.job_title && <p className="mt-0.5 text-xs text-slate-400">{fb.job_title}</p>}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="text-xs font-semibold capitalize text-slate-600">{fb.severity || '-'}</span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <UATStatusBadge status={fb.status} colorMap={feedbackStatusColors} />
+                        </td>
+                        <td className="px-5 py-4 text-slate-500 text-xs">
+                          {fb.created_at ? new Date(fb.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-emerald-50 p-4">
-                  <p className="text-xs text-slate-500">Total Earned</p>
-                  <p className="mt-1 text-xl font-bold text-[#17325c]">£{stats.totalEarned.toFixed(2)}</p>
-                </div>
-                <div className="rounded-xl bg-amber-50 p-4">
-                  <p className="text-xs text-slate-500">Pending</p>
-                  <p className="mt-1 text-xl font-bold text-[#17325c]">£{stats.pendingPayments.toFixed(2)}</p>
-                </div>
-              </div>
-              <Link href="/uat/payments" className="mt-4 flex w-full items-center justify-center gap-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:border-[#2878d0] hover:text-[#2878d0] transition-colors whitespace-nowrap">
-                View Payment History <ChevronRight className="h-4 w-4" />
-              </Link>
-            </section>
-          </aside>
+            )}
+          </section>
         </div>
 
-        <section className="mt-6 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <h2 className="font-serif text-2xl font-semibold text-[#17325c]">Quick Actions</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              [Play, 'Browse Jobs', 'Find new testing opportunities', '/uat/jobs'],
-              [FileText, 'My Applications', 'Track your applications', '/uat/applications'],
-              [ClipboardCheck, 'My Tests', 'View active assignments', '/uat/my-tests'],
-              [Bug, 'Submit Feedback', 'Report bugs & issues', '/uat/my-feedback'],
-            ].map(([Icon, title, copy, href]) => {
-              const ActionIcon = Icon as typeof Play;
-              return (
-                <Link
-                  key={title as string}
-                  href={href as string}
-                  className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-left transition hover:border-[#2878d0] hover:bg-sky-50 cursor-pointer"
-                >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky-100">
-                    <ActionIcon className="h-5 w-5 text-[#2878d0]" />
-                  </div>
-                  <span>
-                    <span className="block font-semibold text-[#17325c]">{title as string}</span>
-                    <span className="mt-1 block text-xs text-slate-500">{copy as string}</span>
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+        <aside className="space-y-6">
+          <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="font-serif text-2xl font-semibold text-[#17325c]">Tester Score</h2>
+              <Gauge className="h-5 w-5 text-[#2878d0]" />
+            </div>
+            <div className="mx-auto mt-5 flex h-36 w-36 flex-col items-center justify-center rounded-full border-[10px] border-[#86a66f] bg-white">
+              <span className="text-4xl font-bold text-[#17325c]">--</span>
+              <span className="text-[10px] text-slate-400">Building data</span>
+            </div>
+            <div className="mt-6 space-y-3">
+              {[
+                { label: 'Assignments', value: stats.activeTests },
+                { label: 'Feedback items', value: stats.feedbackCount },
+                { label: 'Applications', value: stats.myApplications },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600">{item.label}</span>
+                  <span className="font-semibold text-[#17325c]">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="font-serif text-2xl font-semibold text-[#17325c]">Payments</h2>
+              <WalletCards className="h-5 w-5 text-[#10B981]" />
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-emerald-50 p-4">
+                <p className="text-xs text-slate-500">Total Earned</p>
+                <p className="mt-1 text-xl font-bold text-[#17325c]">£{stats.totalEarned.toFixed(2)}</p>
+              </div>
+              <div className="rounded-xl bg-amber-50 p-4">
+                <p className="text-xs text-slate-500">Pending</p>
+                <p className="mt-1 text-xl font-bold text-[#17325c]">£{stats.pendingPayments.toFixed(2)}</p>
+              </div>
+            </div>
+            <Link href="/uat/payments" className="mt-4 flex w-full items-center justify-center gap-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:border-[#2878d0] hover:text-[#2878d0] transition-colors whitespace-nowrap">
+              View Payment History <ChevronRight className="h-4 w-4" />
+            </Link>
+          </section>
+        </aside>
       </div>
-    </div>
+
+      <section className="mt-6 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <h2 className="font-serif text-2xl font-semibold text-[#17325c]">Quick Actions</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            [Play, 'Browse Jobs', 'Find new testing opportunities', '/uat/jobs'],
+            [FileText, 'My Applications', 'Track your applications', '/uat/applications'],
+            [ClipboardCheck, 'My Tests', 'View active assignments', '/uat/my-tests'],
+            [Bug, 'Submit Feedback', 'Report bugs & issues', '/uat/my-feedback'],
+          ].map(([Icon, title, copy, href]) => {
+            const ActionIcon = Icon as typeof Play;
+            return (
+              <Link
+                key={title as string}
+                href={href as string}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-left transition hover:border-[#2878d0] hover:bg-sky-50 cursor-pointer"
+              >
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky-100">
+                  <ActionIcon className="h-5 w-5 text-[#2878d0]" />
+                </div>
+                <span>
+                  <span className="block font-semibold text-[#17325c]">{title as string}</span>
+                  <span className="mt-1 block text-xs text-slate-500">{copy as string}</span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+    </>
   );
 }

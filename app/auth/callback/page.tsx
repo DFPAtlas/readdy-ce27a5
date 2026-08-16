@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { supabase, getSessionSafe } from '@/lib/supabase';
+import { getCurrentAdminAccess } from '@/lib/admin-access';
 
 interface Destination {
   key: string;
@@ -14,9 +16,10 @@ interface Destination {
 }
 
 function AuthCallbackContent() {
-  const router = useRouter();
+  const { replace } = useSafeNavigation();
   const searchParams = useSearchParams();
   const mountedRef = useRef(true);
+  const navigationInProgressRef = useRef(false);
 
   const [phase, setPhase] = useState<'loading' | 'error' | 'chooser' | 'redirecting'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
@@ -30,10 +33,11 @@ function AuthCallbackContent() {
   }, []);
 
   useEffect(() => {
-    if (redirectHref && mountedRef.current) {
-      router.replace(redirectHref);
+    if (redirectHref && mountedRef.current && !navigationInProgressRef.current) {
+      navigationInProgressRef.current = true;
+      replace(redirectHref);
     }
-  }, [redirectHref, router]);
+  }, [redirectHref, replace]);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,7 +54,7 @@ function AuthCallbackContent() {
         return;
       }
 
-      const session = await getSessionSafe(6000);
+      const session = await getSessionSafe();
       if (cancelled || !mountedRef.current) return;
 
       if (!session) {
@@ -66,8 +70,8 @@ function AuthCallbackContent() {
       const foundDestinations: Destination[] = [];
 
       try {
-        const [adminRes, staffRes, portalRes, uatRes] = await Promise.all([
-          supabase.from('admin_profiles').select('id').eq('id', userId).maybeSingle(),
+        const [adminAccess, staffRes, portalRes, uatRes] = await Promise.all([
+          getCurrentAdminAccess(),
           supabase.from('staff_profiles').select('id').eq('id', userId).maybeSingle(),
           supabase.from('portal_access').select('id, access_role').eq('user_id', userId).eq('is_revoked', false).maybeSingle(),
           supabase.from('uat_testers').select('id').eq('user_id', userId).maybeSingle(),
@@ -75,7 +79,7 @@ function AuthCallbackContent() {
 
         if (cancelled || !mountedRef.current) return;
 
-        if (adminRes.data) {
+        if (adminAccess.allowed) {
           foundDestinations.push({
             key: 'admin',
             label: 'Admin Portal',
@@ -84,6 +88,7 @@ function AuthCallbackContent() {
             icon: 'ri-shield-line',
           });
         }
+
         if (staffRes.data) {
           foundDestinations.push({
             key: 'staff',

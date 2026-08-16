@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface GuidanceModalProps {
   open: boolean;
@@ -14,6 +14,13 @@ export default function GuidanceModal({ open, onClose }: GuidanceModalProps) {
   const [error, setError] = useState('');
   const lastSubmitRef = useRef(0);
   const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   if (!open) return null;
 
@@ -34,7 +41,6 @@ export default function GuidanceModal({ open, onClose }: GuidanceModalProps) {
     lastSubmitRef.current = now;
 
     setLoading(true);
-    mountedRef.current = true;
 
     try {
       await fetch('https://zjqftnkrmqhmbrtkvafy.supabase.co/functions/v1/account-guidance', {
@@ -43,7 +49,6 @@ export default function GuidanceModal({ open, onClose }: GuidanceModalProps) {
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
     } catch {
-      // silently handle network errors
     }
 
     if (mountedRef.current) {

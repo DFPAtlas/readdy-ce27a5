@@ -95,11 +95,14 @@ export default function IntelligentBusinessSystemsSection() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasAutoPlayed, setHasAutoPlayed] = useState(false);
   const playInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoPlayTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
   const currentNodes = workflows[activeWorkflow].nodes;
 
   const flush = useCallback(() => {
     rafRef.current = null;
+    if (!mountedRef.current) return;
     const progress = latestProgress.current;
     const layer = Math.floor(progress * layers.length);
     setActiveLayer(Math.min(layer, layers.length - 1));
@@ -196,6 +199,11 @@ export default function IntelligentBusinessSystemsSection() {
   }, [isPlaying, currentNodes.length]);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
     if (hasAutoPlayed) return;
     const el = sectionRef.current;
     if (!el) return;
@@ -207,7 +215,10 @@ export default function IntelligentBusinessSystemsSection() {
           if (!mq.matches) {
             setHasAutoPlayed(true);
             setCurrentStep(-1);
-            setTimeout(() => setIsPlaying(true), 150);
+            if (autoPlayTimeout.current) clearTimeout(autoPlayTimeout.current);
+            autoPlayTimeout.current = setTimeout(() => {
+              if (mountedRef.current) setIsPlaying(true);
+            }, 150);
           } else {
             setCurrentStep(currentNodes.length - 1);
           }
@@ -217,7 +228,10 @@ export default function IntelligentBusinessSystemsSection() {
       { threshold: 0.2 }
     );
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (autoPlayTimeout.current) clearTimeout(autoPlayTimeout.current);
+    };
   }, [hasAutoPlayed, currentNodes.length]);
 
   return (
@@ -267,8 +281,8 @@ export default function IntelligentBusinessSystemsSection() {
             style={{
               transform: `translateY(calc(${dataPulsePos * 100}% - 2.5px))`,
               top: 0,
-              backgroundColor: activeLayer < layers.length ? layers[Math.min(activeLayer, layers.length - 1)].color : '#06B6D4',
-              boxShadow: `0 0 12px ${layers[Math.min(activeLayer, layers.length - 1)].color}80`,
+              backgroundColor: layers.length > 0 && activeLayer < layers.length ? (layers[Math.min(activeLayer, layers.length - 1)]?.color ?? '#06B6D4') : '#06B6D4',
+              boxShadow: `0 0 12px ${(layers.length > 0 && activeLayer < layers.length ? (layers[Math.min(activeLayer, layers.length - 1)]?.color ?? '#06B6D4') : '#06B6D4')}80`,
               opacity: dataPulsePos > 0 ? 1 : 0,
               transition: 'background-color 400ms ease, box-shadow 400ms ease, opacity 400ms ease',
             }}

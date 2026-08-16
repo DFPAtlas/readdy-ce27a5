@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { type WebsitePackage, formatPriceShortMinor } from '@/lib/website-packages';
 
 const packageIcons: Record<string, string> = {
@@ -47,7 +46,7 @@ export default function LeftPanel({ pkg }: { pkg: WebsitePackage }) {
 
       <div className="relative z-10 flex flex-col flex-1 px-8 py-8">
         <div className="flex items-center gap-3 mb-2">
-          <Image
+          <img
             src="https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/eee9f9ba-b907-488b-a1a8-f6d02534a71b_compressed_Remove-Background-Keep-Foot-Logo.webp"
             alt="Digital Footprint"
             width={32}

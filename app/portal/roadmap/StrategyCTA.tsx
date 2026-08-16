@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion } from '@/components/motion';
 import { Calendar, ArrowRight, CheckCircle } from 'lucide-react';
+import { submitEnquiry, makeIdempotencyKey } from '@/lib/submit-enquiry';
 
 export default function StrategyCTA() {
   const [name, setName] = useState('');
@@ -28,27 +29,23 @@ export default function StrategyCTA() {
 
     setSubmitting(true);
     try {
-      const payload = new URLSearchParams();
-      payload.append('name', name);
-      payload.append('email', email);
-      payload.append('preferredDate', preferredDate);
-      payload.append('message', message);
-
-      const res = await fetch('https://readdy.ai/api/form/d8k5c4nuavf6s8t5uo20', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: payload.toString(),
+      const result = await submitEnquiry('leads', {
+        name,
+        email,
+        message: message || null,
+        enquiry_type: 'strategy_review',
+        enquiry_data: { preferred_date: preferredDate || null },
+        source: 'portal_roadmap',
+        status: 'new',
+        stage: 'new',
+        consent_contact: true,
+        idempotency_key: makeIdempotencyKey(),
       });
 
-      const responseText = await res.text();
-      let parsed: any = {};
-      try { parsed = JSON.parse(responseText); } catch {}
-
-      if (res.ok && parsed?.code === 'OK') {
+      if (result.code === 'OK') {
         setSubmitted(true);
       } else {
-        const serverMsg = parsed?.meta?.message || parsed?.message || 'Something went wrong. Please try again.';
-        setFormError(serverMsg);
+        setFormError(result.message);
       }
     } catch {
       setFormError('Something went wrong. Please try again.');

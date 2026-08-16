@@ -92,7 +92,7 @@ export function usePBXUsers(tenantId?: string | null) {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const fetch = useCallback(async () => {
-    let q = supabase.from('pbx_users').select('*').eq('status', 'active');
+    let q = supabase.from('pbx_users').select('*');
     if (tenantId) q = q.eq('tenant_id', tenantId);
     const { data } = await q.order('extension');
     setUsers(data || []);
@@ -172,6 +172,18 @@ export function usePBXVoicemailBoxes(tenantId?: string | null) {
   }, [tenantId]);
   useEffect(() => { fetch(); }, [fetch]);
   return { boxes, loading, refetch: fetch };
+}
+
+export function usePBXVoicemailMessages() {
+  const [messages, setMessages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const fetch = useCallback(async () => {
+    const { data } = await supabase.from('pbx_voicemail_messages').select('*').order('received_at', { ascending: false }).limit(100);
+    setMessages(data || []);
+    setLoading(false);
+  }, []);
+  useEffect(() => { fetch(); }, [fetch]);
+  return { messages, loading, refetch: fetch };
 }
 
 export function usePBXMessages(tenantId?: string | null) {

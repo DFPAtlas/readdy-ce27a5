@@ -5,13 +5,13 @@ import dynamic from 'next/dynamic';
 const BusinessCommandCentreWorkspace = dynamic(
   () => import('./BusinessCommandCentreWorkspace'),
   {
-    ssr: false,
     loading: () => (
-      <main className="min-h-screen bg-[#07111f] px-6 pt-36 text-white">
-        <div className="mx-auto max-w-7xl animate-pulse rounded-3xl border border-white/10 bg-white/[0.035] p-8 text-sm text-slate-400">
-          Loading Business Command Centre demo…
+      <div className="flex h-screen items-center justify-center bg-[#060a14]">
+        <div className="flex items-center gap-3 text-sm text-slate-500">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+          Loading Northstar Business OS…
         </div>
-      </main>
+      </div>
     ),
   },
 );

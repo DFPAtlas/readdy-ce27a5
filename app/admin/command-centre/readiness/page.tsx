@@ -27,13 +27,16 @@ export default function CommandReadinessPage() {
   const runChecks = async () => {
     setLoading(true);
 
-    const [projectsRes, alertsRes, backupsRes, deploymentsRes, n8nRes] = await Promise.all([
+    const [projectsRes, alertsRes, backupsRes, deploymentsRes, n8nRes, supportRes] = await Promise.all([
       supabase.from('digital_footprint_projects').select('*').neq('status', 'archived'),
       supabase.from('digital_footprint_alerts').select('*').eq('is_resolved', false).eq('alert_type', 'critical'),
       supabase.from('digital_footprint_backups').select('*'),
       supabase.from('digital_footprint_deployments').select('*'),
       supabase.from('digital_footprint_n8n_agents').select('*'),
+      supabase.from('digital_footprint_support').select('*').in('status', ['open', 'in_progress']),
     ]);
+
+    const dbOk = !projectsRes.error && !alertsRes.error && !backupsRes.error && !deploymentsRes.error && !n8nRes.error && !supportRes.error;
 
     const results: CheckItem[] = [];
 
@@ -73,30 +76,22 @@ export default function CommandReadinessPage() {
     results.push({
       label: 'Database Health',
       icon: Database,
-      status: 'pass',
-      detail: 'Supabase connected and responsive'
+      status: dbOk ? 'pass' : 'fail',
+      detail: dbOk ? 'Supabase connected and responsive' : 'Supabase query failed'
     });
 
     results.push({
-      label: 'RLS Enabled',
+      label: 'RLS & Security Policies',
       icon: Shield,
-      status: 'warning',
-      detail: 'RLS policies present but need verification'
+      status: 'pending',
+      detail: 'Not evaluated by this screen — requires manual review'
     });
 
-    results.push({
-      label: 'Security Policies',
-      icon: Shield,
-      status: 'warning',
-      detail: 'Basic RLS enabled, review recommended'
-    });
-
-    const stripeConfigured = !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
     results.push({
       label: 'Stripe Integration',
       icon: DollarSign,
-      status: stripeConfigured ? 'pass' : 'pending',
-      detail: stripeConfigured ? 'Stripe publishable key configured' : 'Awaiting Stripe configuration — keys not present'
+      status: 'pending',
+      detail: 'Server-side secret — not evaluated by this screen'
     });
 
     const n8nAgents = n8nRes.data || [];
@@ -116,11 +111,12 @@ export default function CommandReadinessPage() {
       detail: criticalAlerts > 0 ? `${criticalAlerts} critical alert(s)` : 'No critical alerts'
     });
 
+    const openSupport = supportRes.data || [];
     results.push({
       label: 'Support Tickets',
       icon: LifeBuoy,
-      status: 'pending',
-      detail: 'Awaiting support data'
+      status: openSupport.length > 0 ? 'warning' : 'pass',
+      detail: openSupport.length > 0 ? `${openSupport.length} open support ticket(s)` : 'No open support tickets'
     });
 
     setChecks(results);

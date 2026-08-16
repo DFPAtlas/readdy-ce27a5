@@ -6,10 +6,10 @@ import { motion } from '@/components/motion';
 import { Loader2, Shield, KeyRound, Mail, Check, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-
-
 function getResetRedirectUrl() {
-  if (typeof window !== 'undefined') return `${window.location.origin}/admin/reset-password`;
+  if (typeof window !== 'undefined') {
+    return window.location.origin + '/admin/reset-password';
+  }
   return `${process.env.NEXT_PUBLIC_SITE_URL || 'https://digital-footprint.uk'}/admin/reset-password`;
 }
 

@@ -1,23 +1,29 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { supabase, getSessionSafe } from '@/lib/supabase';
 import { motion } from '@/components/motion';
 import { Mail, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 
 
 
-export default function PortalLoginPage() {
-  const router = useRouter();
+function PortalLoginContent() {
+  const { replace } = useSafeNavigation();
+  const searchParams = useSearchParams();
+  const fromGate = searchParams.get('from') === 'gate';
   const mountedRef = useRef(true);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+
+  const safeReplace = (href: string) => {
+    if (mountedRef.current) replace(href);
+  };
 
   useEffect(() => {
     mountedRef.current = true;
@@ -28,19 +34,26 @@ export default function PortalLoginPage() {
     let cancelled = false;
 
     (async () => {
-      const session = await getSessionSafe();
-      if (cancelled || !mountedRef.current) return;
-      if (session) {
-        router.replace('/portal/dashboard');
-      } else {
-        setCheckingAuth(false);
+      if (fromGate) {
+        if (!cancelled && mountedRef.current) setCheckingAuth(false);
+        return;
       }
+
+      try {
+        const session = await getSessionSafe();
+        if (cancelled || !mountedRef.current) return;
+        if (session) {
+          safeReplace('/portal/dashboard');
+          return;
+        }
+      } catch {}
+      if (!cancelled && mountedRef.current) setCheckingAuth(false);
     })();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled || !mountedRef.current) return;
       if (event === 'SIGNED_IN' && session) {
-        router.replace('/portal/dashboard');
+        safeReplace('/portal/dashboard');
       }
     });
 
@@ -54,21 +67,26 @@ export default function PortalLoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    try {
+      const { error: authError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/portal/dashboard`,
+        },
+      });
 
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/portal/dashboard`,
-      },
-    });
-
-    if (!mountedRef.current) return;
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
-    } else {
-      setSent(true);
-      setLoading(false);
+      if (!mountedRef.current) return;
+      if (authError) {
+        setError(authError.message);
+      } else {
+        setSent(true);
+      }
+    } catch (err: any) {
+      if (mountedRef.current) {
+        setError(err?.message || 'Something went wrong. Please try again.');
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
     }
   };
 
@@ -98,7 +116,7 @@ export default function PortalLoginPage() {
           <div className="text-center mb-8">
             <Link href="/" className="inline-block mb-6">
               <div className="flex flex-col items-center">
-                <Image
+                <img
                   src="https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/eee9f9ba-b907-488b-a1a8-f6d02534a71b_compressed_Remove-Background-Keep-Foot-Logo.webp"
                   alt="Digital Footprint Logo"
                   width={64}
@@ -184,5 +202,17 @@ export default function PortalLoginPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+export default function PortalLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
+        <div className="w-10 h-10 border-3 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin" />
+      </div>
+    }>
+      <PortalLoginContent />
+    </Suspense>
   );
 }

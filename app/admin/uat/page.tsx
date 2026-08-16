@@ -123,6 +123,12 @@ export default function AdminUatHubPage() {
             <h1 className="text-2xl font-bold text-white">UAT Control Room</h1>
             <p className="text-sm text-slate-400 mt-0.5">Project → Environment → Plan → Job → Application → Assignment → Session → Feedback → Triage → Fix → Retest → Approval</p>
           </div>
+          <button
+            onClick={() => router.push('/admin/uat/tester-applications')}
+            className="px-4 py-2.5 rounded-xl bg-[#06B6D4]/10 border border-[#06B6D4]/20 text-sm font-medium text-[#06B6D4] hover:bg-[#06B6D4]/20 transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap"
+          >
+            <i className="ri-user-add-line"></i> Tester Registrations
+          </button>
         </div>
 
         <UatOverviewCards onMetricClick={handleMetricClick} />

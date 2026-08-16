@@ -2,20 +2,38 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { supabase, getSessionSafe } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { CheckCircle2, ArrowRight, Loader2, FileText } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Loader2, FileText, Search } from 'lucide-react';
 
 export default function ApplicationCompletePage() {
-  const router = useRouter();
   const [appData, setAppData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const stored = sessionStorage.getItem('uat_app_complete');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (!cancelled) {
+          setAppData({
+            legal_name: parsed.name,
+            application_reference: parsed.reference,
+            submitted_at: parsed.date,
+            status: 'submitted',
+          });
+          setLoading(false);
+        }
+        return () => { cancelled = true; };
+      } catch {}
+    }
+
     const init = async () => {
       const session = await getSessionSafe();
+      if (cancelled) return;
       if (!session) { setLoading(false); return; }
 
       const { data: app } = await supabase
@@ -27,6 +45,8 @@ export default function ApplicationCompletePage() {
         .limit(1)
         .maybeSingle();
 
+      if (cancelled) return;
+
       if (!app) {
         const { data: draft } = await supabase
           .from('uat_tester_applications')
@@ -35,8 +55,10 @@ export default function ApplicationCompletePage() {
           .eq('status', 'draft')
           .maybeSingle();
 
+        if (cancelled) return;
+
         if (draft) {
-          router.replace('/uat-testing/apply');
+          window.location.href = '/uat-testing/apply';
           return;
         }
 
@@ -48,7 +70,9 @@ export default function ApplicationCompletePage() {
       setLoading(false);
     };
     init();
-  }, [router]);
+
+    return () => { cancelled = true; };
+  }, []);
 
   if (loading) {
     return (
@@ -130,10 +154,16 @@ export default function ApplicationCompletePage() {
 
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link
-            href="/uat-testing/portal"
+            href={`/uat-testing/track?ref=${encodeURIComponent(appData.application_reference)}&email=${encodeURIComponent(appData.email || '')}`}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#2878d0]/30 bg-white px-6 py-3.5 font-semibold text-[#2878d0] hover:bg-sky-50 transition whitespace-nowrap"
+          >
+            <Search className="h-4 w-4" /> Track Your Application
+          </Link>
+          <Link
+            href="/uat/dashboard"
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2878d0] px-6 py-3.5 font-semibold text-white hover:bg-[#1e68b9] transition shadow-lg shadow-blue-200 whitespace-nowrap"
           >
-            View Application Status <ArrowRight className="h-4 w-4" />
+            Go to Tester Dashboard <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </div>

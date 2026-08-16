@@ -2,11 +2,16 @@ export interface AdminProfile {
   id: string;
   email: string;
   full_name: string | null;
-  role: 'admin' | 'super_admin';
+  role: string;
   active: boolean;
   organisation_id: string | null;
   created_at: string | null;
   updated_at: string | null;
+  status: string | null;
+  created_by: string | null;
+  last_login_at: string | null;
+  suspended_at: string | null;
+  archived_at: string | null;
 }
 
 export interface StaffProfile {

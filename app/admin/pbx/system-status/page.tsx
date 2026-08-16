@@ -43,15 +43,15 @@ export default function AdminSystemStatusPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {[
-            { name: 'Supabase Database', status: 'online' },
-            { name: 'Supabase Auth', status: 'online' },
-            { name: 'Edge Functions', status: 'online' },
-            { name: 'Storage', status: 'online' },
+            { name: 'Supabase Database', status: 'unknown' },
+            { name: 'Supabase Auth', status: 'unknown' },
+            { name: 'Edge Functions', status: 'unknown' },
+            { name: 'Storage', status: 'unknown' },
             { name: 'Twilio Voice', configured: false },
             { name: 'Twilio SMS', configured: false },
             { name: 'Webhook Endpoint', configured: false },
             { name: 'n8n Integration', configured: false },
-            { name: 'Stripe (Edge Function)', status: 'online' },
+            { name: 'Stripe (Edge Function)', status: 'unknown' },
           ].map(s => (
             <div key={s.name} className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-4">
               <div className="flex items-center justify-between">
@@ -62,7 +62,7 @@ export default function AdminSystemStatusPage() {
                     {s.configured ? 'Online' : 'Not Configured'}
                   </span>
                 ) : (
-                  <span className="text-xs text-[#10B981]"><span className="inline-block w-1.5 h-1.5 rounded-full bg-[#10B981] mr-1.5" />Online</span>
+                  <span className="text-xs text-slate-500"><span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-600 mr-1.5" />Not Verified</span>
                 )}
               </div>
             </div>

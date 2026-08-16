@@ -7,7 +7,12 @@ import { Eye, EyeOff, ArrowLeft, Loader2, KeyRound, Check, AlertTriangle } from 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-
+function getResetRedirectUrl() {
+  if (typeof window !== 'undefined') {
+    return window.location.origin + '/admin/reset-password';
+  }
+  return `${process.env.NEXT_PUBLIC_SITE_URL || 'https://digital-footprint.uk'}/admin/reset-password`;
+}
 
 export default function AdminResetPasswordPage() {
   const router = useRouter();
@@ -25,20 +30,12 @@ export default function AdminResetPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const [redirectTo, setRedirectTo] = useState<string | null>(null);
-
   const [linkError, setLinkError] = useState<{code: string; description: string} | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
-
-  useEffect(() => {
-    if (redirectTo && mountedRef.current) {
-      router.replace(redirectTo);
-    }
-  }, [redirectTo, router]);
 
   useEffect(() => {
     const hash = window.location.hash.replace(/^#/, '');
@@ -121,8 +118,8 @@ export default function AdminResetPasswordPage() {
     e.preventDefault();
     setError('');
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters.');
       return;
     }
 
@@ -151,7 +148,7 @@ export default function AdminResetPasswordPage() {
     setTimeout(async () => {
       if (!mountedRef.current) return;
       await supabase.auth.signOut();
-      if (mountedRef.current) setRedirectTo('/admin/login');
+      if (mountedRef.current) router.push('/admin/login?reset=done');
     }, 2500);
   };
 
@@ -167,10 +164,10 @@ export default function AdminResetPasswordPage() {
   return (
     <div className="min-h-screen bg-[#0F172A] flex flex-col">
       <div className="absolute top-6 left-6">
-        <Link href="/admin/login" className="flex items-center gap-2 text-sm text-slate-400 hover:text-[#06B6D4] transition-colors cursor-pointer">
+        <button onClick={() => router.push('/admin/login')} className="flex items-center gap-2 text-sm text-slate-400 hover:text-[#06B6D4] transition-colors cursor-pointer">
           <ArrowLeft className="w-4 h-4" />
           Back to Sign In
-        </Link>
+        </button>
       </div>
 
       <div className="flex-1 flex items-center justify-center px-4">
@@ -207,24 +204,24 @@ export default function AdminResetPasswordPage() {
                 <div className="pt-4 border-t border-[rgba(255,255,255,0.08)] space-y-3">
                   <p className="text-xs text-slate-500 uppercase tracking-wide">Recovery Options</p>
 
-                  <Link
-                    href="/admin/recovery"
+                  <button
+                    onClick={() => router.push('/admin/recovery')}
                     className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-[#F97316] to-[#FB923C] rounded-xl font-bold text-white text-sm hover:shadow-lg hover:shadow-[#F97316]/20 transition-all cursor-pointer whitespace-nowrap"
                   >
                     <KeyRound className="w-4 h-4" />
                     Request a New Link
-                  </Link>
+                  </button>
 
-                  <Link
-                    href="/admin/login"
+                  <button
+                    onClick={() => router.push('/admin/login')}
                     className="flex items-center justify-center gap-2 w-full py-3 bg-white/5 border border-[rgba(255,255,255,0.1)] rounded-xl font-medium text-slate-300 text-sm hover:bg-white/10 transition-colors cursor-pointer whitespace-nowrap"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     Back to Sign In
-                  </Link>
+                  </button>
 
                   <p className="text-xs text-slate-500 pt-2">
-                    Or request another reset from the Supabase dashboard.
+                    Use the Supabase dashboard for additional recovery options.
                   </p>
                 </div>
               </div>
@@ -256,7 +253,7 @@ export default function AdminResetPasswordPage() {
                         type={showPassword ? 'text' : 'password'}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="At least 6 characters"
+                        placeholder="At least 8 characters"
                         required
                         autoFocus
                         className="w-full px-4 py-3 pr-11 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/15 transition-all"

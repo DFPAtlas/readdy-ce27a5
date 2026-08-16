@@ -37,7 +37,7 @@ export default function UATTesterTermsCompletePage() {
         .maybeSingle();
 
       if (!acc) {
-        router.replace('/uat-testing/terms');
+        setTimeout(() => router.replace('/uat-testing/terms'), 0);
         return;
       }
 

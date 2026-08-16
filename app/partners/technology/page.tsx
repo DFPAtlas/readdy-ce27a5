@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { TECH_INTEGRATION_CATEGORIES } from '@/lib/cms-definitions';
+import { submitEnquiry } from '@/lib/submit-enquiry';
 
 export default function TechnologyPartnersPage() {
   const [formState, setFormState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
@@ -23,30 +24,31 @@ export default function TechnologyPartnersPage() {
     setFormError('');
 
     try {
-      const payload = new URLSearchParams();
-      for (const [key, value] of formData.entries()) {
-        if (key !== 'company_alt') {
-          payload.append(key, value as string);
-        }
-      }
-      payload.append('application_type', 'technology_integration');
+      const result = await submitEnquiry('partner_applications', {
+        application_type: 'technology_integration',
+        company_name: (formData.get('company_name') as string) || null,
+        applicant_name: (formData.get('applicant_name') as string) || null,
+        email: (formData.get('email') as string) || null,
+        experience_summary: (formData.get('use_case') as string) || null,
+        capabilities: {
+          platform_name: (formData.get('platform_name') as string) || null,
+          integration_category: (formData.get('integration_category') as string) || null,
+          api_docs_url: (formData.get('api_docs_url') as string) || null,
+          security_overview: (formData.get('security_overview') as string) || null,
+          product_alignment: (formData.get('product_alignment') as string) || null,
+          sandbox_available: (formData.get('sandbox_available') as string) || null,
+          notes: (formData.get('notes') as string) || null,
+        },
+        privacy_acknowledged_at: formData.get('privacy_acknowledged') === 'on' ? new Date().toISOString() : null,
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+      }, true);
 
-      const response = await fetch('https://readdy.ai/api/form/d9engvmdn0rfb35c6780', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: payload.toString(),
-      });
-
-      const responseText = await response.text();
-      let parsed: any;
-      try { parsed = JSON.parse(responseText); } catch { parsed = null; }
-
-      if (response.ok && parsed?.code === 'OK') {
+      if (result.code === 'OK') {
         setFormState('success');
         form.reset();
       } else {
-        const serverMsg = parsed?.meta?.message || parsed?.message || responseText || 'Something went wrong. Please try again.';
-        setFormError(serverMsg);
+        setFormError(result.message);
         setFormState('error');
       }
     } catch {

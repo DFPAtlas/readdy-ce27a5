@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { trackConversion } from '@/lib/analytics';
+import { submitEnquiry } from '@/lib/submit-enquiry';
 
 const ISSUE_CATEGORIES = [
   { value: 'general', label: 'General Question' },
@@ -49,43 +49,38 @@ export default function SupportRequestPage() {
     setFormError('');
 
     try {
-      const payload: Record<string, string> = {};
-      formData.forEach((value, key) => {
-        if (key !== 'website_alt' && value && typeof value === 'string' && value.trim()) {
-          payload[key] = value.trim();
-        }
-      });
+      const urgency = (formData.get('urgency') as string) || 'normal';
+      const priorityMap: Record<string, string> = {
+        general: 'Low',
+        normal: 'Medium',
+        important: 'High',
+        'service-unavailable': 'Urgent',
+        security: 'High',
+      };
 
-      const response = await fetch('https://readdy.ai/api/form/d9endmqlh2lp4rjvtd0g', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(payload).toString(),
-      });
+      const descriptionParts = [];
+      descriptionParts.push((formData.get('description') as string) || '');
+      const organisation = (formData.get('organisation') as string) || '';
+      const category = (formData.get('category') as string) || '';
+      const productService = (formData.get('product_service') as string) || '';
+      if (organisation) descriptionParts.push(`Organisation: ${organisation}`);
+      if (category) descriptionParts.push(`Category: ${category}`);
+      if (productService) descriptionParts.push(`Product/Service: ${productService}`);
 
-      const responseText = await response.text();
-      let parsed;
-      try { parsed = JSON.parse(responseText); } catch { parsed = null; }
+      const result = await submitEnquiry('digital_footprint_support', {
+        ticket_title: (formData.get('subject') as string) || 'Support Request',
+        ticket_description: descriptionParts.join('\n'),
+        status: 'Open',
+        priority: priorityMap[urgency] || 'Medium',
+        submitted_by: (formData.get('name') as string) || '',
+        submitted_email: (formData.get('email') as string) || '',
+      }, true);
 
-      if (response.ok && parsed?.code === 'OK') {
-        // Also create a support ticket
-        await supabase.from('digital_footprint_support').insert({
-          ticket_title: (formData.get('subject') as string) || 'Support Request',
-          ticket_description: formData.get('description') as string || '',
-          status: 'Open',
-          priority: 'Medium',
-          submitted_by: formData.get('name') as string || '',
-          submitted_email: formData.get('email') as string || '',
-        });
-
+      if (result.code === 'OK') {
         setFormState('success');
-        trackConversion('support_request', `support_${formData.get('email') as string}_${Date.now()}`, { service_key: formData.get('product_service') as string || undefined, content_slug: formData.get('category') as string || undefined });
+        trackConversion('support_request', `support_${formData.get('email') as string}_${Date.now()}`, { service_key: productService || undefined, content_slug: category || undefined });
       } else {
-        const serverMsg = parsed?.meta?.message || parsed?.message || responseText;
-        if (serverMsg && (serverMsg.includes('spam') || serverMsg.includes('form data is spam'))) {
-          setFormError('Your submission could not be processed. Please try again.');
-        } else {
-          setFormError(serverMsg || 'Something went wrong. Please try again.');
-        }
+        setFormError(result.message);
         setFormState('error');
       }
     } catch {

@@ -1,17 +1,19 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { supabase, getSessionSafe } from '@/lib/supabase';
 import { motion } from '@/components/motion';
 import { Shield, Eye, EyeOff, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 
 
 
-export default function StaffLoginPage() {
-  const router = useRouter();
+function StaffLoginContent() {
+  const { replace } = useSafeNavigation();
+  const searchParams = useSearchParams();
+  const fromGate = searchParams.get('from') === 'gate';
   const mountedRef = useRef(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,6 +21,10 @@ export default function StaffLoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+
+  const safeReplace = (href: string) => {
+    if (mountedRef.current) replace(href);
+  };
 
   useEffect(() => {
     mountedRef.current = true;
@@ -29,25 +35,32 @@ export default function StaffLoginPage() {
     let cancelled = false;
 
     (async () => {
-      const session = await getSessionSafe();
-      if (cancelled || !mountedRef.current) return;
-      if (session) {
-        try {
-          const { data: sp } = await supabase.from('staff_profiles').select('id').eq('id', session.user.id).maybeSingle();
-          if (cancelled || !mountedRef.current) return;
-          if (sp) {
-            router.replace('/staff/dashboard');
-            return;
-          }
-        } catch {}
+      if (fromGate) {
+        if (!cancelled && mountedRef.current) setChecking(false);
+        return;
       }
+
+      try {
+        const session = await getSessionSafe();
+        if (cancelled || !mountedRef.current) return;
+        if (session?.user) {
+          try {
+            const { data: sp } = await supabase.from('staff_profiles').select('id').eq('id', session.user.id).maybeSingle();
+            if (cancelled || !mountedRef.current) return;
+            if (sp) {
+              safeReplace('/staff/dashboard');
+              return;
+            }
+          } catch {}
+        }
+      } catch {}
       if (!cancelled && mountedRef.current) setChecking(false);
     })();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled || !mountedRef.current) return;
       if (event === 'SIGNED_IN' && session) {
-        router.replace('/staff/dashboard');
+        safeReplace('/staff/dashboard');
       }
     });
 
@@ -61,25 +74,31 @@ export default function StaffLoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-    if (!mountedRef.current) return;
-    if (authError) {
-      setError(authError.message === 'Invalid login credentials' ? 'Incorrect email or password.' : authError.message);
-      setLoading(false);
-      return;
-    }
-
-    if (data.session) {
-      const { data: sp } = await supabase.from('staff_profiles').select('id').eq('id', data.session.user.id).maybeSingle();
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (!mountedRef.current) return;
-      if (!sp) {
-        setError('Your account does not have staff access. Contact an administrator.');
-        await supabase.auth.signOut();
+      if (authError) {
+        setError(authError.message === 'Invalid login credentials' ? 'Incorrect email or password.' : authError.message);
         setLoading(false);
         return;
       }
-      router.replace('/staff/dashboard');
+
+      if (data.session?.user) {
+        const { data: sp } = await supabase.from('staff_profiles').select('id').eq('id', data.session.user.id).maybeSingle();
+        if (!mountedRef.current) return;
+        if (!sp) {
+          setError('Your account does not have staff access. Contact an administrator.');
+          await supabase.auth.signOut().catch(() => {});
+          setLoading(false);
+          return;
+        }
+        safeReplace('/staff/dashboard');
+      }
+    } catch (err: any) {
+      if (mountedRef.current) {
+        setError(err?.message || 'Something went wrong. Please try again.');
+        setLoading(false);
+      }
     }
   };
 
@@ -104,7 +123,7 @@ export default function StaffLoginPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="flex flex-col items-center">
-              <Image
+              <img
                 src="https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/eee9f9ba-b907-488b-a1a8-f6d02534a71b_compressed_Remove-Background-Keep-Foot-Logo.webp"
                 alt="Digital Footprint Logo"
                 width={64}
@@ -180,5 +199,17 @@ export default function StaffLoginPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+export default function StaffLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
+        <div className="w-10 h-10 border-3 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin" />
+      </div>
+    }>
+      <StaffLoginContent />
+    </Suspense>
   );
 }

@@ -40,22 +40,26 @@ const STATUS_COLORS: Record<string, string> = {
   archived: 'text-slate-500 bg-slate-500/10 border-slate-500/20',
 };
 
-const MOCK_APPS = [
-  { id: '1', name: 'GuardianHub API', description: 'Core API for GuardianHub product — template rendering, campaign scheduling, contact sync', app_type: 'dfp_product', environment: 'production', status: 'active', required_scopes: ['templates.read','campaigns.create_draft','contacts.read_masked','analytics.delivery.read'], technical_owner: 'devops@digitalfootprint.uk', created_at: '2026-03-15T10:00:00Z' },
-  { id: '2', name: 'GuardianHub API Sandbox', description: 'Sandbox version for development and testing', app_type: 'dfp_product', environment: 'sandbox', status: 'active', required_scopes: ['templates.read','contacts.read_masked','sandbox.*'], technical_owner: 'devops@digitalfootprint.uk', created_at: '2026-03-15T10:30:00Z' },
-  { id: '3', name: 'Synqoro Integration', description: 'Marketing automation bridge between Synqoro and Email Studio — campaign creation and analytics', app_type: 'dfp_product', environment: 'production', status: 'active', required_scopes: ['campaigns.create_draft','campaigns.schedule','analytics.delivery.read'], technical_owner: 'synqoro@digitalfootprint.uk', created_at: '2026-04-20T09:00:00Z' },
-  { id: '4', name: 'QuickGuard Notifications', description: 'Transactional email notifications for QuickGuard security product', app_type: 'dfp_product', environment: 'production', status: 'active', required_scopes: ['transactional.send','templates.read','contacts.read_masked'], technical_owner: 'quickguard@digitalfootprint.uk', created_at: '2026-05-01T14:00:00Z' },
-  { id: '5', name: 'n8n Automation Bridge', description: 'n8n workflow integration — trigger automations, read campaign reports', app_type: 'n8n_integration', environment: 'production', status: 'active', required_scopes: ['automations.trigger','campaigns.read','analytics.delivery.read'], technical_owner: 'automation@digitalfootprint.uk', created_at: '2026-05-10T11:00:00Z' },
-  { id: '6', name: 'Client Portal Sync', description: 'Syncs client portal activity with email preferences and contact data', app_type: 'client_system', environment: 'production', status: 'pending_review', required_scopes: ['contacts.read_masked','contacts.preferences.update'], technical_owner: 'portal@digitalfootprint.uk', created_at: '2026-06-01T08:00:00Z' },
-  { id: '7', name: 'Marketing Analytics Bridge', description: 'External analytics platform integration — delivery and engagement reports', app_type: 'external_partner', environment: 'sandbox', status: 'draft', required_scopes: ['analytics.delivery.read','analytics.engagement.read'], technical_owner: 'analytics-partner@example.com', created_at: '2026-06-15T16:00:00Z' },
-  { id: '8', name: 'Deprecated CRM Bridge', description: 'Legacy CRM integration — being replaced by Client Portal Sync', app_type: 'client_system', environment: 'production', status: 'suspended', required_scopes: ['contacts.read_masked','contacts.preferences.update'], technical_owner: 'crm@digitalfootprint.uk', created_at: '2026-01-10T10:00:00Z' },
-];
-
 export default function DeveloperApps() {
-  const [apps, setApps] = useState<DevApp[]>(MOCK_APPS);
+  const [apps, setApps] = useState<DevApp[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('email_developer_apps')
+        .select('id, name, description, app_type, environment, status, required_scopes, technical_owner, created_at')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (data) setApps(data as DevApp[]);
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   const filtered = apps.filter((a) => {
     if (search && !a.name.toLowerCase().includes(search.toLowerCase())) return false;
@@ -66,6 +70,16 @@ export default function DeveloperApps() {
 
   const types = ['all', ...new Set(apps.map((a) => a.app_type))];
   const statuses = ['all', ...new Set(apps.map((a) => a.status))];
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="h-44 bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -78,9 +92,9 @@ export default function DeveloperApps() {
           <Link href="/admin/email/developers" className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.04] border border-[rgba(255,255,255,0.08)] text-slate-300 rounded-xl font-semibold text-sm hover:bg-white/[0.08] transition-all cursor-pointer whitespace-nowrap">
             <ArrowRight className="w-4 h-4 rotate-180" /> Back
           </Link>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-[#06B6D4] text-white rounded-xl font-semibold text-sm hover:bg-[#0891B2] transition-all cursor-pointer whitespace-nowrap">
+          <Link href="/admin/email/developers/apps" className="flex items-center gap-2 px-4 py-2.5 bg-[#06B6D4] text-white rounded-xl font-semibold text-sm hover:bg-[#0891B2] transition-all cursor-pointer whitespace-nowrap">
             <Plus className="w-4 h-4" /> Register App
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -148,9 +162,9 @@ export default function DeveloperApps() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-20">
+        <div className="text-center py-20 bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl">
           <AppWindow className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-          <p className="text-sm text-slate-400">No applications match your filters</p>
+          <p className="text-sm text-slate-400">{apps.length === 0 ? 'No applications registered yet' : 'No applications match your filters'}</p>
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import DemoAgentWidget from './DemoAgentWidget';
 
 export const metadata: Metadata = {
   title: 'Interactive Software Demos | Digital Footprint',
@@ -25,5 +26,10 @@ export const metadata: Metadata = {
 };
 
 export default function DemosLayout({ children }: Readonly<{ children: ReactNode }>) {
-  return <>{children}</>;
+  return (
+    <>
+      <DemoAgentWidget />
+      {children}
+    </>
+  );
 }

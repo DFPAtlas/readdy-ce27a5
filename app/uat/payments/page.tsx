@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import { motion } from '@/components/motion';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, DollarSign, Clock, CheckCircle, AlertCircle, FileText } from 'lucide-react';
-
-
+import { DollarSign, Clock, CheckCircle } from 'lucide-react';
+import { useUATTester } from '@/components/uat/UATTesterProvider';
+import UATPortalBreadcrumbs from '@/components/uat/portal/UATPortalBreadcrumbs';
+import UATStatusBadge from '@/components/uat/portal/UATStatusBadge';
+import UATEmptyState from '@/components/uat/portal/UATEmptyState';
 
 interface Payment {
   id: string; assignment_id: string; tester_id: string; job_id: string;
@@ -17,28 +19,26 @@ interface Payment {
 }
 
 const statusColors: Record<string, string> = {
-  unpaid: '#94A3B8', pending: '#F59E0B', approved: '#06B6D4', paid: '#10B981', cancelled: '#EF4444',
+  unpaid: 'bg-slate-100 text-slate-600',
+  pending: 'bg-amber-100 text-amber-700',
+  approved: 'bg-cyan-100 text-cyan-700',
+  paid: 'bg-emerald-100 text-emerald-700',
+  cancelled: 'bg-rose-100 text-rose-700',
 };
 
 export default function TesterPaymentsPage() {
   const router = useRouter();
+  const { tester } = useUATTester();
+  const testerId = tester.id;
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
-    const tid = sessionStorage.getItem('uatTesterId');
-    if (!tid) { setTimeout(() => router.push('/uat-testing'), 0); return; }
-    loadData(tid);
-  }, []);
+    loadData();
+  }, [testerId]);
 
-  const loadData = async (tid: string) => {
-    const { data: t } = await supabase.from('uat_testers').select('*').eq('id', tid).maybeSingle();
-    if (!t) { sessionStorage.removeItem('uatTesterId'); setTimeout(() => router.push('/uat-testing'), 0); return; }
-    const testerData = t as any;
-    if (testerData.status !== 'approved') { setBlocked(true); setLoading(false); return; }
-
-    const { data: payData } = await supabase.from('uat_payments').select('*').eq('tester_id', tid).order('created_at', { ascending: false });
+  const loadData = async () => {
+    const { data: payData } = await supabase.from('uat_payments').select('*').eq('tester_id', testerId).order('created_at', { ascending: false });
 
     if (payData && payData.length > 0) {
       const jobIds = [...new Set(payData.map((p: any) => p.job_id))];
@@ -75,23 +75,9 @@ export default function TesterPaymentsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (blocked) {
-    return (
-      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-8">
-        <div className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-3xl p-12 text-center max-w-md">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
-            <AlertCircle className="w-8 h-8 text-amber-400" />
-          </div>
-          <h3 className="text-xl font-bold text-white mb-2">Account Not Approved</h3>
-          <p className="text-slate-400 mb-6">Your tester account must be approved before accessing payments.</p>
-          <button onClick={() => router.push('/uat-testing')} className="px-5 py-2.5 bg-[#06B6D4] rounded-xl text-sm font-semibold text-white cursor-pointer whitespace-nowrap">Back to Home</button>
-        </div>
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <div className="w-8 h-8 border-[3px] border-[#2878d0]/20 border-t-[#2878d0] rounded-full animate-spin" />
+        <p className="text-sm text-slate-500">Loading payments...</p>
       </div>
     );
   }
@@ -100,83 +86,72 @@ export default function TesterPaymentsPage() {
   const totalPending = payments.filter((p) => ['unpaid', 'pending', 'approved'].includes(p.status)).reduce((sum, p) => sum + p.total_amount, 0);
 
   return (
-    <div className="min-h-screen bg-[#0F172A]">
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <button onClick={() => router.push('/uat/dashboard')} className="flex items-center gap-2 text-sm text-slate-400 hover:text-[#06B6D4] transition-colors mb-6 cursor-pointer">
-          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-        </button>
-
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">My Payments</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Track your UAT testing earnings</p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div className="bg-[#1E293B] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-emerald-400" />
-              </div>
-              <span className="text-xs text-slate-400">Total Earned</span>
-            </div>
-            <p className="text-3xl font-bold text-white">${totalEarned.toFixed(2)}</p>
-          </div>
-          <div className="bg-[#1E293B] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-amber-400" />
-              </div>
-              <span className="text-xs text-slate-400">Pending</span>
-            </div>
-            <p className="text-3xl font-bold text-white">${totalPending.toFixed(2)}</p>
-          </div>
-        </div>
-
-        {payments.length === 0 ? (
-          <div className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl p-12 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-slate-500/10 flex items-center justify-center mx-auto mb-6">
-              <DollarSign className="w-8 h-8 text-slate-400" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">No Payments Yet</h3>
-            <p className="text-sm text-slate-400">Complete test assignments to start earning.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {payments.map((p, i) => (
-              <motion.div
-                key={p.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="bg-[#1E293B] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      {p.project_name && (
-                        <span className="text-xs font-medium text-[#06B6D4] bg-[#06B6D4]/10 px-2 py-0.5 rounded-lg">{p.project_name}</span>
-                      )}
-                      <span className="inline-flex px-2 py-0.5 rounded-lg text-xs font-medium capitalize"
-                        style={{ color: statusColors[p.status], backgroundColor: statusColors[p.status] + '15', border: '1px solid ' + statusColors[p.status] + '30' }}>
-                        {p.status}
-                      </span>
-                    </div>
-                    <h3 className="text-base font-bold text-white">{p.job_title}</h3>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-white">${p.total_amount}</p>
-                    <p className="text-xs text-slate-500">Base: ${p.base_amount}{p.bonus_amount > 0 ? ` + $${p.bonus_amount} bonus` : ''}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-3 text-xs text-slate-400">
-                  {p.assignment_status && <span>Assignment: {p.assignment_status}</span>}
-                  {p.paid_at && <span>Paid: {new Date(p.paid_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
+    <>
+      <UATPortalBreadcrumbs items={[{ label: 'Payments' }]} />
+      <div className="mt-4">
+        <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#789265]">Earnings</p>
+        <h1 className="mt-2 font-serif text-4xl font-semibold tracking-tight sm:text-5xl text-[#17325c]">My Payments</h1>
+        <p className="mt-2 text-slate-500">Track your UAT testing earnings</p>
       </div>
-    </div>
+
+      <div className="mt-8 grid grid-cols-2 gap-4 mb-8">
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-emerald-500" />
+            </div>
+            <span className="text-xs text-slate-400">Total Earned</span>
+          </div>
+          <p className="text-3xl font-bold text-[#17325c]">£{totalEarned.toFixed(2)}</p>
+        </div>
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-amber-500" />
+            </div>
+            <span className="text-xs text-slate-400">Pending</span>
+          </div>
+          <p className="text-3xl font-bold text-[#17325c]">£{totalPending.toFixed(2)}</p>
+        </div>
+      </div>
+
+      {payments.length === 0 ? (
+        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
+          <UATEmptyState icon={DollarSign} title="No Payments Yet" description="Complete test assignments to start earning." />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {payments.map((p, i) => (
+            <motion.div
+              key={p.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    {p.project_name && (
+                      <span className="text-xs font-medium text-[#2878d0] bg-[#edf5ff] px-2 py-0.5 rounded-lg">{p.project_name}</span>
+                    )}
+                    <UATStatusBadge status={p.status} colorMap={statusColors} />
+                  </div>
+                  <h3 className="text-base font-bold text-[#17325c]">{p.job_title}</h3>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-[#17325c]">£{p.total_amount}</p>
+                  <p className="text-xs text-slate-400">Base: £{p.base_amount}{p.bonus_amount > 0 ? ` + £${p.bonus_amount} bonus` : ''}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+                {p.assignment_status && <span>Assignment: {p.assignment_status}</span>}
+                {p.paid_at && <span>Paid: {new Date(p.paid_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </>
   );
 }

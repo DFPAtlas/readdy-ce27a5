@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Edit, Save, Loader2, AlertCircle, Globe, ExternalLink, Server,
   Plus, Trash2, CheckCircle, XCircle, X, ChevronDown, Archive, Power, BarChart3,
+  FileText,
 } from 'lucide-react';
 import AdminShell from '../../../../../components/admin/AdminShell';
 
@@ -322,6 +323,12 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                   </button>
                   <button onClick={() => router.push(`/admin/uat/projects/${projectId}/matches`)} className="px-3 py-2 bg-white/5 border border-[rgba(255,255,255,0.06)] rounded-xl text-xs text-slate-400 hover:text-[#06B6D4] hover:border-[#06B6D4]/20 cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
                     <BarChart3 className="w-3.5 h-3.5" /> Matches
+                  </button>
+                  <button onClick={() => router.push(`/admin/uat/projects/${projectId}/test-suites`)} className="px-3 py-2 bg-white/5 border border-[rgba(255,255,255,0.06)] rounded-xl text-xs text-slate-400 hover:text-[#06B6D4] hover:border-[#06B6D4]/20 cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
+                    <FileText className="w-3.5 h-3.5" /> Test Suites
+                  </button>
+                  <button onClick={() => router.push(`/admin/uat/projects/${projectId}/sandbox`)} className="px-3 py-2 bg-white/5 border border-[rgba(255,255,255,0.06)] rounded-xl text-xs text-slate-400 hover:text-[#06B6D4] hover:border-[#06B6D4]/20 cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
+                    <i className="ri-box-3-line w-3.5 h-3.5 flex items-center justify-center" /> Sandbox
                   </button>
                 </>
               )}

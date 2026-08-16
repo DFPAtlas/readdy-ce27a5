@@ -90,22 +90,22 @@ export default function Client360Workspace({ clientId }: { clientId: string }) {
   }, [activeTab]);
 
   const loadProjects = async () => {
-    const { data } = await supabase.from('projects').select('*').eq('client_id', clientId).order('created_at', { ascending: false });
+    const { data } = await supabase.from('projects').select('id, name, status, progress, end_date, updated_at').eq('client_id', clientId).order('created_at', { ascending: false });
     if (data) setProjects(data);
   };
 
   const loadTasks = async () => {
-    const { data } = await supabase.from('project_tasks').select('*').order('created_at', { ascending: false }).limit(50);
+    const { data } = await supabase.from('project_tasks').select('id, project_id, title, status, priority, assigned_to, due_date').order('created_at', { ascending: false }).limit(50);
     if (data) setProjectTasks(data);
   };
 
   const loadInvoices = async () => {
-    const { data } = await supabase.from('invoices').select('*').eq('client_id', clientId).order('created_at', { ascending: false });
+    const { data } = await supabase.from('invoices').select('id, invoice_number, amount, status, due_date, paid_at').eq('client_id', clientId).order('created_at', { ascending: false });
     if (data) setInvoices(data);
   };
 
   const loadActivity = async () => {
-    const { data } = await supabase.from('project_activity').select('*').order('created_at', { ascending: false }).limit(30);
+    const { data } = await supabase.from('project_activity').select('id, project_id, activity_type, title, created_at').order('created_at', { ascending: false }).limit(30);
     if (data) setActivityFeed(data);
   };
 

@@ -1,7 +1,6 @@
 'use client';
 
 import { motion } from '@/components/motion';
-import Image from 'next/image';
 import Link from 'next/link';
 
 const products = [
@@ -41,7 +40,7 @@ export default function AboutEcosystemSection() {
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.08),transparent)]" />
             <div className="relative z-10 text-center">
               <div className="w-16 h-16 rounded-2xl bg-[#06B6D4]/10 flex items-center justify-center mx-auto mb-4 border border-[#06B6D4]/20 overflow-hidden">
-                <Image
+                <img
                   src="https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/eee9f9ba-b907-488b-a1a8-f6d02534a71b_compressed_Remove-Background-Keep-Foot-Logo.webp"
                   alt="Digital Footprint Logo"
                   width={48}

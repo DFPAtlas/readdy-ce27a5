@@ -33,7 +33,7 @@ export function useAdminProfile(): AdminProfileState & { refresh: () => void } {
     const user = session.user;
     const { data: profile, error } = await supabase
       .from('admin_profiles')
-      .select('*')
+      .select('id, email, role, full_name, active, suspended_at, archived_at, created_at, updated_at')
       .eq('id', user.id)
       .maybeSingle();
 

@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from '@/components/motion';
@@ -32,11 +31,15 @@ export default function Header() {
   const portfolioRef = useRef<HTMLDivElement>(null);
   const aboutRef = useRef<HTMLDivElement>(null);
   const clientLoginRef = useRef<HTMLDivElement>(null);
+  const mountedRef = useRef(true);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
+    mountedRef.current = true;
     let ticking = false;
 
     const detectBgLightness = () => {
+      if (!mountedRef.current) return;
       const headerEl = headerRef.current;
       if (!headerEl) return;
       const rect = headerEl.getBoundingClientRect();
@@ -72,15 +75,19 @@ export default function Header() {
         const g = parseInt(match[1]);
         const b = parseInt(match[2]);
         const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-        setHeaderBgLight(luminance > 0.25);
+        if (mountedRef.current) {
+          setHeaderBgLight(luminance > 0.25);
+        }
       }
     };
 
     const onScroll = () => {
       if (!ticking) {
-        requestAnimationFrame(() => {
-          setScrolled(window.scrollY > 40);
-          detectBgLightness();
+        rafRef.current = requestAnimationFrame(() => {
+          if (mountedRef.current) {
+            setScrolled(window.scrollY > 40);
+            detectBgLightness();
+          }
           ticking = false;
         });
         ticking = true;
@@ -89,7 +96,14 @@ export default function Header() {
 
     window.addEventListener('scroll', onScroll, { passive: true });
     detectBgLightness();
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => {
+      mountedRef.current = false;
+      window.removeEventListener('scroll', onScroll);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
   }, []);
 
   const handleEscapeKey = useCallback((e: KeyboardEvent) => {
@@ -156,10 +170,10 @@ export default function Header() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
-      if (servicesTimeoutRef.current) clearTimeout(servicesTimeoutRef.current);
-      if (portfolioTimeoutRef.current) clearTimeout(portfolioTimeoutRef.current);
-      if (clientLoginTimeoutRef.current) clearTimeout(clientLoginTimeoutRef.current);
-      if (aboutTimeoutRef.current) clearTimeout(aboutTimeoutRef.current);
+      if (servicesTimeoutRef.current) { clearTimeout(servicesTimeoutRef.current); servicesTimeoutRef.current = null; }
+      if (portfolioTimeoutRef.current) { clearTimeout(portfolioTimeoutRef.current); portfolioTimeoutRef.current = null; }
+      if (clientLoginTimeoutRef.current) { clearTimeout(clientLoginTimeoutRef.current); clientLoginTimeoutRef.current = null; }
+      if (aboutTimeoutRef.current) { clearTimeout(aboutTimeoutRef.current); aboutTimeoutRef.current = null; }
     };
   }, [servicesOpen, portfolioOpen, aboutOpen, clientLoginOpen]);
 
@@ -170,7 +184,7 @@ export default function Header() {
     setClientLoginOpen(false);
   };
   const handleServicesLeave = () => {
-    servicesTimeoutRef.current = setTimeout(() => setServicesOpen(false), 200);
+    servicesTimeoutRef.current = setTimeout(() => { if (mountedRef.current) setServicesOpen(false); }, 200);
   };
   const handlePortfolioEnter = () => {
     if (portfolioTimeoutRef.current) clearTimeout(portfolioTimeoutRef.current);
@@ -179,7 +193,7 @@ export default function Header() {
     setClientLoginOpen(false);
   };
   const handlePortfolioLeave = () => {
-    portfolioTimeoutRef.current = setTimeout(() => setPortfolioOpen(false), 200);
+    portfolioTimeoutRef.current = setTimeout(() => { if (mountedRef.current) setPortfolioOpen(false); }, 200);
   };
   const handleClientLoginEnter = () => {
     if (clientLoginTimeoutRef.current) clearTimeout(clientLoginTimeoutRef.current);
@@ -188,7 +202,7 @@ export default function Header() {
     setPortfolioOpen(false);
   };
   const handleClientLoginLeave = () => {
-    clientLoginTimeoutRef.current = setTimeout(() => setClientLoginOpen(false), 200);
+    clientLoginTimeoutRef.current = setTimeout(() => { if (mountedRef.current) setClientLoginOpen(false); }, 200);
   };
 
   const handleAboutEnter = () => {
@@ -199,7 +213,7 @@ export default function Header() {
     setClientLoginOpen(false);
   };
   const handleAboutLeave = () => {
-    aboutTimeoutRef.current = setTimeout(() => setAboutOpen(false), 200);
+    aboutTimeoutRef.current = setTimeout(() => { if (mountedRef.current) setAboutOpen(false); }, 200);
   };
 
   const servicesDropdown = [
@@ -267,19 +281,19 @@ export default function Header() {
     : 'bg-transparent';
 
   const dropdownBg = transparent && headerBgLight
-    ? { backgroundColor: 'rgba(255,255,255,0.30)', backdropFilter: 'blur(20px)' }
-    : { backgroundColor: 'rgba(8,20,40,0.30)', backdropFilter: 'blur(20px)' };
+    ? { backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(24px)', border: '1px solid rgba(0,0,0,0.06)' }
+    : { backgroundColor: 'rgba(8,20,40,0.95)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)' };
 
   const dropdownShadow = transparent && headerBgLight
     ? 'shadow-xl shadow-slate-900/10'
     : 'shadow-xl shadow-black/30';
 
   const dropdownTextClass = transparent && headerBgLight
-    ? 'text-slate-600 hover:text-[#F97316] hover:bg-orange-50'
+    ? 'text-slate-700 hover:text-[#F97316] hover:bg-orange-50'
     : 'text-[#7DD3FC] hover:text-[#F97316] hover:bg-white/[0.08]';
 
   const dropdownIconClass = transparent && headerBgLight
-    ? 'text-slate-400'
+    ? 'text-slate-500'
     : 'text-[#67E8F9]';
 
   const dropdownDividerClass = transparent && headerBgLight
@@ -302,18 +316,17 @@ export default function Header() {
       >
         <div className="px-6 flex items-center justify-between">
           <Link
-            href="https://digital-footprint.uk/#first-content-section"
+            href="/"
             className={`flex items-center gap-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06B6D4] focus:ring-offset-2 focus:ring-offset-[#0A1628] rounded-lg transition-all duration-500 ${
               scrolled ? 'scale-90' : 'scale-100'
             }`}
             aria-label="Digital Footprint - Home"
           >
-            <Image
+            <img
               src="https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/eee9f9ba-b907-488b-a1a8-f6d02534a71b_compressed_Remove-Background-Keep-Foot-Logo.webp"
               alt="Digital Footprint Logo"
               width={40}
               height={40}
-              priority
               className={`object-contain rounded-lg transition-all duration-500 ${
                 scrolled ? 'w-8 h-8' : 'w-10 h-10'
               }`}

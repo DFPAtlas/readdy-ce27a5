@@ -1,21 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 import {
   Archive, HardDrive, RefreshCw, CheckCircle2, XCircle,
   AlertTriangle, Clock, Search, ArrowRight, ArrowLeft,
   ShieldCheck, Download, Eye, Plus,
 } from 'lucide-react';
 
-const mockBackups = [
-  { id: 'bak-001', name: 'Pre-Release v3.2.0', type: 'pre_release', status: 'valid', size: '4.8 MB', modules: 7, records: 156, createdAt: '2026-07-17 02:00', expiresAt: '2027-01-17', restoreTest: 'passed', retention: 'protected' },
-  { id: 'bak-002', name: 'Weekly — Templates & Brands', type: 'scheduled', status: 'valid', size: '3.2 MB', modules: 4, records: 89, createdAt: '2026-07-14 00:00', expiresAt: '2026-08-14', restoreTest: 'passed', retention: 'weekly' },
-  { id: 'bak-003', name: 'Pre-Migration — Campaigns', type: 'pre_migration', status: 'valid', size: '1.6 MB', modules: 2, records: 34, createdAt: '2026-07-10 16:30', expiresAt: '2026-10-10', restoreTest: 'not_tested', retention: 'monthly' },
-  { id: 'bak-004', name: 'Complete Config (no contacts)', type: 'complete_config', status: 'valid', size: '8.1 MB', modules: 8, records: 312, createdAt: '2026-07-05 00:00', expiresAt: '2026-08-05', restoreTest: 'passed', retention: 'monthly' },
-  { id: 'bak-005', name: 'Manual — Before v3.1 upgrade', type: 'manual', status: 'expired', size: '3.5 MB', modules: 5, records: 120, createdAt: '2026-06-04 11:00', expiresAt: '2026-07-04', restoreTest: 'expired', retention: 'expired' },
-  { id: 'bak-006', name: 'Daily — Config Only', type: 'scheduled', status: 'valid', size: '512 KB', modules: 1, records: 18, createdAt: '2026-07-19 00:00', expiresAt: '2026-07-26', restoreTest: 'pending', retention: 'daily' },
-];
+interface BackupSnapshot {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  size: string;
+  modules: number;
+  records: number;
+  createdAt: string;
+  expiresAt: string | null;
+  restoreTest: string;
+  retention: string;
+}
+
+function formatBytes(bytes: number | null): string {
+  if (!bytes || bytes <= 0) return '—';
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function sumCounts(counts: unknown): number {
+  if (!counts || typeof counts !== 'object') return 0;
+  const obj = counts as Record<string, unknown>;
+  return Object.values(obj).reduce((sum, v) => sum + (typeof v === 'number' ? v : 0), 0);
+}
+
+function moduleCount(modules: unknown): number {
+  if (!modules || typeof modules !== 'object') return 0;
+  return Object.keys(modules as Record<string, unknown>).length;
+}
+
+function restoreTestStatus(restoreTest: unknown): string {
+  if (restoreTest && typeof restoreTest === 'object') {
+    const obj = restoreTest as Record<string, unknown>;
+    if (typeof obj.status === 'string') return obj.status;
+  }
+  return 'not_tested';
+}
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cl: string }> = {
@@ -24,6 +55,7 @@ function StatusBadge({ status }: { status: string }) {
     passed: { label: 'Passed', cl: 'text-emerald-400 bg-emerald-400/10' },
     not_tested: { label: 'Not Tested', cl: 'text-amber-400 bg-amber-400/10' },
     pending: { label: 'Pending', cl: 'text-sky-400 bg-sky-400/10' },
+    failed: { label: 'Failed', cl: 'text-red-400 bg-red-400/10' },
     protected: { label: 'Protected', cl: 'text-violet-400 bg-violet-400/10' },
   };
   const info = map[status] || { label: status, cl: 'text-slate-400 bg-slate-400/10' };
@@ -31,11 +63,60 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function BackupsPage() {
+  const [backups, setBackups] = useState<BackupSnapshot[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
 
-  const validBackups = mockBackups.filter((b) => b.status === 'valid');
-  const totalSize = validBackups.reduce((sum, b) => sum + parseFloat(b.size), 0);
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('email_backup_snapshots')
+        .select('id, name, snapshot_type, status, file_size_bytes, modules, counts, restore_test, retention_tier, created_at, expires_at')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (data) {
+        setBackups((data as Record<string, unknown>[]).map((b) => ({
+          id: b.id as string,
+          name: (b.name as string) || 'Unnamed snapshot',
+          type: (b.snapshot_type as string) || 'manual',
+          status: (b.status as string) || 'valid',
+          size: formatBytes(b.file_size_bytes as number | null),
+          modules: moduleCount(b.modules),
+          records: sumCounts(b.counts),
+          createdAt: (b.created_at as string) || '',
+          expiresAt: (b.expires_at as string) || null,
+          restoreTest: restoreTestStatus(b.restore_test),
+          retention: (b.retention_tier as string) || 'weekly',
+        })));
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const filtered = backups.filter((b) => !search || b.name.toLowerCase().includes(search.toLowerCase()));
+
+  const validBackups = backups.filter((b) => b.status === 'valid');
+  const totalSizeMB = validBackups.reduce((sum, b) => {
+    const n = parseFloat(b.size);
+    return sum + (isNaN(n) ? 0 : n);
+  }, 0);
+  const passedTests = backups.filter((b) => b.restoreTest === 'passed').length;
+  const pendingTests = backups.filter((b) => b.restoreTest === 'pending').length;
+  const notTested = backups.filter((b) => b.restoreTest === 'not_tested').length;
+  const protectedCount = backups.filter((b) => b.retention === 'protected').length;
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="h-14 bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -59,23 +140,23 @@ export default function BackupsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3"><Archive className="w-4 h-4 text-slate-400" /><span className="text-xs text-slate-400 uppercase tracking-wider">Snapshots</span></div>
-          <p className="text-2xl font-bold text-white">{mockBackups.length}</p>
+          <p className="text-2xl font-bold text-white">{backups.length}</p>
           <p className="text-xs text-slate-500 mt-1">{validBackups.length} valid</p>
         </div>
         <div className="bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3"><HardDrive className="w-4 h-4 text-slate-400" /><span className="text-xs text-slate-400 uppercase tracking-wider">Storage</span></div>
-          <p className="text-2xl font-bold text-white">{totalSize.toFixed(1)} MB</p>
-          <p className="text-xs text-slate-500 mt-1">Total across all valid snapshots</p>
+          <p className="text-2xl font-bold text-white">{totalSizeMB.toFixed(1)} MB</p>
+          <p className="text-xs text-slate-500 mt-1">Total across valid snapshots</p>
         </div>
         <div className="bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3"><RefreshCw className="w-4 h-4 text-slate-400" /><span className="text-xs text-slate-400 uppercase tracking-wider">Restore Tests</span></div>
-          <p className="text-2xl font-bold text-emerald-400">3</p>
-          <p className="text-xs text-slate-500 mt-1">Passed · 1 pending · 1 not tested</p>
+          <p className="text-2xl font-bold text-emerald-400">{passedTests}</p>
+          <p className="text-xs text-slate-500 mt-1">Passed · {pendingTests} pending · {notTested} not tested</p>
         </div>
         <div className="bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3"><ShieldCheck className="w-4 h-4 text-slate-400" /><span className="text-xs text-slate-400 uppercase tracking-wider">Protected</span></div>
-          <p className="text-2xl font-bold text-violet-400">1</p>
-          <p className="text-xs text-slate-500 mt-1">Pre-release snapshot</p>
+          <p className="text-2xl font-bold text-violet-400">{protectedCount}</p>
+          <p className="text-xs text-slate-500 mt-1">Protected snapshots</p>
         </div>
       </div>
 
@@ -100,66 +181,53 @@ export default function BackupsPage() {
 
       {showCreate && (
         <div className="bg-[#121215] border border-[#06B6D4]/20 rounded-2xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">Create Backup Snapshot</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="text-xs text-slate-400 block mb-1.5">Snapshot Type</label>
-              <div className="flex flex-wrap gap-2">
-                {['Configuration Only', 'Templates & Brands', 'Campaign Content', 'Automations & Transactional', 'Complete Studio', 'Pre-Migration', 'Manual Named'].map((type) => (
-                  <button key={type} className="px-3 py-1.5 bg-white/[0.03] border border-[rgba(255,255,255,0.06)] rounded-lg text-xs text-slate-300 hover:border-[#06B6D4]/30 transition-all cursor-pointer whitespace-nowrap">
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-1.5">Name</label>
-              <input type="text" placeholder="e.g. Pre-Release v3.3.0" className="w-full px-3 py-2 bg-white/[0.04] border border-[rgba(255,255,255,0.06)] rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20" />
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-[#06B6D4] text-black text-sm font-semibold rounded-xl hover:bg-[#22D3EE] transition-all cursor-pointer whitespace-nowrap">
-              <ShieldCheck className="w-4 h-4" /> Create Snapshot
-            </button>
-            <button onClick={() => setShowCreate(false)} className="text-xs text-slate-500 hover:text-slate-300 cursor-pointer">Cancel</button>
-          </div>
+          <h3 className="text-sm font-semibold text-white mb-2">Create Backup Snapshot</h3>
+          <p className="text-xs text-amber-400 mb-4">Snapshot creation requires the backup worker. This action is not yet wired to the scheduler.</p>
+          <button onClick={() => setShowCreate(false)} className="text-xs text-slate-500 hover:text-slate-300 cursor-pointer">Cancel</button>
         </div>
       )}
 
-      <div className="bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[rgba(255,255,255,0.06)]">
-              <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Name</th>
-              <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Type</th>
-              <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Size</th>
-              <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Records</th>
-              <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Status</th>
-              <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Restore Test</th>
-              <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Retention</th>
-              <th className="text-right text-xs text-slate-500 font-medium px-5 py-3">Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockBackups.map((bak) => (
-              <tr key={bak.id} className="border-b border-[rgba(255,255,255,0.03)] hover:bg-white/[0.02] transition-colors">
-                <td className="px-5 py-3">
-                  <Link href={`/admin/email/backups/${bak.id}`} className="text-white font-medium hover:text-[#06B6D4] transition-colors cursor-pointer">
-                    {bak.name}
-                  </Link>
-                </td>
-                <td className="px-5 py-3 text-slate-400 text-xs capitalize">{bak.type.replace(/_/g, ' ')}</td>
-                <td className="px-5 py-3 text-slate-300 text-xs">{bak.size}</td>
-                <td className="px-5 py-3 text-slate-300 text-xs">{bak.records}</td>
-                <td className="px-5 py-3"><StatusBadge status={bak.status} /></td>
-                <td className="px-5 py-3"><StatusBadge status={bak.restoreTest} /></td>
-                <td className="px-5 py-3"><StatusBadge status={bak.retention} /></td>
-                <td className="px-5 py-3 text-slate-500 text-xs text-right">{bak.createdAt}</td>
+      {filtered.length === 0 ? (
+        <div className="text-center py-20 bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl">
+          <Archive className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+          <p className="text-sm text-slate-400">{backups.length === 0 ? 'No backup snapshots yet' : 'No backups match your search'}</p>
+        </div>
+      ) : (
+        <div className="bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Name</th>
+                <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Type</th>
+                <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Size</th>
+                <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Records</th>
+                <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Status</th>
+                <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Restore Test</th>
+                <th className="text-left text-xs text-slate-500 font-medium px-5 py-3">Retention</th>
+                <th className="text-right text-xs text-slate-500 font-medium px-5 py-3">Created</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtered.map((bak) => (
+                <tr key={bak.id} className="border-b border-[rgba(255,255,255,0.03)] hover:bg-white/[0.02] transition-colors">
+                  <td className="px-5 py-3">
+                    <Link href={`/admin/email/backups/${bak.id}`} className="text-white font-medium hover:text-[#06B6D4] transition-colors cursor-pointer">
+                      {bak.name}
+                    </Link>
+                  </td>
+                  <td className="px-5 py-3 text-slate-400 text-xs capitalize">{bak.type.replace(/_/g, ' ')}</td>
+                  <td className="px-5 py-3 text-slate-300 text-xs">{bak.size}</td>
+                  <td className="px-5 py-3 text-slate-300 text-xs">{bak.records}</td>
+                  <td className="px-5 py-3"><StatusBadge status={bak.status} /></td>
+                  <td className="px-5 py-3"><StatusBadge status={bak.restoreTest} /></td>
+                  <td className="px-5 py-3"><StatusBadge status={bak.retention} /></td>
+                  <td className="px-5 py-3 text-slate-500 text-xs text-right">{bak.createdAt ? new Date(bak.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-3">
         <Link href="/admin/email/settings/backup" className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#121215] border border-[rgba(255,255,255,0.1)] text-white text-sm font-semibold rounded-xl hover:border-[#06B6D4]/30 transition-all cursor-pointer whitespace-nowrap">

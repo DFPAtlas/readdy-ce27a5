@@ -51,7 +51,7 @@ export default function NewProjectClient() {
     let cancelled = false;
     async function init() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { router.replace('/staff/login'); return; }
+      if (!session) { setTimeout(() => { if (!cancelled) router.replace('/staff/login'); }, 0); return; }
 
       const { data: sp } = await supabase
         .from('staff_profiles')
@@ -59,7 +59,7 @@ export default function NewProjectClient() {
         .eq('id', session.user.id)
         .maybeSingle();
 
-      if (!sp) { router.replace('/staff/login'); return; }
+      if (!sp) { setTimeout(() => { if (!cancelled) router.replace('/staff/login'); }, 0); return; }
       if (cancelled) return;
 
       const role = sp.role;

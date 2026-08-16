@@ -173,12 +173,40 @@ export const UAT_APPROVAL_STATUS_CONFIG: Record<string, { label: string; color: 
   revoked: { label: 'Revoked', color: '#DC2626', bg: 'bg-red-500/10' },
 };
 
-export const UAT_SESSION_STATUSES = ['in_progress', 'paused', 'submitted', 'abandoned'] as const;
-export const UAT_SESSION_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  in_progress: { label: 'In Progress', color: '#3B82F6', bg: 'bg-blue-500/10' },
+export const UAT_SESSION_STATUSES = ['active', 'paused', 'completed', 'abandoned', 'expired'] as const;
+export type UatSessionStatus = typeof UAT_SESSION_STATUSES[number];
+
+export const UAT_SESSION_STATUS_CONFIG: Record<UatSessionStatus, { label: string; color: string; bg: string }> = {
+  active: { label: 'Active', color: '#10B981', bg: 'bg-emerald-500/10' },
   paused: { label: 'Paused', color: '#F59E0B', bg: 'bg-amber-500/10' },
-  submitted: { label: 'Submitted', color: '#10B981', bg: 'bg-emerald-500/10' },
+  completed: { label: 'Completed', color: '#3B82F6', bg: 'bg-blue-500/10' },
   abandoned: { label: 'Abandoned', color: '#6B7280', bg: 'bg-gray-500/10' },
+  expired: { label: 'Expired', color: '#EF4444', bg: 'bg-red-500/10' },
+};
+
+export const TEST_SUITE_STATUSES = ['draft', 'active', 'archived'] as const;
+export type TestSuiteStatus = typeof TEST_SUITE_STATUSES[number];
+
+export const TEST_SUITE_STATUS_CONFIG: Record<TestSuiteStatus, { label: string; color: string; bg: string }> = {
+  draft: { label: 'Draft', color: '#94A3B8', bg: 'bg-slate-500/10' },
+  active: { label: 'Active', color: '#10B981', bg: 'bg-emerald-500/10' },
+  archived: { label: 'Archived', color: '#6B7280', bg: 'bg-gray-500/10' },
+};
+
+export const TEST_CASE_STATUSES = ['draft', 'active', 'archived'] as const;
+export type TestCaseDefinitionStatus = typeof TEST_CASE_STATUSES[number];
+
+export const ASSIGNMENT_TEST_CASE_STATUSES = ['not_started', 'in_progress', 'passed', 'failed', 'blocked', 'skipped', 'needs_retest'] as const;
+export type AssignmentTestCaseStatus = typeof ASSIGNMENT_TEST_CASE_STATUSES[number];
+
+export const ASSIGNMENT_TC_STATUS_CONFIG: Record<AssignmentTestCaseStatus, { label: string; color: string; bg: string }> = {
+  not_started: { label: 'Not Started', color: '#94A3B8', bg: 'bg-slate-500/10' },
+  in_progress: { label: 'In Progress', color: '#3B82F6', bg: 'bg-blue-500/10' },
+  passed: { label: 'Passed', color: '#10B981', bg: 'bg-emerald-500/10' },
+  failed: { label: 'Failed', color: '#EF4444', bg: 'bg-red-500/10' },
+  blocked: { label: 'Blocked', color: '#F59E0B', bg: 'bg-amber-500/10' },
+  skipped: { label: 'Skipped', color: '#6B7280', bg: 'bg-gray-500/10' },
+  needs_retest: { label: 'Needs Retest', color: '#8B5CF6', bg: 'bg-violet-500/10' },
 };
 
 export const UAT_PLAN_STATUSES = ['draft', 'in_review', 'approved', 'superseded', 'archived'] as const;
@@ -218,3 +246,52 @@ export function mapLegacyFeedbackStatus(status: string): string {
   };
   return m[status] || 'submitted';
 }
+
+export const UAT_MONITORING_EVENT_TYPES = [
+  'session_started', 'session_resumed', 'session_paused', 'session_finished',
+  'heartbeat', 'page_view', 'route_change', 'page_hidden', 'page_visible',
+  'javascript_error', 'unhandled_rejection', 'api_failure', 'api_slow',
+  'performance', 'tester_checkpoint', 'monitoring_started', 'monitoring_stopped',
+] as const;
+export type UatMonitoringEventType = typeof UAT_MONITORING_EVENT_TYPES[number];
+
+export const UAT_MONITORING_EVENT_CONFIG: Record<UatMonitoringEventType, { label: string; color: string; bg: string }> = {
+  session_started: { label: 'Session Started', color: '#10B981', bg: 'bg-emerald-500/10' },
+  session_resumed: { label: 'Session Resumed', color: '#10B981', bg: 'bg-emerald-500/10' },
+  session_paused: { label: 'Session Paused', color: '#F59E0B', bg: 'bg-amber-500/10' },
+  session_finished: { label: 'Session Finished', color: '#3B82F6', bg: 'bg-blue-500/10' },
+  heartbeat: { label: 'Heartbeat', color: '#94A3B8', bg: 'bg-slate-500/10' },
+  page_view: { label: 'Page View', color: '#6366F1', bg: 'bg-indigo-500/10' },
+  route_change: { label: 'Route Change', color: '#6366F1', bg: 'bg-indigo-500/10' },
+  page_hidden: { label: 'Page Hidden', color: '#94A3B8', bg: 'bg-slate-500/10' },
+  page_visible: { label: 'Page Visible', color: '#94A3B8', bg: 'bg-slate-500/10' },
+  javascript_error: { label: 'JS Error', color: '#EF4444', bg: 'bg-red-500/10' },
+  unhandled_rejection: { label: 'Unhandled Rejection', color: '#EF4444', bg: 'bg-red-500/10' },
+  api_failure: { label: 'API Failure', color: '#F97316', bg: 'bg-orange-500/10' },
+  api_slow: { label: 'API Slow', color: '#F59E0B', bg: 'bg-amber-500/10' },
+  performance: { label: 'Performance', color: '#8B5CF6', bg: 'bg-violet-500/10' },
+  tester_checkpoint: { label: 'Checkpoint', color: '#06B6D4', bg: 'bg-cyan-500/10' },
+  monitoring_started: { label: 'Monitoring Started', color: '#10B981', bg: 'bg-emerald-500/10' },
+  monitoring_stopped: { label: 'Monitoring Stopped', color: '#EF4444', bg: 'bg-red-500/10' },
+};
+
+export const UAT_EVIDENCE_TYPES = ['screenshot', 'image', 'document', 'video', 'log', 'other'] as const;
+
+export const UAT_EVIDENCE_TYPE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  screenshot: { label: 'Screenshot', color: '#3B82F6', bg: 'bg-blue-500/10' },
+  image: { label: 'Image', color: '#8B5CF6', bg: 'bg-violet-500/10' },
+  document: { label: 'Document', color: '#F59E0B', bg: 'bg-amber-500/10' },
+  video: { label: 'Video', color: '#EF4444', bg: 'bg-red-500/10' },
+  log: { label: 'Log', color: '#94A3B8', bg: 'bg-slate-500/10' },
+  other: { label: 'Other', color: '#6B7280', bg: 'bg-gray-500/10' },
+};
+
+export const UAT_EVIDENCE_STATUSES = ['uploaded', 'attached', 'quarantined', 'rejected', 'deleted'] as const;
+
+export const UAT_EVIDENCE_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  uploaded: { label: 'Uploaded', color: '#3B82F6', bg: 'bg-blue-500/10' },
+  attached: { label: 'Attached', color: '#10B981', bg: 'bg-emerald-500/10' },
+  quarantined: { label: 'Quarantined', color: '#F59E0B', bg: 'bg-amber-500/10' },
+  rejected: { label: 'Rejected', color: '#EF4444', bg: 'bg-red-500/10' },
+  deleted: { label: 'Deleted', color: '#6B7280', bg: 'bg-gray-500/10' },
+};

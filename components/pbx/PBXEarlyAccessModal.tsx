@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from '@/components/motion';
 import { X, Send, Loader2, CheckCircle2 } from 'lucide-react';
+import { submitEnquiry, makeIdempotencyKey } from '@/lib/submit-enquiry';
 
 interface PBXEarlyAccessModalProps {
   open: boolean;
@@ -48,24 +49,26 @@ export default function PBXEarlyAccessModal({ open, onClose }: PBXEarlyAccessMod
     setSubmitting(true);
 
     try {
-      const formData = new FormData(e.currentTarget);
-      formData.delete('phone_alt');
+      const result = await submitEnquiry('leads', {
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim() || null,
+        company_name: company.trim() || null,
+        service_interest: 'Cloud PBX',
+        message: whatToTest || null,
+        enquiry_type: 'pbx_early_access',
+        enquiry_data: { users_needed: usersNeeded || null, notes: notes || null },
+        source: 'pbx_early_access',
+        status: 'new',
+        stage: 'new',
+        consent_contact: true,
+        idempotency_key: makeIdempotencyKey(),
+      }, true);
 
-      const response = await fetch('https://readdy.ai/api/form/d93uuos41f1vs39a6km0', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(formData as unknown as Record<string, string>).toString(),
-      });
-
-      const responseText = await response.text();
-      let parsed;
-      try { parsed = JSON.parse(responseText); } catch { parsed = null; }
-
-      if (response.ok && parsed?.code === 'OK') {
+      if (result.code === 'OK') {
         setSuccess(true);
       } else {
-        const serverMsg = parsed?.meta?.message || parsed?.message || parsed?.meta?.detail || responseText;
-        setError(serverMsg || 'Something went wrong. Please try again.');
+        setError(result.message);
       }
     } catch {
       setError('Network error. Please try again.');

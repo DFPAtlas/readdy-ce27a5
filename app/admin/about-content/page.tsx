@@ -53,7 +53,10 @@ export default function AboutContentPage() {
 
   useEffect(() => {
     if (redirectTo) {
-      router.replace(redirectTo);
+      const timer = setTimeout(() => {
+        router.replace(redirectTo);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [redirectTo, router]);
 
@@ -73,8 +76,8 @@ export default function AboutContentPage() {
   const fetchData = async () => {
     setLoading(true);
     const [{ data: fData }, { data: tData }] = await Promise.all([
-      supabase.from('about_founder').select('*').maybeSingle(),
-      supabase.from('about_team_members').select('*').order('sort_order'),
+      supabase.from('about_founder').select('id, name, title, bio, image_url, linkedin_url, twitter_url, sort_order, created_at, updated_at').maybeSingle(),
+      supabase.from('about_team_members').select('id, name, title, bio, image_url, linkedin_url, twitter_url, sort_order, created_at').order('sort_order'),
     ]);
     if (fData) setFounder(fData as Founder);
     if (tData) setTeam(tData as TeamMember[]);

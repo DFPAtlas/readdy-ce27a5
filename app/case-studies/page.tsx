@@ -6,12 +6,12 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 const caseStudies = [
-  { title: 'Construction Management Platform', industry: 'Construction', desc: 'Built a complete project management and workforce scheduling platform for a national construction firm, reducing admin time by 65% and improving on-site coordination.', impact: 'Admin time reduced by 65%', tags: ['Custom Software', 'Cloud', 'Automation'], image: 'https://readdy.ai/api/search-image?query=Dark%20themed%20modern%20construction%20project%20management%20software%20platform%20with%20scheduling%20dashboards%20and%20workforce%20planning%20tools%2C%20clean%20professional%20UI%20design%20on%20dark%20background%2C%20construction%20technology%20concept&width=600&height=380&seq=cs-list-constr-light&orientation=landscape' },
-  { title: 'Security Company Digital Transformation', industry: 'Security Industry', desc: 'Digitized the entire operation — from rostering and patrol tracking to invoicing and compliance management. Eliminated paper-based processes entirely.', impact: '100% paperless operations', tags: ['GuardianHub', 'Mobile App', 'Cloud'], image: 'https://readdy.ai/api/search-image?query=Dark%20themed%20security%20company%20digital%20operations%20dashboard%20with%20patrol%20maps%20officer%20scheduling%20and%20compliance%20tracking%2C%20modern%20security%20management%20platform%20on%20dark%20background&width=600&height=380&seq=cs-list-sec-light&orientation=landscape' },
-  { title: 'AI-Powered Property Management', industry: 'Property & Lettings', desc: 'Developed an AI-driven lettings platform connecting landlords, agents and tenants with automated workflows, smart matching and digital document management.', impact: 'Tenant placement time halved', tags: ['Lethub', 'AI', 'Automation'], image: 'https://readdy.ai/api/search-image?query=Dark%20themed%20modern%20property%20management%20platform%20with%20AI%20matching%20technology%20showing%20property%20listings%20and%20tenant%20dashboards%2C%20professional%20real%20estate%20tech%20design%20on%20dark%20background&width=600&height=380&seq=cs-list-prop-light&orientation=landscape' },
-  { title: 'Retail Chain E-Commerce Overhaul', industry: 'Retail', desc: 'Migrated a 50-store retail chain to a unified e-commerce platform with real-time inventory sync, CRM integration and automated marketing campaigns.', impact: 'Online revenue grew by 340%', tags: ['E-Commerce', 'CRM', 'Integration'], image: 'https://readdy.ai/api/search-image?query=Dark%20themed%20modern%20e-commerce%20retail%20platform%20dashboard%20with%20inventory%20management%20and%20sales%20analytics%2C%20clean%20professional%20retail%20technology%20design%20on%20dark%20background&width=600&height=380&seq=cs-list-retail-light&orientation=landscape' },
-  { title: 'Healthcare Practice Management System', industry: 'Healthcare', desc: 'Created a comprehensive practice management platform with patient scheduling, secure messaging, digital records and automated appointment reminders.', impact: 'No-show rate dropped 40%', tags: ['Web App', 'Security', 'Automation'], image: 'https://readdy.ai/api/search-image?query=Dark%20themed%20modern%20healthcare%20practice%20management%20platform%20with%20patient%20scheduling%20and%20digital%20records%20interface%2C%20clean%20professional%20medical%20technology%20design%20on%20dark%20background&width=600&height=380&seq=cs-list-health-light&orientation=landscape' },
-  { title: 'Hospitality Group Booking Platform', industry: 'Hospitality', desc: 'Designed and built a unified booking and operations platform for a multi-venue hospitality group, integrating reservations, events and customer data.', impact: 'Bookings increased by 85%', tags: ['Booking System', 'CRM', 'Cloud'], image: 'https://readdy.ai/api/search-image?query=Dark%20themed%20modern%20hospitality%20booking%20and%20operations%20platform%20dashboard%20for%20multi-venue%20management%2C%20clean%20professional%20restaurant%20and%20hotel%20technology%20design%20on%20dark%20background&width=600&height=380&seq=cs-list-hosp-light&orientation=landscape' },
+  { title: 'Construction Management Platform', industry: 'Construction', desc: 'Replacing spreadsheets and disconnected tools with a single project management and workforce scheduling system — one connected place for planning, scheduling and on-site coordination.', tags: ['Custom Software', 'Cloud', 'Automation'], image: 'https://readdy.ai/api/search-image?query=Dark%20themed%20modern%20construction%20project%20management%20software%20platform%20with%20scheduling%20dashboards%20and%20workforce%20planning%20tools%2C%20clean%20professional%20UI%20design%20on%20dark%20background%2C%20construction%20technology%20concept&width=600&height=380&seq=cs-list-constr-light&orientation=landscape' },
+  { title: 'Security Operations System', industry: 'Security Industry', desc: 'Bringing rostering, patrol tracking, invoicing and compliance into one connected operations platform instead of relying on paper-based processes.', tags: ['GuardianHub', 'Mobile App', 'Cloud'], image: 'https://readdy.ai/api/search-image?query=Dark%20themed%20security%20company%20digital%20operations%20dashboard%20with%20patrol%20maps%20officer%20scheduling%20and%20compliance%20tracking%2C%20modern%20security%20management%20platform%20on%20dark%20background&width=600&height=380&seq=cs-list-sec-light&orientation=landscape' },
+  { title: 'Lettings & Property Platform', industry: 'Property & Lettings', desc: 'Connecting landlords, agents and tenants through automated workflows, smart matching and digital document management in one place.', tags: ['LetHub', 'AI', 'Automation'], image: 'https://readdy.ai/api/search-image?query=Dark%20themed%20modern%20property%20management%20platform%20with%20AI%20matching%20technology%20showing%20property%20listings%20and%20tenant%20dashboards%2C%20professional%20real%20estate%20tech%20design%20on%20dark%20background&width=600&height=380&seq=cs-list-prop-light&orientation=landscape' },
+  { title: 'Retail E-Commerce Platform', industry: 'Retail', desc: 'Unifying a multi-store retail operation on one e-commerce platform with real-time inventory, CRM and automated marketing campaigns.', tags: ['E-Commerce', 'CRM', 'Integration'], image: 'https://readdy.ai/api/search-image?query=Dark%20themed%20modern%20e-commerce%20retail%20platform%20dashboard%20with%20inventory%20management%20and%20sales%20analytics%2C%20clean%20professional%20retail%20technology%20design%20on%20dark%20background&width=600&height=380&seq=cs-list-retail-light&orientation=landscape' },
+  { title: 'Practice Management System', industry: 'Healthcare', desc: 'A practice management platform with scheduling, secure messaging, digital records and automated appointment reminders.', tags: ['Web App', 'Security', 'Automation'], image: 'https://readdy.ai/api/search-image?query=Dark%20themed%20modern%20healthcare%20practice%20management%20platform%20with%20patient%20scheduling%20and%20digital%20records%20interface%2C%20clean%20professional%20medical%20technology%20design%20on%20dark%20background&width=600&height=380&seq=cs-list-health-light&orientation=landscape' },
+  { title: 'Hospitality Booking Platform', industry: 'Hospitality', desc: 'A unified booking and operations platform for multi-venue hospitality groups, integrating reservations, events and customer data.', tags: ['Booking System', 'CRM', 'Cloud'], image: 'https://readdy.ai/api/search-image?query=Dark%20themed%20modern%20hospitality%20booking%20and%20operations%20platform%20dashboard%20for%20multi-venue%20management%2C%20clean%20professional%20restaurant%20and%20hotel%20technology%20design%20on%20dark%20background&width=600&height=380&seq=cs-list-hosp-light&orientation=landscape' },
 ];
 
 export default function CaseStudiesPage() {
@@ -25,11 +25,20 @@ export default function CaseStudiesPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#06B6D4]/10 border border-[#06B6D4]/20 text-[#06B6D4] text-sm font-medium mb-6">
                 <i className="ri-folder-chart-line w-4 h-4 flex items-center justify-center" />
-                Real Results
+                Illustrative Examples
               </div>
               <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-4 text-slate-900">Case Studies</h1>
-              <p className="text-xl text-slate-500 max-w-2xl mx-auto">Real results from real projects. See how we have helped businesses transform through technology.</p>
+              <p className="text-xl text-slate-500 max-w-2xl mx-auto">Representative examples of the kinds of systems Digital Footprint designs and builds.</p>
             </motion.div>
+
+            <div className="max-w-3xl mx-auto mb-12">
+              <div className="flex items-start gap-3 rounded-2xl bg-amber-50 border border-amber-100 px-5 py-4">
+                <i className="ri-information-line w-5 h-5 flex items-center justify-center text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800 leading-relaxed">
+                  These examples illustrate the problems we solve and the outcomes our approach is designed to achieve. They are not specific client engagements, and no results are guaranteed.
+                </p>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {caseStudies.map((cs, index) => (
@@ -50,12 +59,6 @@ export default function CaseStudiesPage() {
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-[#06B6D4] transition-colors">{cs.title}</h3>
                     <p className="text-slate-500 text-sm leading-relaxed mb-4">{cs.desc}</p>
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-8 h-8 rounded-lg bg-[#10B981]/10 flex items-center justify-center">
-                        <i className="ri-line-chart-line text-[#10B981] w-4 h-4 flex items-center justify-center" />
-                      </div>
-                      <span className="text-sm font-semibold text-[#10B981]">{cs.impact}</span>
-                    </div>
                     <div className="flex flex-wrap gap-2">
                       {cs.tags.map((tag) => (
                         <span key={tag} className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-50 text-slate-500 border border-slate-100">{tag}</span>

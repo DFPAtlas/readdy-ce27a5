@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { ADMIN_ROLE_LABELS, type AdminRoleKey, normaliseAdminRole, isPrivilegedAdminRole } from '@/lib/admin-roles';
 
 export function useStaffMetrics() {
   const [data, setData] = useState<Record<string, number>>({});
@@ -24,7 +25,7 @@ export function useStaffMetrics() {
         supabase.from('staff_invitations').select('*', { count: 'exact', head: true }).eq('status', 'Sent'),
         supabase.from('admin_profiles').select('*', { count: 'exact', head: true }).eq('status', 'Pending Activation'),
         supabase.from('admin_profiles').select('*', { count: 'exact', head: true }).eq('status', 'Suspended'),
-        supabase.from('admin_profiles').select('*', { count: 'exact', head: true }).in('role', ['Owner', 'Super Administrator']).eq('active', true),
+        supabase.from('admin_profiles').select('*', { count: 'exact', head: true }).in('role', ['owner', 'super_admin']).eq('active', true),
         supabase.from('staff_temp_access').select('*', { count: 'exact', head: true }).eq('status', 'Active').lte('expires_at', new Date(Date.now() + 7 * 86400000).toISOString()),
         supabase.from('staff_access_reviews').select('*', { count: 'exact', head: true }).eq('status', 'Pending').lte('due_date', new Date().toISOString().split('T')[0]),
       ]);

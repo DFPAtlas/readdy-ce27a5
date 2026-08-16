@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Search, Filter, Download } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { ArrowLeft, Search, Download, Loader2 } from 'lucide-react';
 
 interface ActivityEvent {
   id: string;
@@ -23,41 +24,115 @@ const CATEGORY_COLORS: Record<string, string> = {
   system: 'bg-slate-500',
 };
 
-const MOCK_ACTIVITY: ActivityEvent[] = [
-  { id: 'a1', action: 'Comment added', detail: 'Alex Chen replied to Tom Harris — pricing comment', user: 'Alex Chen', category: 'comment', time: '2026-07-21T17:00:00Z' },
-  { id: 'a2', action: 'Decision submitted', detail: 'Tom Harris requested changes — pricing and mobile CTA', user: 'Tom Harris', category: 'decision', time: '2026-07-21T16:12:00Z' },
-  { id: 'a3', action: 'Decision submitted', detail: 'Sarah Mitchell approved with comments', user: 'Sarah Mitchell', category: 'decision', time: '2026-07-21T14:32:00Z' },
-  { id: 'a4', action: 'Internal note added', detail: 'Alex Chen noted legal footer pre-approved', user: 'Alex Chen', category: 'comment', time: '2026-07-21T10:00:00Z' },
-  { id: 'a5', action: 'Review link viewed', detail: 'James Ng viewed the desktop and mobile previews', user: 'James Ng', category: 'access', time: '2026-07-20T11:05:00Z' },
-  { id: 'a6', action: 'Review link viewed', detail: 'Priya Shah acknowledged viewing the review', user: 'Priya Shah', category: 'access', time: '2026-07-20T09:15:00Z' },
-  { id: 'a7', action: 'Token verified', detail: 'Rachel Kim passed email verification', user: 'Rachel Kim', category: 'access', time: '2026-07-20T08:50:00Z' },
-  { id: 'a8', action: 'Invitation delivered', detail: 'All 5 reviewer invitations confirmed delivered via Resend', user: 'System', category: 'invitation', time: '2026-07-19T08:05:00Z' },
-  { id: 'a9', action: 'Invitations sent', detail: '5 reviewer invitations dispatched via Resend', user: 'Alex Chen', category: 'invitation', time: '2026-07-19T08:00:00Z' },
-  { id: 'a10', action: 'Review activated', detail: 'Status changed from Ready to Send to Sent', user: 'Alex Chen', category: 'admin', time: '2026-07-19T08:00:00Z' },
-  { id: 'a11', action: 'Snapshot created', detail: 'Immutable snapshot v3.2.1 checksum a8f3b... created', user: 'System', category: 'snapshot', time: '2026-07-18T10:30:00Z' },
-  { id: 'a12', action: 'Review package created', detail: 'Q3 Welcome Campaign review created with all_required policy', user: 'Alex Chen', category: 'admin', time: '2026-07-18T10:30:00Z' },
-  { id: 'a13', action: 'Reviewers added', detail: 'Sarah Mitchell, Tom Harris, Rachel Kim (required); James Ng (optional); Priya Shah (observer)', user: 'Alex Chen', category: 'admin', time: '2026-07-18T10:28:00Z' },
-];
-
-export default function ReviewActivityClient() {
+export default function ReviewActivityClient({ id }: { id: string }) {
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [reviewName, setReviewName] = useState('Review');
+  const [round, setRound] = useState(1);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
-  const filtered = MOCK_ACTIVITY.filter((e) => {
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      const [pkgRes, reviewersRes, commentsRes, tokensRes] = await Promise.all([
+        supabase.from('email_review_packages').select('id, name, review_round, created_at').eq('id', id).maybeSingle(),
+        supabase.from('email_review_reviewers').select('id, display_name, notified_at, last_viewed_at, decision, decision_at, decision_note').eq('review_id', id).limit(500),
+        supabase.from('email_review_comments').select('id, author_id, body, created_at').eq('review_id', id).order('created_at', { ascending: true }).limit(1000),
+        supabase.from('email_review_access_tokens').select('id, reviewer_id, last_used_at, revoked_at').eq('review_id', id).limit(1000),
+      ]);
+
+      if (cancelled) return;
+      const pkg = pkgRes.data;
+      if (pkg) {
+        setReviewName((pkg.name as string) || 'Review');
+        setRound(typeof pkg.review_round === 'number' ? (pkg.review_round as number) : 1);
+      }
+
+      const reviewers = (reviewersRes.data || []) as Record<string, unknown>[];
+      const reviewerName = new Map<string, string>();
+      reviewers.forEach((r) => reviewerName.set(r.id as string, (r.display_name as string) || 'Reviewer'));
+
+      const comments = (commentsRes.data || []) as Record<string, unknown>[];
+      const tokens = (tokensRes.data || []) as Record<string, unknown>[];
+
+      const rows: ActivityEvent[] = [];
+
+      if (pkg && pkg.created_at) {
+        rows.push({
+          id: 'created',
+          action: 'Review package created',
+          detail: `${(pkg.name as string) || 'Review'} created`,
+          user: 'System',
+          category: 'admin',
+          time: pkg.created_at as string,
+        });
+      }
+
+      reviewers.forEach((r) => {
+        const name = reviewerName.get(r.id as string) || 'Reviewer';
+        if (r.notified_at) {
+          rows.push({ id: `invite-${r.id}`, action: 'Invitation sent', detail: `${name} invitation dispatched`, user: name, category: 'invitation', time: r.notified_at as string });
+        }
+        if (r.last_viewed_at) {
+          rows.push({ id: `view-${r.id}`, action: 'Review link viewed', detail: `${name} viewed the preview`, user: name, category: 'access', time: r.last_viewed_at as string });
+        }
+        if (r.decision_at) {
+          rows.push({ id: `decision-${r.id}`, action: 'Decision submitted', detail: `${name} — ${(r.decision as string || 'decision').replace(/_/g, ' ')}`, user: name, category: 'decision', time: r.decision_at as string });
+        }
+      });
+
+      comments.forEach((c) => {
+        const authorId = (c.author_id as string) || '';
+        const name = reviewerName.get(authorId) || 'Internal';
+        rows.push({ id: `comment-${c.id}`, action: 'Comment added', detail: `${name}: ${((c.body as string) || '').slice(0, 80)}`, user: name, category: 'comment', time: c.created_at as string });
+      });
+
+      tokens.forEach((t) => {
+        const reviewerId = (t.reviewer_id as string) || '';
+        const name = reviewerName.get(reviewerId) || 'Reviewer';
+        if (t.last_used_at) {
+          rows.push({ id: `token-${t.id}`, action: 'Token verified', detail: `${name} passed email verification`, user: name, category: 'access', time: t.last_used_at as string });
+        }
+        if (t.revoked_at) {
+          rows.push({ id: `revoke-${t.id}`, action: 'Access revoked', detail: `${name} access link revoked`, user: 'System', category: 'admin', time: t.revoked_at as string });
+        }
+      });
+
+      rows.sort((a, b) => (a.time < b.time ? 1 : -1));
+      if (!cancelled) {
+        setEvents(rows);
+        setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [id]);
+
+  const filtered = events.filter((e) => {
     const matchesSearch = e.action.toLowerCase().includes(search.toLowerCase()) || e.detail.toLowerCase().includes(search.toLowerCase()) || e.user.toLowerCase().includes(search.toLowerCase());
     const matchesCat = categoryFilter === 'all' || e.category === categoryFilter;
     return matchesSearch && matchesCat;
   });
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="w-8 h-8 text-[#06B6D4] animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/admin/email/reviews/rev-1" className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-white transition-colors cursor-pointer">
+        <Link href={`/admin/email/reviews/${id}`} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-white transition-colors cursor-pointer">
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-white">Q3 Welcome Campaign — Activity Log</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Complete audit trail for review rev-1 · Round 1</p>
+          <h1 className="text-xl font-bold text-white">{reviewName} — Activity Log</h1>
+          <p className="text-sm text-slate-400 mt-0.5">Complete audit trail for this review · Round {round}</p>
         </div>
       </div>
 
@@ -113,7 +188,7 @@ export default function ReviewActivityClient() {
             ))}
             {filtered.length === 0 && (
               <div className="px-6 py-12 text-center">
-                <p className="text-sm text-slate-400">No matching activity found</p>
+                <p className="text-sm text-slate-400">{events.length === 0 ? 'No activity recorded yet' : 'No matching activity found'}</p>
               </div>
             )}
           </div>
@@ -124,19 +199,19 @@ export default function ReviewActivityClient() {
         <h3 className="text-sm font-semibold text-white mb-3">Audit Summary</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="p-3 bg-white/[0.02] rounded-xl text-center">
-            <p className="text-lg font-bold text-white">{MOCK_ACTIVITY.length}</p>
+            <p className="text-lg font-bold text-white">{events.length}</p>
             <p className="text-[10px] text-slate-500">Total Events</p>
           </div>
           <div className="p-3 bg-white/[0.02] rounded-xl text-center">
-            <p className="text-lg font-bold text-emerald-400">{MOCK_ACTIVITY.filter((e) => e.category === 'decision').length}</p>
+            <p className="text-lg font-bold text-emerald-400">{events.filter((e) => e.category === 'decision').length}</p>
             <p className="text-[10px] text-slate-500">Decisions</p>
           </div>
           <div className="p-3 bg-white/[0.02] rounded-xl text-center">
-            <p className="text-lg font-bold text-amber-400">{MOCK_ACTIVITY.filter((e) => e.category === 'comment').length}</p>
+            <p className="text-lg font-bold text-amber-400">{events.filter((e) => e.category === 'comment').length}</p>
             <p className="text-[10px] text-slate-500">Comments</p>
           </div>
           <div className="p-3 bg-white/[0.02] rounded-xl text-center">
-            <p className="text-lg font-bold text-sky-400">{MOCK_ACTIVITY.filter((e) => e.category === 'access').length}</p>
+            <p className="text-lg font-bold text-sky-400">{events.filter((e) => e.category === 'access').length}</p>
             <p className="text-[10px] text-slate-500">Access Events</p>
           </div>
         </div>

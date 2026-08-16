@@ -5,11 +5,13 @@ import dynamic from 'next/dynamic';
 const CustomerProjectPortalWorkspace = dynamic(
   () => import('./CustomerProjectPortalWorkspace'),
   {
-    ssr: false,
     loading: () => (
-      <main className="min-h-screen bg-[#07111f] px-6 pt-36 text-white">
-        <div className="mx-auto max-w-7xl animate-pulse rounded-3xl border border-white/10 bg-white/[0.035] p-8 text-sm text-slate-400">
-          Loading Customer Project Portal demo…
+      <main className="flex h-screen flex-col items-center justify-center bg-[#f6f5f2]">
+        <div className="mx-auto max-w-md animate-pulse rounded-2xl border border-[#e8e5df] bg-white p-8 text-sm text-[#8a8a8a]">
+          <div className="flex items-center gap-3">
+            <span className="h-2 w-2 rounded-full bg-[#3b82f6]"></span>
+            Loading Customer Portal demo...
+          </div>
         </div>
       </main>
     ),

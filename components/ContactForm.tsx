@@ -1,7 +1,7 @@
-
 'use client';
 
 import { useState } from 'react';
+import { submitEnquiry, makeIdempotencyKey } from '@/lib/submit-enquiry';
 
 interface ContactFormProps {
   onClose: () => void;
@@ -15,51 +15,12 @@ export default function ContactForm({ onClose }: ContactFormProps) {
     company: '',
     serviceType: '',
     subject: '',
-    message: ''
+    message: '',
+    website_alt: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (formData.message.length > 500) {
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const response = await fetch('https://readdy.ai/api/form/contact-general', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          company: formData.company,
-          serviceType: formData.serviceType,
-          subject: formData.subject,
-          message: formData.message
-        }).toString()
-      });
-
-      if (response.ok) {
-        setSubmitStatus('success');
-        setTimeout(() => {
-          onClose();
-        }, 3000);
-      } else {
-        setSubmitStatus('error');
-      }
-    } catch (error) {
-      setSubmitStatus('error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -67,6 +28,58 @@ export default function ContactForm({ onClose }: ContactFormProps) {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (formData.message.length > 500) {
+      return;
+    }
+
+    if (formData.website_alt.trim()) {
+      setSubmitStatus('success');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitStatus('idle');
+    setErrorMessage('');
+
+    const result = await submitEnquiry('leads', {
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone.trim() || null,
+      company_name: formData.company.trim() || null,
+      service_interest: formData.serviceType || null,
+      message: formData.subject.trim() ? `[${formData.subject.trim()}] ${formData.message}` : formData.message,
+      source: 'contact_modal',
+      status: 'new',
+      stage: 'new',
+      consent_contact: true,
+      idempotency_key: makeIdempotencyKey(),
+    }, true);
+
+    if (result.code === 'OK') {
+      setSubmitStatus('success');
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        company: '',
+        serviceType: '',
+        subject: '',
+        message: '',
+        website_alt: '',
+      });
+      setTimeout(() => {
+        onClose();
+      }, 3000);
+    } else {
+      setSubmitStatus('error');
+      setErrorMessage(result.message);
+    }
+    setIsSubmitting(false);
   };
 
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -82,9 +95,9 @@ export default function ContactForm({ onClose }: ContactFormProps) {
           <div className="flex justify-between items-center mb-8">
             <div>
               <h2 className="text-3xl font-bold text-gray-800">Get In Touch</h2>
-              <p className="text-gray-600 mt-2">Have questions? We’d love to hear from you.</p>
+              <p className="text-gray-600 mt-2">Have questions? We&apos;d love to hear from you.</p>
             </div>
-            <button 
+            <button
               onClick={onClose}
               className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
             >
@@ -98,7 +111,7 @@ export default function ContactForm({ onClose }: ContactFormProps) {
                 <i className="ri-checkbox-circle-fill text-green-600 text-2xl mr-4"></i>
                 <div>
                   <h3 className="text-green-800 font-semibold text-lg">Message Sent Successfully!</h3>
-                  <p className="text-green-600">We’ll get back to you within 24 hours.</p>
+                  <p className="text-green-600">We&apos;ll get back to you within 24 hours.</p>
                 </div>
               </div>
             </div>
@@ -110,13 +123,26 @@ export default function ContactForm({ onClose }: ContactFormProps) {
                 <i className="ri-error-warning-line text-red-600 text-2xl mr-4"></i>
                 <div>
                   <h3 className="text-red-800 font-semibold text-lg">Submission Failed</h3>
-                  <p className="text-red-600">Please try again or call us directly.</p>
+                  <p className="text-red-600">{errorMessage || 'Please try again or call us directly.'}</p>
                 </div>
               </div>
             </div>
           )}
 
           <form id="contact-form" onSubmit={handleSubmit} className="space-y-6">
+            <input
+              type="text"
+              name="website_alt"
+              value={formData.website_alt}
+              onChange={handleChange}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              readOnly
+              className="absolute opacity-0 pointer-events-none"
+              style={{ position: 'absolute', left: '-9999px' }}
+            />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-3">
@@ -193,14 +219,16 @@ export default function ContactForm({ onClose }: ContactFormProps) {
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#00F0FF]/30 focus:border-[#00F0FF] text-sm pr-8 transition-colors bg-gray-50"
                 >
                   <option value="">Select a service</option>
-                  <option value="computer-repair">Computer Repair</option>
-                  <option value="cloud-services">Cloud Services</option>
-                  <option value="system-management">System Management</option>
-                  <option value="data-management">Data Management</option>
-                  <option value="support">24/7 Support</option>
-                  <option value="digital-transformation">Digital Transformation</option>
-                  <option value="consultation">General Consultation</option>
-                  <option value="other">Other</option>
+                  <option value="Website Development">Website Design &amp; Development</option>
+                  <option value="AI Agents">AI Agent Development</option>
+                  <option value="Business Automation">Business Process Automation</option>
+                  <option value="Customer Portals">Customer Portals</option>
+                  <option value="CRM Integration">CRM Integration</option>
+                  <option value="Cloud Systems">Cloud Systems</option>
+                  <option value="Cyber Security">Cyber Security</option>
+                  <option value="IT Support">IT Support</option>
+                  <option value="Consultancy">Technology Consultancy</option>
+                  <option value="Other">Other / Not Sure</option>
                 </select>
               </div>
 
@@ -247,9 +275,9 @@ export default function ContactForm({ onClose }: ContactFormProps) {
                 <div className="text-sm text-blue-800">
                   <p className="font-semibold mb-1">What happens next?</p>
                   <ul className="space-y-1 text-blue-700">
-                    <li>• We’ll review your inquiry within 2 hours</li>
+                    <li>• We&apos;ll review your inquiry within 2 hours</li>
                     <li>• Our team will contact you to discuss your needs</li>
-                    <li>• We’ll provide a free consultation and quote</li>
+                    <li>• We&apos;ll provide a free consultation and quote</li>
                   </ul>
                 </div>
               </div>

@@ -1,9 +1,14 @@
 import ReviewDetailClient from './ReviewDetailClient';
 
 export async function generateStaticParams() {
-  return [{ id: 'rev-1' }, { id: 'rev-2' }, { id: 'rev-3' }];
+  return [
+    { id: '1' },
+    { id: '2' },
+    { id: '3' },
+  ];
 }
 
-export default function ReviewDetailPage() {
-  return <ReviewDetailClient />;
+export default async function ReviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  return <ReviewDetailClient id={resolvedParams.id} />;
 }

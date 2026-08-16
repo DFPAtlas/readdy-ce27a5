@@ -38,6 +38,8 @@ import {
   type PracticalBugReport,
 } from '@/lib/uat-application-types';
 import { generateMatchingTags, buildMatchingProfile } from '@/lib/uat-matching';
+import { supabase } from '@/lib/supabase';
+import { notifyLeadSubmission } from '@/lib/submit-enquiry';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -312,10 +314,19 @@ export default function UATApplyPage() {
     return errs;
   };
 
+  const formTopRef = useRef<HTMLDivElement>(null);
+
   const handleNext = () => {
     const errs = validateStep(step);
     if (errs.length > 0) { setErrors(errs); return; }
-    if (step < TOTAL_STEPS) { const ns = step + 1; setStep(ns); autosave(data, ns); }
+    if (step < TOTAL_STEPS) {
+      const ns = step + 1;
+      setStep(ns);
+      autosave(data, ns);
+      requestAnimationFrame(() => {
+        formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
   };
   const handleBack = () => { if (step > 1) { setStep(step - 1); setErrors([]); } };
   const handleSubmit = () => { const errs = validateStep(9); if (errs.length > 0) { setErrors(errs); return; } setShowConfirmModal(true); };
@@ -326,60 +337,6 @@ export default function UATApplyPage() {
     setShowConfirmModal(false); setSubmitting(true); setServerError('');
     try {
       const ref = applicationRef || generateRef();
-      const formData = new FormData();
-      formData.append('application_reference', ref);
-      formData.append('legal_name', data.legalName.trim());
-      formData.append('display_name', data.displayName.trim());
-      formData.append('email', data.email.trim());
-      formData.append('mobile', data.mobile.trim());
-      formData.append('date_of_birth', data.dateOfBirth);
-      formData.append('town_city', data.townCity.trim());
-      formData.append('county', data.county.trim());
-      formData.append('country', data.country.trim());
-      formData.append('postcode', data.postcode.trim());
-      formData.append('preferred_contact_method', data.preferredContactMethod);
-      formData.append('experience_level', data.experienceLevel);
-      formData.append('has_tested_before', data.hasTestedBefore);
-      formData.append('tech_confidence', data.techConfidence);
-      formData.append('has_reported_bugs', data.hasReportedBugs);
-      formData.append('relevant_work_area', data.relevantWorkArea);
-      formData.append('relevant_experience_text', data.relevantExperienceText);
-      formData.append('motivation', data.motivation);
-      formData.append('industry_experience', JSON.stringify(data.industryExperience));
-      formData.append('industry_other_text', data.industryOtherText);
-      formData.append('devices', JSON.stringify(data.devices));
-      formData.append('browsers', JSON.stringify(data.browsers));
-      formData.append('internet_connection', JSON.stringify(data.internetConnection));
-      formData.append('capabilities', JSON.stringify(data.capabilities));
-      formData.append('device_profiles', JSON.stringify(data.deviceProfiles));
-      formData.append('test_environments', JSON.stringify(data.testEnvironments));
-      formData.append('device_restrictions', data.deviceRestrictions);
-      formData.append('testing_activities', JSON.stringify(data.testingActivities));
-      formData.append('tester_strengths', JSON.stringify(data.testerStrengths));
-      formData.append('preferred_testing_level', data.preferredTestingLevel);
-      formData.append('practical_bug_report', JSON.stringify(data.practicalBugReport));
-      formData.append('testing_interests', JSON.stringify(data.testingInterests));
-      formData.append('user_perspectives', JSON.stringify(data.userPerspectives));
-      formData.append('user_perspective_other_text', data.userPerspectiveOtherText);
-      formData.append('accessibility_interest', data.accessibilityInterest);
-      formData.append('accessibility_capabilities', JSON.stringify(data.accessibilityCapabilities));
-      formData.append('project_conflict_status', data.projectConflictStatus);
-      formData.append('project_conflict_details', data.projectConflictDetails);
-      formData.append('accessibility_tools', data.accessibilityTools);
-      formData.append('availability_hours', data.availabilityHours);
-      formData.append('availability_days', JSON.stringify(data.availabilityDays));
-      formData.append('availability_times', JSON.stringify(data.availabilityTimes));
-      formData.append('short_notice_available', data.shortNoticeAvailable);
-      formData.append('comfortable_unfinished', data.comfortableUnfinished);
-      formData.append('response_speed', data.responseSpeed);
-      formData.append('communication_methods', JSON.stringify(data.communicationMethods));
-      formData.append('comfortable_communication', JSON.stringify(data.comfortableCommunication));
-      formData.append('preferred_session_length', data.preferredSessionLength);
-      formData.append('notice_required', data.noticeRequired);
-      formData.append('preferred_payment_method', data.preferredPaymentMethod);
-      formData.append('payment_confirmations', JSON.stringify(data.paymentConfirmations));
-      formData.append('eligibility_confirmations', JSON.stringify(data.eligibilityConfirmations));
-      formData.append('application_data', JSON.stringify({ ...data, applicationReference: ref }));
 
       const honeypotEl = document.querySelector<HTMLInputElement>('#app_hp_field');
       if (honeypotEl && honeypotEl.value.trim()) {
@@ -389,21 +346,72 @@ export default function UATApplyPage() {
         return;
       }
 
-      const res = await fetch('https://readdy.ai/api/form/d93ocvlmi650so75dsqg', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(formData as any).toString(),
-      });
+      const { data: insertedApp, error } = await supabase.from('uat_tester_applications').insert({
+        application_reference: ref,
+        legal_name: data.legalName.trim(),
+        display_name: data.displayName.trim(),
+        email: data.email.trim(),
+        mobile: data.mobile.trim(),
+        date_of_birth: data.dateOfBirth,
+        town_city: data.townCity.trim(),
+        county: data.county.trim(),
+        country: data.country.trim(),
+        postcode: data.postcode.trim(),
+        preferred_contact_method: data.preferredContactMethod,
+        experience_level: data.experienceLevel,
+        has_tested_before: data.hasTestedBefore,
+        tech_confidence: data.techConfidence,
+        has_reported_bugs: data.hasReportedBugs,
+        relevant_work_area: data.relevantWorkArea,
+        relevant_experience_text: data.relevantExperienceText,
+        motivation: data.motivation,
+        industry_experience: data.industryExperience,
+        industry_other_text: data.industryOtherText,
+        devices: data.devices,
+        browsers: data.browsers,
+        internet_connection: data.internetConnection,
+        capabilities: data.capabilities,
+        device_profiles: data.deviceProfiles,
+        test_environments: data.testEnvironments,
+        device_restrictions: data.deviceRestrictions,
+        testing_activities: data.testingActivities,
+        tester_strengths: data.testerStrengths,
+        preferred_testing_level: data.preferredTestingLevel,
+        practical_bug_report: data.practicalBugReport,
+        testing_interests: data.testingInterests,
+        user_perspectives: data.userPerspectives,
+        user_perspective_other_text: data.userPerspectiveOtherText,
+        accessibility_interest: data.accessibilityInterest,
+        accessibility_capabilities: data.accessibilityCapabilities,
+        project_conflict_status: data.projectConflictStatus,
+        project_conflict_details: data.projectConflictDetails,
+        accessibility_tools: data.accessibilityTools,
+        availability_hours: data.availabilityHours,
+        availability_days: data.availabilityDays,
+        availability_times: data.availabilityTimes,
+        short_notice_available: data.shortNoticeAvailable,
+        comfortable_unfinished: data.comfortableUnfinished,
+        response_speed: data.responseSpeed,
+        communication_methods: data.communicationMethods,
+        comfortable_communication: data.comfortableCommunication,
+        preferred_session_length: data.preferredSessionLength,
+        notice_required: data.noticeRequired,
+        preferred_payment_method: data.preferredPaymentMethod,
+        payment_confirmations: data.paymentConfirmations,
+        eligibility_confirmations: data.eligibilityConfirmations,
+        matching_tags: generateMatchingTags(data),
+        matching_profile: buildMatchingProfile(data),
+        status: 'submitted',
+      }).select('id');
 
-      const responseText = await res.text();
-      let parsed: any = {};
-      try { parsed = JSON.parse(responseText); } catch {}
-
-      if (!res.ok || (parsed.code && parsed.code !== 'OK')) {
-        const serverMsg = parsed?.meta?.message || parsed?.message || parsed?.meta?.detail || responseText || 'Submission failed. Please try again.';
-        setServerError(serverMsg);
+      if (error) {
+        setServerError(error.message || 'Submission failed. Please try again.');
         setSubmitting(false);
         return;
+      }
+
+      if (insertedApp?.[0]?.id) {
+        notifyLeadSubmission('uat_tester_applications', insertedApp[0].id);
       }
 
       localStorage.removeItem('uat_application_draft');
@@ -416,7 +424,13 @@ export default function UATApplyPage() {
   };
 
   const goToStep = (targetStep: number) => {
-    if (targetStep < step) { setStep(targetStep); setErrors([]); }
+    if (targetStep < step) {
+      setStep(targetStep);
+      setErrors([]);
+      requestAnimationFrame(() => {
+        formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
   };
 
 
@@ -448,7 +462,7 @@ export default function UATApplyPage() {
           <p className="text-sm text-slate-500 mt-2">DFP UAT Testers help us test websites, applications and digital systems before they are released. Testers may receive payments or rewards for valid bugs and useful feedback.</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm mb-6">
+        <div ref={formTopRef} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm mb-6">
           <StepIndicator step={step} />
           <div className="mt-4 flex items-center justify-between">
             <div>

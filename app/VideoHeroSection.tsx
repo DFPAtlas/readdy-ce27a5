@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 
 const VIDEO_URL = 'https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/4f863c50-93dd-4847-9d19-9bf2f89658ff_Firefly-Create-a-cinematic-15-second-seamless-loop-background-video-for-a-premium-digital-technology.mp4';
@@ -174,12 +173,11 @@ export default function VideoHeroSection() {
       {showLoadingWheel && (
         <div className="absolute inset-0 z-[3] flex items-center justify-center pointer-events-none">
           <div className="flex flex-col items-center gap-5">
-            <Image
+            <img
               src="https://storage.readdy-site.link/project_files/9c829bf4-c727-45a7-99f8-358e1780c66a/eee9f9ba-b907-488b-a1a8-f6d02534a71b_compressed_Remove-Background-Keep-Foot-Logo.webp"
               alt="Digital Footprint"
               width={48}
               height={48}
-              priority
               className="object-contain rounded-lg w-12 h-12 animate-pulse"
             />
             <div
@@ -208,7 +206,7 @@ export default function VideoHeroSection() {
         poster={POSTER_URL}
         muted
         playsInline
-        preload="auto"
+        preload="metadata"
         aria-hidden="true"
       >
         <source src={VIDEO_URL} type="video/mp4" />
@@ -328,27 +326,6 @@ export default function VideoHeroSection() {
           />
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes dfpScrollWheel {
-          0%, 20% { transform: translateY(0); opacity: 1; }
-          50% { transform: translateY(10px); opacity: 0.3; }
-          80%, 100% { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes dfpChevronPulse {
-          0%, 20% { transform: translateY(0); opacity: 0.5; }
-          50% { transform: translateY(3px); opacity: 0.8; }
-          80%, 100% { transform: translateY(0); opacity: 0.5; }
-        }
-        @keyframes dfpSpin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          @keyframes dfpScrollWheel { 0%, 100% { transform: translateY(0); opacity: 1; } }
-          @keyframes dfpChevronPulse { 0%, 100% { transform: translateY(0); opacity: 0.5; } }
-        }
-      `}</style>
     </section>
   );
 }

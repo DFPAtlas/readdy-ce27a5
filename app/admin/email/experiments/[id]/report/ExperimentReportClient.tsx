@@ -36,7 +36,7 @@ export default function ExperimentReportClient({ params }: { params: { id: strin
     (async()=>{
       setLoading(true);
       const { data } = await supabase.from('email_experiments').select('*').eq('id',params.id).maybeSingle();
-      if(data)setExp(data as ExperimentData);else router.push('/admin/email/experiments');
+      if(data)setExp(data as ExperimentData);else setTimeout(() => router.push('/admin/email/experiments'), 0);
       setLoading(false);
     })();
   },[params.id]);

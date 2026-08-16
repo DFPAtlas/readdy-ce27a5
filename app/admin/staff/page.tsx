@@ -2,19 +2,32 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from '@/components/motion';
 import { useStaffDirectory, useInvitations, useStaffTeams, usePermissionSets, useTempAccess, useAccessRequests, useAccessReviews, useApprovalAuthority, useDelegations, useServiceAccounts, useSecurityEvents, useDepartments } from '@/hooks/useStaffData';
-import StaffOverviewCards from '@/components/admin/staff/StaffOverviewCards';
-import { STAFF_STATUS_CONFIG, INVITATION_STATUS_CONFIG, TEMP_ACCESS_STATUS_CONFIG, ACCESS_REQUEST_STATUS_CONFIG, REVIEW_STATUS_CONFIG, DELEGATION_STATUS_CONFIG, SERVICE_ACCOUNT_STATUS_CONFIG, MFA_STATE_CONFIG, IDENTITY_TYPES, GLOBAL_ROLES, OFFBOARDING_CHECKLIST_ITEMS, APPROVAL_AUTHORITY_TYPES } from '@/lib/staff-definitions';
+import StaffStatsCards from '@/components/admin/staff/StaffStatsCards';
+import StaffOverviewTab from './StaffOverviewTab';
+import { STAFF_STATUS_CONFIG, MFA_STATE_CONFIG, IDENTITY_TYPES, GLOBAL_ROLES, APPROVAL_AUTHORITY_TYPES, OFFBOARDING_CHECKLIST_ITEMS } from '@/lib/staff-definitions';
+import { Search, UserPlus, MoreHorizontal, Mail, Shield, Users, Clock, Key, FileSearch, Timer, ArrowLeftRight, Bot, ShieldAlert, Settings, Building2, ChevronDown, X, Check, AlertTriangle, RefreshCw } from 'lucide-react';
 
 const TABS = [
-  'Overview', 'Directory', 'Invitations', 'Teams', 'Roles & Permissions',
-  'Access Requests', 'Reviews', 'Temp Access', 'Delegations',
-  'Service Accounts', 'Security Events', 'Settings',
+  { key: 'Overview', icon: Users, label: 'Overview' },
+  { key: 'Directory', icon: Search, label: 'Directory' },
+  { key: 'Invitations', icon: Mail, label: 'Invitations' },
+  { key: 'Teams', icon: Building2, label: 'Teams' },
+  { key: 'Roles', icon: Shield, label: 'Roles & Permissions' },
+  { key: 'AccessRequests', icon: Key, label: 'Access Requests' },
+  { key: 'Reviews', icon: FileSearch, label: 'Reviews' },
+  { key: 'TempAccess', icon: Timer, label: 'Temp Access' },
+  { key: 'Delegations', icon: ArrowLeftRight, label: 'Delegations' },
+  { key: 'ServiceAccounts', icon: Bot, label: 'Service Accounts' },
+  { key: 'Security', icon: ShieldAlert, label: 'Security Events' },
+  { key: 'Settings', icon: Settings, label: 'Settings' },
 ];
 
 export default function StaffHub() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const { staff, loading: staffLoading } = useStaffDirectory(search || undefined);
   const { invitations, loading: invLoading } = useInvitations();
@@ -29,608 +42,559 @@ export default function StaffHub() {
   const { accounts, loading: acctLoading } = useServiceAccounts();
   const { events, loading: evtLoading } = useSecurityEvents();
 
+  const filteredStaff = statusFilter === 'all' ? staff : staff.filter((s: any) => (s.status || 'Active') === statusFilter);
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Staff Administration</h1>
-          <p className="text-sm text-slate-400 mt-1">Identity, teams, roles, permissions and access security</p>
+          <p className="text-sm text-slate-400 mt-0.5">Identity, teams, roles, permissions and access security</p>
         </div>
-      </div>
-
-      <StaffOverviewCards />
-
-      <div className="flex items-center gap-1 border-b border-white/5 overflow-x-auto">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors cursor-pointer ${
-              activeTab === tab
-                ? 'border-[#06B6D4] text-[#06B6D4]'
-                : 'border-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            {tab}
+        <div className="flex items-center gap-2">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-[#06B6D4] text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-[#06B6D4]/20 transition-all cursor-pointer whitespace-nowrap">
+            <UserPlus className="w-4 h-4" />
+            Invite Staff
           </button>
-        ))}
+        </div>
       </div>
 
-      {activeTab === 'Overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white/5 border border-white/5 rounded-2xl p-6">
-            <h3 className="text-sm font-semibold text-white mb-4">Recent Staff</h3>
-            <div className="space-y-2">
-              {staffLoading ? (
-                <p className="text-sm text-slate-500">Loading...</p>
-              ) : staff.length === 0 ? (
-                <p className="text-sm text-slate-500">No staff records found.</p>
-              ) : (
-                staff.slice(0, 8).map((s: any) => (
-                  <Link
-                    key={`${s.source}-${s.id}`}
-                    href={`/admin/staff/${s.id}?source=${s.source}`}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-[#06B6D4]/10 flex items-center justify-center text-xs font-bold text-[#06B6D4]">
-                      {(s.full_name || s.email || '??').slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">{s.full_name || s.email}</p>
-                      <p className="text-xs text-slate-500 truncate">{s.role || 'No role'}</p>
-                    </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${(STAFF_STATUS_CONFIG as any)[s.status || 'Active']?.bg || 'bg-slate-500/10'} ${(STAFF_STATUS_CONFIG as any)[s.status || 'Active']?.color || 'text-slate-400'}`}>
-                      {s.status || 'Active'}
-                    </span>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
-          <div className="bg-white/5 border border-white/5 rounded-2xl p-6">
-            <h3 className="text-sm font-semibold text-white mb-4">Recent Invitations</h3>
-            <div className="space-y-2">
-              {invLoading ? (
-                <p className="text-sm text-slate-500">Loading...</p>
-              ) : invitations.length === 0 ? (
-                <p className="text-sm text-slate-500">No invitations sent.</p>
-              ) : (
-                invitations.slice(0, 8).map((inv: any) => (
-                  <div key={inv.id} className="flex items-center gap-3 p-2 rounded-lg">
-                    <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                      <i className="ri-mail-send-line text-blue-400 text-sm w-4 h-4 flex items-center justify-center"></i>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">{inv.email}</p>
-                      <p className="text-xs text-slate-500">{inv.proposed_role || 'No role'}</p>
-                    </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${(INVITATION_STATUS_CONFIG as any)[inv.status]?.bg || 'bg-slate-500/10'} ${(INVITATION_STATUS_CONFIG as any)[inv.status]?.color || 'text-slate-400'}`}>
-                      {inv.status}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <StaffStatsCards />
 
-      {activeTab === 'Directory' && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 max-w-md">
-              <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm w-4 h-4 flex items-center justify-center"></i>
-              <input
-                type="text"
-                placeholder="Search by name, email, reference or role..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#06B6D4]/50"
-              />
-            </div>
-            <Link
-              href="/admin/staff?tab=Invitations"
-              className="px-4 py-2 bg-[#06B6D4]/10 text-[#06B6D4] text-sm font-medium rounded-xl hover:bg-[#06B6D4]/20 transition-colors cursor-pointer whitespace-nowrap"
-              onClick={() => setActiveTab('Invitations')}
+      <div className="bg-[#1E293B] border border-[rgba(255,255,255,0.08)] rounded-2xl overflow-hidden">
+        <div className="px-4 py-3 flex items-center gap-1 overflow-x-auto border-b border-[rgba(255,255,255,0.06)]">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer whitespace-nowrap ${
+                  isActive
+                    ? 'bg-[#06B6D4]/10 text-[#06B6D4] border border-[#06B6D4]/20'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="p-5">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
             >
-              Invite Staff
-            </Link>
-          </div>
-          <div className="bg-white/5 border border-white/5 rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/5">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Staff</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Reference</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Type</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Role</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Status</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">MFA</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Last Login</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {staffLoading ? (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">Loading...</td></tr>
-                  ) : staff.length === 0 ? (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">No staff records found.</td></tr>
-                  ) : (
-                    staff.map((s: any) => {
-                      const status = s.status || 'Active';
-                      const mfa = s.mfa_state || 'Unknown';
-                      const mfaCfg = MFA_STATE_CONFIG[mfa as keyof typeof MFA_STATE_CONFIG] || MFA_STATE_CONFIG.Unknown;
-                      const statusCfg = (STAFF_STATUS_CONFIG as any)[status] || STAFF_STATUS_CONFIG.Active;
-                      const identityType = s.identity_type || 'internal';
-                      return (
-                        <tr key={`${s.source}-${s.id}`} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-[#06B6D4]/10 flex items-center justify-center text-xs font-bold text-[#06B6D4]">
-                                {(s.full_name || s.email || '??').slice(0, 2).toUpperCase()}
-                              </div>
-                              <div>
-                                <p className="text-white text-sm">{s.full_name || s.email}</p>
-                                <p className="text-xs text-slate-500">{s.email}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-slate-400 text-xs font-mono">{s.reference || '—'}</td>
-                          <td className="px-4 py-3">
-                            <span className="text-xs text-slate-400">{IDENTITY_TYPES[identityType as keyof typeof IDENTITY_TYPES]?.label || identityType}</span>
-                          </td>
-                          <td className="px-4 py-3 text-white text-sm">{s.role || '—'}</td>
-                          <td className="px-4 py-3">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${statusCfg.bg} ${statusCfg.color}`}>{status}</span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${mfaCfg.bg} ${mfaCfg.color}`}>{mfaCfg.label}</span>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-slate-400">{s.last_login_at ? new Date(s.last_login_at).toLocaleDateString() : '—'}</td>
-                          <td className="px-4 py-3 text-right">
-                            <Link
-                              href={`/admin/staff/${s.id}?source=${s.source}`}
-                              className="text-xs text-[#06B6D4] hover:underline cursor-pointer"
-                            >
-                              View
-                            </Link>
-                          </td>
+              {activeTab === 'Overview' && (
+                <StaffOverviewTab staff={staff} staffLoading={staffLoading} invitations={invitations} invLoading={invLoading} />
+              )}
+
+              {activeTab === 'Directory' && (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="relative flex-1 w-full max-w-md">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by name, email, reference or role..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-[rgba(255,255,255,0.08)] rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4]/40 transition-all"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      {['all', 'Active', 'Suspended', 'Offboarded'].map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setStatusFilter(s)}
+                          className={`px-3 py-2 text-xs font-medium rounded-xl border transition-all cursor-pointer whitespace-nowrap ${
+                            statusFilter === s
+                              ? 'bg-[#06B6D4]/10 text-[#06B6D4] border-[#06B6D4]/20'
+                              : 'text-slate-400 border-[rgba(255,255,255,0.08)] hover:text-white hover:border-white/20'
+                          }`}
+                        >
+                          {s === 'all' ? 'All Status' : s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Staff</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Reference</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Type</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Role</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">MFA</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Last Login</th>
+                          <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider"></th>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'Invitations' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-white">Staff Invitations</h3>
-            <Link
-              href="/admin/staff?tab=Roles+%26+Permissions"
-              className="px-4 py-2 bg-[#06B6D4]/10 text-[#06B6D4] text-sm font-medium rounded-xl hover:bg-[#06B6D4]/20 transition-colors cursor-pointer whitespace-nowrap"
-              onClick={() => setActiveTab('Roles & Permissions')}
-            >
-              New Invitation
-            </Link>
-          </div>
-          <div className="bg-white/5 border border-white/5 rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/5">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Email</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Proposed Role</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Status</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Sent</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Expires</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invLoading ? (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">Loading...</td></tr>
-                  ) : invitations.length === 0 ? (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">No invitations yet. Staff management uses live data.</td></tr>
-                  ) : (
-                    invitations.map((inv: any) => (
-                      <tr key={inv.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="px-4 py-3 text-white">{inv.email}</td>
-                        <td className="px-4 py-3 text-white">{inv.proposed_role || '—'}</td>
-                        <td className="px-4 py-3">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${(INVITATION_STATUS_CONFIG as any)[inv.status]?.bg || 'bg-slate-500/10'} ${(INVITATION_STATUS_CONFIG as any)[inv.status]?.color || 'text-slate-400'}`}>
-                            {inv.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-slate-400">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : '—'}</td>
-                        <td className="px-4 py-3 text-xs text-slate-400">{inv.expires_at ? new Date(inv.expires_at).toLocaleDateString() : '—'}</td>
-                        <td className="px-4 py-3 text-right">
-                          {inv.status === 'Sent' && (
-                            <button className="text-xs text-red-400 hover:underline cursor-pointer">Revoke</button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'Teams' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white/5 border border-white/5 rounded-2xl p-6">
-            <h3 className="text-sm font-semibold text-white mb-4">Departments</h3>
-            {deptLoading ? (
-              <p className="text-sm text-slate-500">Loading...</p>
-            ) : departments.length === 0 ? (
-              <p className="text-sm text-slate-500">No departments defined. Create departments to organise teams.</p>
-            ) : (
-              <div className="space-y-2">
-                {departments.map((d: any) => (
-                  <div key={d.id} className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                    <i className="ri-building-line text-slate-400 text-sm w-4 h-4 flex items-center justify-center"></i>
-                    <div className="flex-1">
-                      <p className="text-sm text-white">{d.name}</p>
-                      {d.description && <p className="text-xs text-slate-500">{d.description}</p>}
-                    </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${d.active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>
-                      {d.active ? 'Active' : 'Inactive'}
-                    </span>
+                      </thead>
+                      <tbody>
+                        {staffLoading ? (
+                          <tr><td colSpan={8} className="py-12 text-center">
+                            <div className="w-6 h-6 border-2 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin mx-auto" />
+                          </td></tr>
+                        ) : filteredStaff.length === 0 ? (
+                          <tr><td colSpan={8} className="py-16 text-center">
+                            <Search className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                            <p className="text-sm text-slate-500">{search || statusFilter !== 'all' ? 'No staff match your filters' : 'No staff records found'}</p>
+                          </td></tr>
+                        ) : (
+                          filteredStaff.map((s: any) => {
+                            const status = s.status || 'Active';
+                            const mfa = s.mfa_state || 'Unknown';
+                            const mfaCfg = MFA_STATE_CONFIG[mfa as keyof typeof MFA_STATE_CONFIG] || MFA_STATE_CONFIG.Unknown;
+                            const statusCfg = (STAFF_STATUS_CONFIG as any)[status] || STAFF_STATUS_CONFIG.Active;
+                            const identityType = s.identity_type || 'internal';
+                            return (
+                              <tr key={`${s.source}-${s.id}`} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02] transition-colors">
+                                <td className="py-3.5 px-4">
+                                  <Link href={`/admin/staff/${s.id}?source=${s.source}`} className="flex items-center gap-3 group cursor-pointer">
+                                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#06B6D4]/20 to-[#22D3EE]/10 flex items-center justify-center text-xs font-bold text-[#06B6D4] shrink-0">
+                                      {(s.full_name || s.email || '??').slice(0, 2).toUpperCase()}
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-semibold text-white group-hover:text-[#06B6D4] transition-colors">{s.full_name || s.email}</p>
+                                      <p className="text-xs text-slate-500">{s.email}</p>
+                                    </div>
+                                  </Link>
+                                </td>
+                                <td className="py-3.5 px-4 text-xs font-mono text-slate-400">{s.reference || '—'}</td>
+                                <td className="py-3.5 px-4">
+                                  <span className="text-xs text-slate-400">{IDENTITY_TYPES[identityType as keyof typeof IDENTITY_TYPES]?.label || identityType}</span>
+                                </td>
+                                <td className="py-3.5 px-4 text-sm text-slate-300">{s.role || '—'}</td>
+                                <td className="py-3.5 px-4">
+                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${statusCfg.bg} ${statusCfg.color} ${statusCfg.border || 'border-transparent'}`}>
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusCfg.dot || 'currentColor' }} />
+                                    {status}
+                                  </span>
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${mfaCfg.bg} ${mfaCfg.color} ${mfaCfg.border || 'border-transparent'}`}>
+                                    {mfaCfg.label}
+                                  </span>
+                                </td>
+                                <td className="py-3.5 px-4 text-xs text-slate-500">{s.last_login_at ? new Date(s.last_login_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                                <td className="py-3.5 px-4 text-right">
+                                  <Link
+                                    href={`/admin/staff/${s.id}?source=${s.source}`}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-[#06B6D4] hover:bg-[#06B6D4]/10 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    View
+                                  </Link>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="bg-white/5 border border-white/5 rounded-2xl p-6">
-            <h3 className="text-sm font-semibold text-white mb-4">Teams</h3>
-            {teamLoading ? (
-              <p className="text-sm text-slate-500">Loading...</p>
-            ) : teams.length === 0 ? (
-              <p className="text-sm text-slate-500">No teams defined. Teams organise staff within departments.</p>
-            ) : (
-              <div className="space-y-2">
-                {teams.map((t: any) => (
-                  <div key={t.id} className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                    <i className="ri-group-line text-slate-400 text-sm w-4 h-4 flex items-center justify-center"></i>
-                    <div className="flex-1">
-                      <p className="text-sm text-white">{t.name}</p>
-                      <p className="text-xs text-slate-500">{t.staff_departments?.name || 'No department'}</p>
-                    </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${t.active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>
-                      {t.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+                </div>
+              )}
 
-      {activeTab === 'Roles & Permissions' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white/5 border border-white/5 rounded-2xl p-6">
-              <h3 className="text-sm font-semibold text-white mb-4">Global Roles</h3>
-              <div className="space-y-2">
-                {Object.entries(GLOBAL_ROLES).map(([key, role]) => (
-                  <div key={key} className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                    <div className={`w-3 h-3 rounded-full ${role.isPrivileged ? 'bg-purple-400' : 'bg-slate-400'}`}></div>
-                    <div className="flex-1">
-                      <p className="text-sm text-white">{role.label}</p>
-                      <p className="text-xs text-slate-500">{role.description}</p>
+              {activeTab === 'Invitations' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-white">Staff Invitations</h3>
+                    <button className="flex items-center gap-2 px-4 py-2 bg-[#06B6D4]/10 text-[#06B6D4] text-sm font-medium rounded-xl hover:bg-[#06B6D4]/20 transition-colors cursor-pointer whitespace-nowrap border border-[#06B6D4]/20">
+                      <UserPlus className="w-4 h-4" />
+                      New Invitation
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Email</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Proposed Role</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Sent</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Expires</th>
+                          <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invLoading ? (
+                          <tr><td colSpan={6} className="py-12 text-center">
+                            <div className="w-6 h-6 border-2 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin mx-auto" />
+                          </td></tr>
+                        ) : invitations.length === 0 ? (
+                          <tr><td colSpan={6} className="py-16 text-center">
+                            <Mail className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                            <p className="text-sm text-slate-500">No invitations sent yet</p>
+                          </td></tr>
+                        ) : (
+                          invitations.map((inv: any) => (
+                            <tr key={inv.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                                    <Mail className="w-4 h-4 text-blue-400" />
+                                  </div>
+                                  <span className="text-sm text-white">{inv.email}</span>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4 text-sm text-slate-300">{inv.proposed_role || '—'}</td>
+                              <td className="py-3.5 px-4">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
+                                  inv.status === 'Sent' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                  inv.status === 'Accepted' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                  inv.status === 'Expired' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20' :
+                                  'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                }`}>
+                                  <span className="w-1.5 h-1.5 rounded-full" style={{
+                                    backgroundColor: inv.status === 'Sent' ? '#60A5FA' : inv.status === 'Accepted' ? '#34D399' : inv.status === 'Expired' ? '#94A3B8' : '#FBBF24'
+                                  }} />
+                                  {inv.status}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-xs text-slate-500">{inv.created_at ? new Date(inv.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                              <td className="py-3.5 px-4 text-xs text-slate-500">{inv.expires_at ? new Date(inv.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                              <td className="py-3.5 px-4 text-right">
+                                {inv.status === 'Sent' && (
+                                  <button className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer">
+                                    Revoke
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'Teams' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                          <Building2 className="w-3.5 h-3.5 text-purple-400" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-white">Departments</h3>
+                      </div>
+                      <span className="text-xs text-slate-500">{departments.length} total</span>
                     </div>
-                    {role.isPrivileged && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400">Privileged</span>
+                    {deptLoading ? (
+                      <div className="space-y-3">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <div key={i} className="h-14 bg-white/5 rounded-xl animate-pulse" />
+                        ))}
+                      </div>
+                    ) : departments.length === 0 ? (
+                      <div className="text-center py-10">
+                        <Building2 className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                        <p className="text-sm text-slate-500">No departments defined</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {departments.map((d: any) => (
+                          <div key={d.id} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/[0.03] transition-colors">
+                            <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
+                              <Building2 className="w-4 h-4 text-purple-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white">{d.name}</p>
+                              {d.description && <p className="text-xs text-slate-500 truncate">{d.description}</p>}
+                            </div>
+                            <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-medium border ${
+                              d.active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                            }`}>
+                              <span className="w-1 h-1 rounded-full" style={{ backgroundColor: d.active ? '#34D399' : '#94A3B8' }} />
+                              {d.active ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-white/5 border border-white/5 rounded-2xl p-6">
-              <h3 className="text-sm font-semibold text-white mb-4">Permission Sets</h3>
-              {permLoading ? (
-                <p className="text-sm text-slate-500">Loading...</p>
-              ) : sets.length === 0 ? (
-                <p className="text-sm text-slate-500">No permission sets defined. Create sets for common team access patterns.</p>
-              ) : (
-                <div className="space-y-2">
-                  {sets.map((ps: any) => (
-                    <div key={ps.id} className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                      <i className="ri-key-2-line text-slate-400 text-sm w-4 h-4 flex items-center justify-center"></i>
-                      <div className="flex-1">
-                        <p className="text-sm text-white">{ps.name} <span className="text-xs text-slate-500">v{ps.version}</span></p>
-                        <p className="text-xs text-slate-500">{ps.description || `${(ps.permissions || []).length} permissions`}</p>
+                  <div className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-[#06B6D4]/10 flex items-center justify-center">
+                          <Users className="w-3.5 h-3.5 text-[#06B6D4]" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-white">Teams</h3>
                       </div>
+                      <span className="text-xs text-slate-500">{teams.length} total</span>
                     </div>
-                  ))}
+                    {teamLoading ? (
+                      <div className="space-y-3">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <div key={i} className="h-14 bg-white/5 rounded-xl animate-pulse" />
+                        ))}
+                      </div>
+                    ) : teams.length === 0 ? (
+                      <div className="text-center py-10">
+                        <Users className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                        <p className="text-sm text-slate-500">No teams defined</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {teams.map((t: any) => (
+                          <div key={t.id} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/[0.03] transition-colors">
+                            <div className="w-9 h-9 rounded-xl bg-[#06B6D4]/10 flex items-center justify-center shrink-0">
+                              <Users className="w-4 h-4 text-[#06B6D4]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white">{t.name}</p>
+                              <p className="text-xs text-slate-500 truncate">{t.staff_departments?.name || 'No department'}</p>
+                            </div>
+                            <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-medium border ${
+                              t.active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                            }`}>
+                              <span className="w-1 h-1 rounded-full" style={{ backgroundColor: t.active ? '#34D399' : '#94A3B8' }} />
+                              {t.active ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {activeTab === 'Access Requests' && (
-        <div className="bg-white/5 border border-white/5 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Requester</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Requested</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Reason</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Date</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reqLoading ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">Loading...</td></tr>
-                ) : requests.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">No access requests. Self-service access requests appear here.</td></tr>
-                ) : (
-                  requests.map((r: any) => (
-                    <tr key={r.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-3 text-white text-xs font-mono">{r.requester_id?.slice(0, 8)}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{(r.requested_permission_keys || []).join(', ') || '—'}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400 max-w-[200px] truncate">{r.business_reason}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${(ACCESS_REQUEST_STATUS_CONFIG as any)[r.status]?.bg || 'bg-slate-500/10'} ${(ACCESS_REQUEST_STATUS_CONFIG as any)[r.status]?.color || 'text-slate-400'}`}>
-                          {r.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</td>
-                      <td className="px-4 py-3 text-right space-x-2">
-                        {r.status === 'Requested' && (
-                          <>
-                            <button className="text-xs text-emerald-400 hover:underline cursor-pointer">Approve</button>
-                            <button className="text-xs text-red-400 hover:underline cursor-pointer">Reject</button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'Reviews' && (
-        <div className="bg-white/5 border border-white/5 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Staff</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Scope</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Due Date</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Decision</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reviewLoading ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">Loading...</td></tr>
-                ) : reviews.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">No access reviews scheduled.</td></tr>
-                ) : (
-                  reviews.map((r: any) => (
-                    <tr key={r.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-3 text-white text-xs font-mono">{r.staff_id?.slice(0, 8)}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{r.scope || 'Full'}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{r.due_date || '—'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${(REVIEW_STATUS_CONFIG as any)[r.status]?.bg || 'bg-slate-500/10'} ${(REVIEW_STATUS_CONFIG as any)[r.status]?.color || 'text-slate-400'}`}>
-                          {r.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{r.decision || '—'}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'Temp Access' && (
-        <div className="bg-white/5 border border-white/5 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Staff</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Permission</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Scope</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Expires</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {grantLoading ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">Loading...</td></tr>
-                ) : grants.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">No temporary access grants.</td></tr>
-                ) : (
-                  grants.map((g: any) => (
-                    <tr key={g.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-3 text-white text-xs font-mono">{g.staff_id?.slice(0, 8)}</td>
-                      <td className="px-4 py-3 text-xs text-white">{g.permission_key}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{g.scope}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{g.expires_at ? new Date(g.expires_at).toLocaleDateString() : '—'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${(TEMP_ACCESS_STATUS_CONFIG as any)[g.status]?.bg || 'bg-slate-500/10'} ${(TEMP_ACCESS_STATUS_CONFIG as any)[g.status]?.color || 'text-slate-400'}`}>
-                          {g.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'Delegations' && (
-        <div className="bg-white/5 border border-white/5 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Delegator</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Delegate</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Scope</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Expires</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {delLoading ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">Loading...</td></tr>
-                ) : delegations.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">No active delegations.</td></tr>
-                ) : (
-                  delegations.map((d: any) => (
-                    <tr key={d.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-3 text-white text-xs font-mono">{d.delegator_id?.slice(0, 8)}</td>
-                      <td className="px-4 py-3 text-white text-xs font-mono">{d.delegate_id?.slice(0, 8)}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{d.scope}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{d.expires_at ? new Date(d.expires_at).toLocaleDateString() : '—'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${(DELEGATION_STATUS_CONFIG as any)[d.status]?.bg || 'bg-slate-500/10'} ${(DELEGATION_STATUS_CONFIG as any)[d.status]?.color || 'text-slate-400'}`}>
-                          {d.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'Service Accounts' && (
-        <div className="bg-white/5 border border-white/5 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Name</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Purpose</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Environment</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Rotation Due</th>
-                </tr>
-              </thead>
-              <tbody>
-                {acctLoading ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">Loading...</td></tr>
-                ) : accounts.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">No service accounts defined.</td></tr>
-                ) : (
-                  accounts.map((a: any) => (
-                    <tr key={a.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-3 text-white">{a.name}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400 max-w-[250px] truncate">{a.purpose}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{a.environment}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${(SERVICE_ACCOUNT_STATUS_CONFIG as any)[a.status]?.bg || 'bg-slate-500/10'} ${(SERVICE_ACCOUNT_STATUS_CONFIG as any)[a.status]?.color || 'text-slate-400'}`}>
-                          {a.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{a.rotation_due || '—'}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'Security Events' && (
-        <div className="bg-white/5 border border-white/5 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Event</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Staff</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Severity</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Source</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {evtLoading ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">Loading...</td></tr>
-                ) : events.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">No security events recorded.</td></tr>
-                ) : (
-                  events.map((e: any, i: number) => (
-                    <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-3 text-white text-xs">{e.event_type || e.action || '—'}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400 font-mono">{e.staff_id ? e.staff_id.slice(0, 8) : (e.actor_id ? e.actor_id.slice(0, 8) : '—')}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${e.severity === 'critical' ? 'bg-red-500/10 text-red-400' : e.severity === 'high' ? 'bg-orange-500/10 text-orange-400' : 'bg-slate-500/10 text-slate-400'}`}>
-                          {e.severity || 'info'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{e.source || e.source_table || '—'}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{e.created_at ? new Date(e.created_at).toLocaleString() : '—'}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'Settings' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white/5 border border-white/5 rounded-2xl p-6">
-            <h3 className="text-sm font-semibold text-white mb-4">Approval Authority Types</h3>
-            <div className="space-y-2">
-              {APPROVAL_AUTHORITY_TYPES.map((type) => (
-                <div key={type} className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                  <i className="ri-checkbox-circle-line text-slate-400 text-sm w-4 h-4 flex items-center justify-center"></i>
-                  <div className="flex-1">
-                    <p className="text-sm text-white capitalize">{type.replace(/_/g, ' ')}</p>
+              {activeTab === 'Roles' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                          <Shield className="w-3.5 h-3.5 text-amber-400" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-white">Global Roles</h3>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      {Object.entries(GLOBAL_ROLES).map(([key, role]: [string, any]) => (
+                        <div key={key} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/[0.03] transition-colors">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${role.isPrivileged ? 'bg-purple-500/10' : 'bg-slate-500/10'}`}>
+                            <Shield className={`w-4 h-4 ${role.isPrivileged ? 'text-purple-400' : 'text-slate-400'}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white">{role.label}</p>
+                            <p className="text-xs text-slate-500 truncate">{role.description}</p>
+                          </div>
+                          {role.isPrivileged && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                              Privileged
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <span className="text-xs text-slate-500">{authorities.filter((a: any) => a.authority_type === type).length} assigned</span>
+                  <div className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-[#06B6D4]/10 flex items-center justify-center">
+                          <Key className="w-3.5 h-3.5 text-[#06B6D4]" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-white">Permission Sets</h3>
+                      </div>
+                      <span className="text-xs text-slate-500">{sets.length} total</span>
+                    </div>
+                    {permLoading ? (
+                      <div className="space-y-3">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <div key={i} className="h-14 bg-white/5 rounded-xl animate-pulse" />
+                        ))}
+                      </div>
+                    ) : sets.length === 0 ? (
+                      <div className="text-center py-10">
+                        <Key className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                        <p className="text-sm text-slate-500">No permission sets defined</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {sets.map((ps: any) => (
+                          <div key={ps.id} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/[0.03] transition-colors">
+                            <div className="w-9 h-9 rounded-xl bg-[#06B6D4]/10 flex items-center justify-center shrink-0">
+                              <Key className="w-4 h-4 text-[#06B6D4]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white">{ps.name} <span className="text-[10px] text-slate-500 font-mono">v{ps.version}</span></p>
+                              <p className="text-xs text-slate-500 truncate">{ps.description || `${(ps.permissions || []).length} permissions`}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-          <div className="bg-white/5 border border-white/5 rounded-2xl p-6">
-            <h3 className="text-sm font-semibold text-white mb-4">Offboarding Checklist</h3>
-            <div className="space-y-2">
-              {OFFBOARDING_CHECKLIST_ITEMS.map((item) => (
-                <div key={item.key} className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                  <i className="ri-checkbox-blank-circle-line text-slate-500 text-sm w-4 h-4 flex items-center justify-center"></i>
-                  <p className="text-sm text-slate-400">{item.label}</p>
+              )}
+
+              {activeTab === 'AccessRequests' && <DataTablePlaceholder title="Access Requests" loading={reqLoading} data={requests} columns={['Requester', 'Requested', 'Reason', 'Status', 'Date']} />}
+              {activeTab === 'Reviews' && <DataTablePlaceholder title="Reviews" loading={reviewLoading} data={reviews} columns={['Staff', 'Scope', 'Due Date', 'Status', 'Decision']} />}
+              {activeTab === 'TempAccess' && <DataTablePlaceholder title="Temporary Access Grants" loading={grantLoading} data={grants} columns={['Staff', 'Permission', 'Scope', 'Expires', 'Status']} />}
+              {activeTab === 'Delegations' && <DataTablePlaceholder title="Delegations" loading={delLoading} data={delegations} columns={['Delegator', 'Delegate', 'Scope', 'Expires', 'Status']} />}
+              {activeTab === 'ServiceAccounts' && <DataTablePlaceholder title="Service Accounts" loading={acctLoading} data={accounts} columns={['Name', 'Purpose', 'Environment', 'Status', 'Rotation Due']} />}
+
+              {activeTab === 'Security' && (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Event</th>
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Staff</th>
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Severity</th>
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Source</th>
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {evtLoading ? (
+                        <tr><td colSpan={5} className="py-12 text-center">
+                          <div className="w-6 h-6 border-2 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin mx-auto" />
+                        </td></tr>
+                      ) : events.length === 0 ? (
+                        <tr><td colSpan={5} className="py-16 text-center">
+                          <ShieldAlert className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                          <p className="text-sm text-slate-500">No security events recorded</p>
+                        </td></tr>
+                      ) : (
+                        events.map((e: any, i: number) => (
+                          <tr key={i} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02] transition-colors">
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                  e.severity === 'critical' ? 'bg-red-500/10' :
+                                  e.severity === 'high' ? 'bg-orange-500/10' :
+                                  'bg-slate-500/10'
+                                }`}>
+                                  <ShieldAlert className={`w-3.5 h-3.5 ${
+                                    e.severity === 'critical' ? 'text-red-400' :
+                                    e.severity === 'high' ? 'text-orange-400' :
+                                    'text-slate-400'
+                                  }`} />
+                                </div>
+                                <span className="text-sm text-white">{e.event_type || e.action || 'Unknown Event'}</span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 text-xs font-mono text-slate-400">{e.staff_id ? e.staff_id.slice(0, 8) : (e.actor_id ? e.actor_id.slice(0, 8) : '—')}</td>
+                            <td className="py-3.5 px-4">
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
+                                e.severity === 'critical' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                e.severity === 'high' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                                'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                              }`}>
+                                <span className="w-1.5 h-1.5 rounded-full" style={{
+                                  backgroundColor: e.severity === 'critical' ? '#F87171' : e.severity === 'high' ? '#FB923C' : '#94A3B8'
+                                }} />
+                                {e.severity || 'info'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-xs text-slate-500">{e.source || e.source_table || '—'}</td>
+                            <td className="py-3.5 px-4 text-xs text-slate-500">{e.created_at ? new Date(e.created_at).toLocaleString() : '—'}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
-            </div>
-          </div>
+              )}
+
+              {activeTab === 'Settings' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5">
+                    <div className="flex items-center gap-2.5 mb-4">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                        <Check className="w-3.5 h-3.5 text-amber-400" />
+                      </div>
+                      <h3 className="text-sm font-semibold text-white">Approval Authority Types</h3>
+                    </div>
+                    <div className="space-y-1.5">
+                      {APPROVAL_AUTHORITY_TYPES.map((type) => (
+                        <div key={type} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/[0.03] transition-colors">
+                          <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                            <Check className="w-4 h-4 text-amber-400" />
+                          </div>
+                          <p className="text-sm text-white capitalize">{type.replace(/_/g, ' ')}</p>
+                          <span className="ml-auto text-xs text-slate-500">{authorities.filter((a: any) => a.authority_type === type).length} assigned</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-white/[0.02] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5">
+                    <div className="flex items-center gap-2.5 mb-4">
+                      <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <FileSearch className="w-3.5 h-3.5 text-blue-400" />
+                      </div>
+                      <h3 className="text-sm font-semibold text-white">Offboarding Checklist</h3>
+                    </div>
+                    <div className="space-y-1.5">
+                      {OFFBOARDING_CHECKLIST_ITEMS.map((item) => (
+                        <div key={item.key} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/[0.03] transition-colors">
+                          <div className="w-9 h-9 rounded-xl bg-slate-500/10 flex items-center justify-center shrink-0">
+                            <div className="w-2.5 h-2.5 rounded-full border-2 border-slate-500" />
+                          </div>
+                          <p className="text-sm text-slate-300">{item.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
+
+function DataTablePlaceholder({ title, loading, data, columns }: { title: string; loading: boolean; data: any[]; columns: string[] }) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-white">{title}</h3>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-[rgba(255,255,255,0.06)]">
+              {columns.map((col) => (
+                <th key={col} className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">{col}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={columns.length} className="py-12 text-center">
+                <div className="w-6 h-6 border-2 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin mx-auto" />
+              </td></tr>
+            ) : data.length === 0 ? (
+              <tr><td colSpan={columns.length} className="py-16 text-center">
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
+                  <Search className="w-5 h-5 text-slate-600" />
+                </div>
+                <p className="text-sm text-slate-500">No records found</p>
+              </td></tr>
+            ) : (
+              data.map((item: any, i: number) => (
+                <tr key={item.id || i} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02] transition-colors">
+                  {columns.map((col) => (
+                    <td key={col} className="py-3.5 px-4 text-xs text-slate-400">{item[col.toLowerCase()] || '—'}</td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

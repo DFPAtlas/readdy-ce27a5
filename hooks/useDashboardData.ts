@@ -32,6 +32,11 @@ export interface FinanceData {
   ageing: { band: string; count: number; value: number }[];
 }
 
+export interface RevenueTrendPoint {
+  date: string;
+  revenue: number;
+}
+
 export interface ProjectPortfolio {
   active: number;
   atRisk: number;
@@ -73,15 +78,34 @@ export interface UatSnapshot {
   criticalDefects: number;
 }
 
+export interface TaskOverviewData {
+  total: number;
+  completed: number;
+  inProgress: number;
+  pending: number;
+  overdue: number;
+  highPriority: number;
+}
+
+export interface ClientSummaryData {
+  total: number;
+  active: number;
+  newThisPeriod: number;
+  recentlyUpdated: { id: string; name: string; industry: string | null }[];
+}
+
 export interface DashboardData {
   kpis: DashboardKpi[];
   attentionItems: AttentionItem[];
   finance: FinanceData;
+  revenueTrend: RevenueTrendPoint[];
   projects: ProjectPortfolio;
   leads: LeadsData;
   recentActivity: ActivityItem[];
   healthItems: HealthItem[];
   uat: UatSnapshot;
+  tasks: TaskOverviewData;
+  clients: ClientSummaryData;
   loading: boolean;
   partialFailures: string[];
   lastRefreshed: string | null;
@@ -106,17 +130,28 @@ const EMPTY_UAT: UatSnapshot = {
   jobsInProgress: 0, testersAssigned: 0, feedbackAwaiting: 0, criticalDefects: 0,
 };
 
+const EMPTY_TASKS: TaskOverviewData = {
+  total: 0, completed: 0, inProgress: 0, pending: 0, overdue: 0, highPriority: 0,
+};
+
+const EMPTY_CLIENTS: ClientSummaryData = {
+  total: 0, active: 0, newThisPeriod: 0, recentlyUpdated: [],
+};
+
 export function useDashboardData(initialPreset: DateRangePreset = '30days') {
   const [dateRange, setDateRangeState] = useState<DateRange>(() => getDateRange(initialPreset));
   const [data, setData] = useState<DashboardData>({
     kpis: [],
     attentionItems: [],
     finance: EMPTY_FINANCE,
+    revenueTrend: [],
     projects: EMPTY_PROJECTS,
     leads: EMPTY_LEADS,
     recentActivity: [],
     healthItems: [],
     uat: EMPTY_UAT,
+    tasks: EMPTY_TASKS,
+    clients: EMPTY_CLIENTS,
     loading: true,
     partialFailures: [],
     lastRefreshed: null,
@@ -141,27 +176,28 @@ export function useDashboardData(initialPreset: DateRangePreset = '30days') {
       const rangeEnd = range.end.toISOString();
 
       const now = new Date().toISOString();
-      const sevenDaysFromNow = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
-      const todayStr = now.split('T')[0];
 
       let kpis: DashboardKpi[] = [];
       let attentionItems: AttentionItem[] = [];
       let finance: FinanceData = EMPTY_FINANCE;
+      let revenueTrend: RevenueTrendPoint[] = [];
       let projects: ProjectPortfolio = EMPTY_PROJECTS;
       let leads: LeadsData = EMPTY_LEADS;
       let recentActivity: ActivityItem[] = [];
       let healthItems: HealthItem[] = [];
       let uat: UatSnapshot = EMPTY_UAT;
+      let tasks: TaskOverviewData = EMPTY_TASKS;
+      let clients: ClientSummaryData = EMPTY_CLIENTS;
 
       try {
         const [
           invoicesRes, paidRes, projectsRes, leadsRes, milestonesRes,
-          tasksRes, alertsRes, activityRes, deploymentsRes, n8nRes,
+          allTasksRes, alertsRes, activityRes, deploymentsRes, n8nRes,
           backupsRes, supportRes, uatJobsRes, uatFeedbackRes, uatAssignRes,
-          submissionsRes,
+          submissionsRes, clientsRes, actorProfilesRes,
         ] = await Promise.all([
           supabase.from('invoices').select('id, amount, status, due_date, paid_at').not('status', 'in', '(cancelled,draft)'),
-          supabase.from('invoices').select('amount').eq('status', 'paid').gte('paid_at', rangeStart).lte('paid_at', rangeEnd),
+          supabase.from('invoices').select('amount, paid_at').eq('status', 'paid').gte('paid_at', rangeStart).lte('paid_at', rangeEnd).order('paid_at', { ascending: true }),
           supabase.from('projects').select('id, name, status, progress, end_date, updated_at').not('status', 'in', '(archived)'),
           supabase.from('leads').select('id, name, company_name, status, assigned_to, created_at').not('status', 'in', '(spam,archived)'),
           supabase.from('milestones').select('id, project_id, title, status, due_date, target_date'),
@@ -176,6 +212,8 @@ export function useDashboardData(initialPreset: DateRangePreset = '30days') {
           supabase.from('uat_feedback').select('id, title, status, severity'),
           supabase.from('uat_assignments').select('id, tester_id, status'),
           supabase.from('project_submissions').select('id, name, status, created_at').gte('created_at', rangeStart).lte('created_at', rangeEnd),
+          supabase.from('clients').select('id, company_name, industry, status, created_at, updated_at').not('status', 'in', '(archived)').order('updated_at', { ascending: false }).limit(8),
+          supabase.from('admin_profiles').select('id, full_name, email'),
         ]);
 
         if (currentFetchId !== fetchIdRef.current) return;
@@ -185,15 +223,16 @@ export function useDashboardData(initialPreset: DateRangePreset = '30days') {
         if (projectsRes.error) failures.push('projects');
         if (leadsRes.error) failures.push('leads');
         if (milestonesRes.error) failures.push('milestones');
-        if (tasksRes.error) failures.push('tasks');
+        if (allTasksRes.error) failures.push('tasks');
         if (alertsRes.error) failures.push('alerts');
+        if (clientsRes.error) failures.push('clients');
 
         const allInvoices = invoicesRes.data || [];
         const paidInPeriod = paidRes.data || [];
         const allProjects = projectsRes.data || [];
         const allLeads = leadsRes.data || [];
         const allMilestones = milestonesRes.data || [];
-        const allTasks = tasksRes.data || [];
+        const allTasks = allTasksRes.data || [];
         const allAlerts = alertsRes.data || [];
         const allActivity = activityRes.data || [];
         const allDeployments = deploymentsRes.data || [];
@@ -204,6 +243,14 @@ export function useDashboardData(initialPreset: DateRangePreset = '30days') {
         const allUatFeedback = uatFeedbackRes.data || [];
         const allUatAssign = uatAssignRes.data || [];
         const allSubmissions = submissionsRes.data || [];
+        const allClients = clientsRes.data || [];
+        const allActorProfiles = actorProfilesRes.data || [];
+
+        const actorMap = new Map<string, string>();
+        allActorProfiles.forEach((p) => {
+          if (p.id && p.full_name) actorMap.set(p.id, p.full_name);
+          else if (p.id && p.email) actorMap.set(p.id, p.email);
+        });
 
         const outstandingInvoices = allInvoices.filter((i) => i.status === 'pending' || i.status === 'overdue');
         const overdueInvoices = allInvoices.filter((i) => {
@@ -215,6 +262,21 @@ export function useDashboardData(initialPreset: DateRangePreset = '30days') {
         const paidRevenueTotal = paidInPeriod.reduce((sum, i) => sum + Number(i.amount || 0), 0);
         const outstandingTotal = outstandingInvoices.reduce((sum, i) => sum + Number(i.amount || 0), 0);
         const overdueTotal = overdueInvoices.reduce((sum, i) => sum + Number(i.amount || 0), 0);
+
+        const revenueByDay = new Map<string, number>();
+        paidInPeriod.forEach((i) => {
+          if (!i.paid_at) return;
+          const dayKey = i.paid_at.split('T')[0];
+          const current = revenueByDay.get(dayKey) || 0;
+          revenueByDay.set(dayKey, current + Number(i.amount || 0));
+        });
+        revenueTrend = Array.from(revenueByDay.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, revenue]) => ({ date, revenue }));
+
+        if (revenueTrend.length === 0 && paidRevenueTotal > 0) {
+          revenueTrend = [{ date: rangeStart.split('T')[0], revenue: paidRevenueTotal }];
+        }
 
         const activeProjects = allProjects.filter((p) => p.status === 'active');
         const atRiskProjects = allProjects.filter((p) => p.status === 'at_risk');
@@ -266,6 +328,21 @@ export function useDashboardData(initialPreset: DateRangePreset = '30days') {
           .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
           .slice(0, 5)
           .map((l) => ({ id: l.id, name: l.name, company_name: l.company_name, created_at: l.created_at || '' }));
+
+        const completedTasks = allTasks.filter((t) => t.status === 'completed');
+        const inProgressTasks = allTasks.filter((t) => t.status === 'in_progress');
+        const pendingTasks = allTasks.filter((t) => t.status === 'pending' || t.status === 'open' || t.status === 'todo');
+        const overdueTasks = allTasks.filter((t) => {
+          if (!t.due_date || t.status === 'completed') return false;
+          return new Date(t.due_date) < new Date();
+        });
+        const highPriorityTasks = allTasks.filter((t) => t.status !== 'completed' && (t.priority === 'high' || t.priority === 'critical'));
+
+        const activeClients = allClients.filter((c) => c.status === 'active' || c.status === 'onboarding');
+        const newClientsInPeriod = allClients.filter((c) => {
+          if (!c.created_at) return false;
+          return c.created_at >= rangeStart && c.created_at <= rangeEnd;
+        });
 
         kpis = [
           { key: 'paidRevenue', label: 'Paid Revenue', value: paidRevenueTotal, isCurrency: true, context: `${paidInPeriod.length} payments in period`, linkHref: '/admin/invoices' },
@@ -364,14 +441,17 @@ export function useDashboardData(initialPreset: DateRangePreset = '30days') {
           recentlyAdded: recentlyAddedLeads,
         };
 
-        recentActivity = allActivity.slice(0, 10).map((a) => ({
-          type: a.activity_type,
-          title: a.title || a.activity_type,
-          actor: null,
-          time: a.created_at || '',
-          linkHref: a.project_id ? `/admin/projects` : '/admin',
-          module: 'projects',
-        }));
+        recentActivity = allActivity.slice(0, 10).map((a) => {
+          const actorName = a.actor_id ? actorMap.get(a.actor_id) || null : null;
+          return {
+            type: a.activity_type,
+            title: a.title || a.activity_type,
+            actor: actorName,
+            time: a.created_at || '',
+            linkHref: a.project_id ? `/admin/projects` : '/admin',
+            module: a.project_id ? 'projects' : 'admin',
+          };
+        });
 
         healthItems = [
           { label: 'Database', status: 'operational' as const, detail: 'Connected', linkHref: '/admin/diagnostics' },
@@ -390,17 +470,40 @@ export function useDashboardData(initialPreset: DateRangePreset = '30days') {
           criticalDefects: criticalUatDefects.length,
         };
 
+        tasks = {
+          total: allTasks.length,
+          completed: completedTasks.length,
+          inProgress: inProgressTasks.length,
+          pending: pendingTasks.length,
+          overdue: overdueTasks.length,
+          highPriority: highPriorityTasks.length,
+        };
+
+        clients = {
+          total: allClients.length,
+          active: activeClients.length,
+          newThisPeriod: newClientsInPeriod.length,
+          recentlyUpdated: allClients.slice(0, 5).map((c) => ({
+            id: c.id,
+            name: c.company_name || 'Unnamed',
+            industry: c.industry,
+          })),
+        };
+
         if (currentFetchId !== fetchIdRef.current) return;
 
         setData({
           kpis,
           attentionItems,
           finance,
+          revenueTrend,
           projects,
           leads,
           recentActivity,
           healthItems,
           uat,
+          tasks,
+          clients,
           loading: false,
           partialFailures: failures,
           lastRefreshed: new Date().toISOString(),
@@ -441,9 +544,9 @@ function computeAgeing(invoices: { status: string; due_date: string | null; amou
   const now = new Date();
   const bands = [
     { band: 'Not yet due', count: 0, value: 0 },
-    { band: '1–30 days overdue', count: 0, value: 0 },
-    { band: '31–60 days overdue', count: 0, value: 0 },
-    { band: '61–90 days overdue', count: 0, value: 0 },
+    { band: '1\u201330 days overdue', count: 0, value: 0 },
+    { band: '31\u201360 days overdue', count: 0, value: 0 },
+    { band: '61\u201390 days overdue', count: 0, value: 0 },
     { band: '90+ days overdue', count: 0, value: 0 },
   ];
 

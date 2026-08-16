@@ -1,127 +1,81 @@
 'use client';
 
 import PBXShell from '@/components/pbx/PBXShell';
-import { Settings, Shield, Globe, Clock, Phone, Radio, Lock } from 'lucide-react';
+import PBXEmptyState from '@/components/pbx/PBXEmptyState';
+import { usePBXTenants } from '@/hooks/usePBXData';
+import { Settings, Shield, Globe, RefreshCw } from 'lucide-react';
 
-// TODO: Replace with Supabase - pbx_tenants, pbx_webhook_logs, pbx_audit_logs tables
+const integrationStatus = [
+  { label: 'Twilio Voice', ready: false },
+  { label: 'Twilio SMS', ready: false },
+  { label: 'Webhook Endpoint', ready: false },
+  { label: 'n8n Workflows', ready: false },
+  { label: 'AI Receptionist', ready: false },
+  { label: 'Supabase Database', ready: true },
+  { label: 'Storage', ready: true },
+];
 
 export default function PBXSettingsPage() {
+  const { tenants, loading, refetch } = usePBXTenants();
+  const tenant = tenants[0];
+
   return (
     <PBXShell>
       <div className="space-y-6 max-w-3xl">
-        <div>
-          <h1 className="text-xl font-bold text-white">Settings</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Configure your PBX system settings</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-white">Settings</h1>
+            <p className="text-sm text-slate-400 mt-0.5">Your PBX configuration</p>
+          </div>
+          <button onClick={refetch} className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-[rgba(255,255,255,0.08)] text-slate-400 rounded-xl text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer whitespace-nowrap">
+            <RefreshCw className="w-3.5 h-3.5" />Refresh
+          </button>
         </div>
 
-        <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-5">
-          <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Globe className="w-4 h-4 text-[#06B6D4]" /> Company PBX Settings</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { label: 'Company Name', value: 'Acme Corp', type: 'text' },
-              { label: 'Main Contact', value: 'John Doe', type: 'text' },
-              { label: 'Timezone', value: 'Europe/London', type: 'text' },
-              { label: 'Default Country', value: 'GB', type: 'text' },
-              { label: 'Default Caller ID', value: '+44 20 7946 0100', type: 'text' },
-            ].map(f => (
-              <div key={f.label}>
-                <label className="text-xs text-slate-500 mb-1 block">{f.label}</label>
-                <input type={f.type} defaultValue={f.value} className="w-full px-3.5 py-2.5 bg-white/[0.03] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-5">
-          <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Phone className="w-4 h-4 text-[#F97316]" /> Emergency Address</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { label: 'Address Line 1', value: '123 Business Park', type: 'text' },
-              { label: 'City', value: 'London', type: 'text' },
-              { label: 'Postcode', value: 'EC1A 1BB', type: 'text' },
-              { label: 'Country', value: 'United Kingdom', type: 'text' },
-            ].map(f => (
-              <div key={f.label}>
-                <label className="text-xs text-slate-500 mb-1 block">{f.label}</label>
-                <input type={f.type} defaultValue={f.value} className="w-full px-3.5 py-2.5 bg-white/[0.03] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20" />
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center gap-3 mt-3 pt-3 border-t border-[rgba(255,255,255,0.04)]">
-            <span className="text-xs text-slate-500">Emergency Calling Status:</span>
-            <span className="text-xs font-medium text-[#10B981] bg-[#10B981]/10 px-2 py-0.5 rounded-full">Verified — Last verified: 15 Jan 2026</span>
-          </div>
-        </div>
-
-        <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-5">
-          <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Radio className="w-4 h-4 text-[#F59E0B]" /> Recording Settings</h3>
-          <div className="space-y-4">
-            <label className="flex items-center justify-between py-1 cursor-pointer">
-              <span className="text-sm text-slate-300">Enable Call Recording</span>
-              <button className="relative w-9 h-5 rounded-full bg-[#06B6D4] transition-colors duration-200 cursor-pointer">
-                <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-white" />
-              </button>
-            </label>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Consent Message</label>
-              <input defaultValue="This call may be recorded for quality and training purposes." className="w-full px-3.5 py-2.5 bg-white/[0.03] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Retention Period (days)</label>
-              <input type="number" defaultValue="90" className="w-full px-3.5 py-2.5 bg-white/[0.03] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-5">
-          <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Shield className="w-4 h-4 text-[#10B981]" /> Integration Status</h3>
-          <div className="space-y-3">
-            {[
-              { label: 'Twilio Webhook Status', status: 'online', detail: 'Voice + SMS connected' },
-              { label: 'n8n Connected', status: 'online', detail: '3 workflows active' },
-              { label: 'AI Agent Connected', status: 'online', detail: 'Responding normally' },
-              { label: 'Stripe Billing', status: 'online', detail: 'Subscription active' },
-            ].map(i => (
-              <div key={i.label} className="flex items-center justify-between py-2 border-b border-[rgba(255,255,255,0.03)] last:border-0">
-                <div>
-                  <span className="text-sm text-slate-300 block">{i.label}</span>
-                  <span className="text-xs text-slate-500">{i.detail}</span>
-                </div>
-                <span className={`w-2 h-2 rounded-full ${i.status === 'online' ? 'bg-[#10B981]' : 'bg-[#EF4444]'}`} />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-5">
-          <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Lock className="w-4 h-4 text-[#8B5CF6]" /> Security Settings</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-slate-300">Webhook Secret Status</span>
-              <span className="text-xs font-mono text-slate-400 bg-white/[0.03] px-2 py-0.5 rounded">••••••••••••••••</span>
-            </div>
-            <label className="flex items-center justify-between py-1 cursor-pointer">
-              <span className="text-sm text-slate-300">Audit Logging</span>
-              <button className="relative w-9 h-5 rounded-full bg-[#06B6D4] transition-colors duration-200 cursor-pointer">
-                <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-white" />
-              </button>
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Max Call Duration (min)</label>
-                <input type="number" defaultValue="120" className="w-full px-3.5 py-2.5 bg-white/[0.03] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20" />
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Max SMS Per Day</label>
-                <input type="number" defaultValue="500" className="w-full px-3.5 py-2.5 bg-white/[0.03] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20" />
+        {loading ? (
+          <div className="flex items-center justify-center h-48"><div className="w-8 h-8 border-2 border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin" /></div>
+        ) : !tenant ? (
+          <PBXEmptyState icon={<Settings className="w-7 h-7 text-slate-500" />} title="No tenant configured" description="Your PBX tenant is provisioned by Digital-Footprint. Configuration appears here once it is active." />
+        ) : (
+          <>
+            <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-5">
+              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Globe className="w-4 h-4 text-[#06B6D4]" /> Company Settings</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { label: 'Company Name', value: tenant.name },
+                  { label: 'Country', value: tenant.country || '—' },
+                  { label: 'Timezone', value: tenant.timezone || '—' },
+                  { label: 'Default Caller ID', value: tenant.default_caller_id || '—' },
+                  { label: 'Recording Policy', value: tenant.recording_policy || '—' },
+                  { label: 'Retention (days)', value: tenant.retention_days ?? '—' },
+                ].map((f) => (
+                  <div key={f.label}>
+                    <label className="text-xs text-slate-500 mb-1 block">{f.label}</label>
+                    <div className="px-3.5 py-2.5 bg-white/[0.03] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-white">{f.value}</div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="flex justify-end pt-2">
-          <button className="px-5 py-2.5 rounded-lg text-sm font-medium text-white bg-[#06B6D4] hover:bg-[#0891B2] transition-colors cursor-pointer whitespace-nowrap">Save Settings</button>
-        </div>
+            <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-5">
+              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Shield className="w-4 h-4 text-[#10B981]" /> Integration Status</h3>
+              <div className="space-y-3">
+                {integrationStatus.map((s) => (
+                  <div key={s.label} className="flex items-center justify-between py-2 border-b border-[rgba(255,255,255,0.03)] last:border-0">
+                    <span className="text-sm text-slate-300">{s.label}</span>
+                    <span className={`text-xs ${s.ready ? 'text-[#10B981]' : 'text-slate-500'}`}>
+                      <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${s.ready ? 'bg-[#10B981]' : 'bg-slate-600'}`} />
+                      {s.ready ? 'Ready' : 'Not Configured'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-4 leading-relaxed">
+                Provider credentials are stored server-side in Supabase Edge Function secrets and never exposed to your browser.
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </PBXShell>
   );

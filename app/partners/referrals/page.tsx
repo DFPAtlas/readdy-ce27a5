@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { REFERRAL_NO_REWARD_NOTE } from '@/lib/cms-definitions';
+import { submitEnquiry } from '@/lib/submit-enquiry';
 
 export default function ReferralsPage() {
   const [formState, setFormState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
@@ -30,30 +31,29 @@ export default function ReferralsPage() {
     setFormError('');
 
     try {
-      const payload = new URLSearchParams();
-      for (const [key, value] of formData.entries()) {
-        if (key !== 'website_alt') {
-          payload.append(key, value as string);
-        }
-      }
-      payload.append('application_type', 'referral_registration');
+      const result = await submitEnquiry('partner_applications', {
+        application_type: 'referral_registration',
+        applicant_name: (formData.get('referrer_name') as string) || null,
+        email: (formData.get('email') as string) || null,
+        company_name: (formData.get('referrer_company') as string) || null,
+        referral_details: {
+          relationship: (formData.get('relationship') as string) || null,
+          referred_company: (formData.get('referred_company') as string) || null,
+          referred_contact_name: (formData.get('referred_contact_name') as string) || null,
+          referred_email: (formData.get('referred_email') as string) || null,
+          service_interest: (formData.get('service_interest') as string) || null,
+          referral_reason: (formData.get('referral_reason') as string) || null,
+        },
+        privacy_acknowledged_at: formData.get('privacy_acknowledged') === 'on' ? new Date().toISOString() : null,
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+      }, true);
 
-      const response = await fetch('https://readdy.ai/api/form/d9engvmdn0rfb35c6780', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: payload.toString(),
-      });
-
-      const responseText = await response.text();
-      let parsed: any;
-      try { parsed = JSON.parse(responseText); } catch { parsed = null; }
-
-      if (response.ok && parsed?.code === 'OK') {
+      if (result.code === 'OK') {
         setFormState('success');
         form.reset();
       } else {
-        const serverMsg = parsed?.meta?.message || parsed?.message || responseText || 'Something went wrong. Please try again.';
-        setFormError(serverMsg);
+        setFormError(result.message);
         setFormState('error');
       }
     } catch {

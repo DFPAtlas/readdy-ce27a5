@@ -413,7 +413,20 @@ export function useProductRegistry(options?: { visibility?: string }) {
     setLoading(false);
   }, [visibility]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      let q = supabase.from('product_registry').select('*').order('sort_order');
+      if (visibility) q = q.eq('public_visibility', visibility);
+      const { data } = await q;
+      if (cancelled) return;
+      setProducts((data || []) as ProductRegistry[]);
+      setLoading(false);
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [visibility]);
 
   return { products, loading, refetch: fetch };
 }

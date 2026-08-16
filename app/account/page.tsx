@@ -1,13 +1,22 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function AccountPage() {
   const router = useRouter();
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    router.replace('/login');
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (mountedRef.current) router.replace('/login');
+    }, 0);
+    return () => clearTimeout(timer);
   }, [router]);
 
   return (

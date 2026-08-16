@@ -3,66 +3,41 @@
 import { useState } from 'react';
 import PBXShell from '@/components/pbx/PBXShell';
 import PBXStatCard from '@/components/pbx/PBXStatCard';
-import PBXSetupChecklist from '@/components/pbx/PBXSetupChecklist';
-import PBXUsageMeter from '@/components/pbx/PBXUsageMeter';
 import PBXStatusBadge from '@/components/pbx/PBXStatusBadge';
 import PBXComingSoonBanner from '@/components/pbx/PBXComingSoonBanner';
-import PBXBespokeDemo from '@/components/pbx/PBXBespokeDemo';
 import PBXEarlyAccessModal from '@/components/pbx/PBXEarlyAccessModal';
-import { Phone, PhoneCall, PhoneMissed, Voicemail, MessageSquare, Bot, CreditCard, Activity, ArrowUpRight } from 'lucide-react';
+import { usePBXMetrics, usePBXCallLogs } from '@/hooks/usePBXData';
 import Link from 'next/link';
-
-// TODO: Replace with Supabase queries - pbx_numbers, pbx_call_logs, pbx_voicemails, pbx_sms_messages, pbx_token_usage, pbx_subscriptions
-const mockStats = {
-  activeNumbers: 5,
-  callsToday: 142,
-  missedCalls: 8,
-  voicemails: 12,
-  smsThisMonth: 1240,
-  aiTokensUsed: 18500,
-  plan: 'Business',
-  automationHealth: 'Healthy',
-};
+import { Phone, PhoneCall, PhoneMissed, Voicemail, MessageSquare, Layers, Wifi, AlertTriangle, ArrowUpRight, Activity } from 'lucide-react';
 
 const quickActions = [
-  { label: 'Add Phone Number', href: '/pbx/numbers', icon: Phone, color: '#06B6D4' },
-  { label: 'Add User/Extension', href: '/pbx/users', icon: PhoneCall, color: '#10B981' },
-  { label: 'Create Call Route', href: '/pbx/call-routing', icon: Activity, color: '#8B5CF6' },
-  { label: 'Configure Hours', href: '/pbx/opening-hours', icon: Voicemail, color: '#F59E0B' },
-  { label: 'Set Up AI Receptionist', href: '/pbx/ai-receptionist', icon: Bot, color: '#EC4899' },
-  { label: 'View Call Logs', href: '/pbx/call-logs', icon: PhoneCall, color: '#F97316' },
-];
-
-const recentCalls = [
-  { time: '14:32', direction: 'inbound', from: '+44 20 7946 0011', to: '+44 20 7946 0100', status: 'answered', duration: '4:22', aiSummary: 'done' },
-  { time: '14:18', direction: 'outbound', from: '+44 20 7946 0100', to: '+44 20 7946 0234', status: 'answered', duration: '1:05', aiSummary: 'done' },
-  { time: '14:05', direction: 'inbound', from: '+44 20 7946 0456', to: '+44 20 7946 0100', status: 'missed', duration: '0:00', aiSummary: 'none' },
-  { time: '13:52', direction: 'inbound', from: '+44 20 7946 0789', to: '+44 20 7946 0100', status: 'voicemail', duration: '0:48', aiSummary: 'done' },
-  { time: '13:30', direction: 'inbound', from: '+1 212 555 0199', to: '+44 20 7946 0100', status: 'answered', duration: '12:05', aiSummary: 'pending' },
-  { time: '13:15', direction: 'outbound', from: '+44 20 7946 0100', to: '+44 20 7946 0321', status: 'answered', duration: '2:33', aiSummary: 'done' },
-  { time: '12:58', direction: 'inbound', from: '+44 20 7946 0654', to: '+44 20 7946 0100', status: 'busy', duration: '0:00', aiSummary: 'none' },
-];
-
-const setupItems = [
-  { id: '1', label: 'Add first number', done: true },
-  { id: '2', label: 'Add users/extensions', done: true },
-  { id: '3', label: 'Configure opening hours', done: true },
-  { id: '4', label: 'Configure default route', done: true },
-  { id: '5', label: 'Enable voicemail', done: false, href: '/pbx/settings' },
-  { id: '6', label: 'Connect n8n workflow', done: false, href: '/pbx/settings' },
-  { id: '7', label: 'Enable AI receptionist', done: false, href: '/pbx/ai-receptionist' },
-  { id: '8', label: 'Add billing plan', done: true },
+  { label: 'Phone Numbers', href: '/pbx/numbers', icon: Phone, color: '#06B6D4' },
+  { label: 'Users & Extensions', href: '/pbx/users', icon: PhoneCall, color: '#10B981' },
+  { label: 'Call Routing', href: '/pbx/call-routing', icon: Activity, color: '#8B5CF6' },
+  { label: 'Opening Hours', href: '/pbx/opening-hours', icon: Voicemail, color: '#F59E0B' },
+  { label: 'Voicemail', href: '/pbx/voicemail', icon: Voicemail, color: '#F97316' },
+  { label: 'Call Logs', href: '/pbx/call-logs', icon: PhoneCall, color: '#EC4899' },
 ];
 
 export default function PBXDashboardPage() {
   const [earlyAccessOpen, setEarlyAccessOpen] = useState(false);
+  const { metrics, loading } = usePBXMetrics();
+  const { calls } = usePBXCallLogs();
+
+  const recentCalls = calls.slice(0, 7);
+
+  const integrationStatus = [
+    { label: 'Twilio Voice', ready: false },
+    { label: 'Twilio SMS', ready: false },
+    { label: 'Webhook Endpoint', ready: false },
+    { label: 'n8n Workflows', ready: false },
+    { label: 'Storage', ready: true },
+  ];
 
   return (
     <PBXShell hideComingSoonBar>
       <div className="space-y-6">
         <PBXComingSoonBanner onRequestAccess={() => setEarlyAccessOpen(true)} />
-
-        <PBXBespokeDemo onRequestDemo={() => setEarlyAccessOpen(true)} />
 
         <div>
           <h1 className="text-xl font-bold text-white">Dashboard</h1>
@@ -70,14 +45,14 @@ export default function PBXDashboardPage() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          <PBXStatCard title="Active Numbers" value={String(mockStats.activeNumbers)} icon={<Phone className="w-5 h-5" />} color="#06B6D4" trend={{ value: '0', positive: true }} />
-          <PBXStatCard title="Calls Today" value={String(mockStats.callsToday)} icon={<PhoneCall className="w-5 h-5" />} color="#10B981" trend={{ value: '12%', positive: true }} />
-          <PBXStatCard title="Missed Calls" value={String(mockStats.missedCalls)} icon={<PhoneMissed className="w-5 h-5" />} color="#EF4444" trend={{ value: '5%', positive: false }} />
-          <PBXStatCard title="Voicemails" value={String(mockStats.voicemails)} icon={<Voicemail className="w-5 h-5" />} color="#F59E0B" />
-          <PBXStatCard title="SMS This Month" value={String(mockStats.smsThisMonth)} icon={<MessageSquare className="w-5 h-5" />} color="#8B5CF6" />
-          <PBXStatCard title="AI Tokens Used" value={mockStats.aiTokensUsed.toLocaleString()} icon={<Bot className="w-5 h-5" />} color="#EC4899" />
-          <PBXStatCard title="Current Plan" value={mockStats.plan} icon={<CreditCard className="w-5 h-5" />} color="#F97316" subtitle="Next invoice: 15 Jul 2026" />
-          <PBXStatCard title="Automation Health" value={mockStats.automationHealth} icon={<Activity className="w-5 h-5" />} color="#22D3EE" />
+          <PBXStatCard title="Active Numbers" value={loading ? '—' : String(metrics.totalNumbers)} icon={<Phone className="w-5 h-5" />} color="#06B6D4" />
+          <PBXStatCard title="Calls Today" value={loading ? '—' : metrics.callsToday.toLocaleString()} icon={<PhoneCall className="w-5 h-5" />} color="#10B981" />
+          <PBXStatCard title="Missed Calls" value={loading ? '—' : String(metrics.missedCalls)} icon={<PhoneMissed className="w-5 h-5" />} color="#EF4444" />
+          <PBXStatCard title="Voicemails Today" value={loading ? '—' : String(metrics.voicemailsToday)} icon={<Voicemail className="w-5 h-5" />} color="#F59E0B" />
+          <PBXStatCard title="SMS Today" value={loading ? '—' : metrics.messagesToday.toLocaleString()} icon={<MessageSquare className="w-5 h-5" />} color="#8B5CF6" />
+          <PBXStatCard title="Active Queues" value={loading ? '—' : String(metrics.activeQueues)} icon={<Layers className="w-5 h-5" />} color="#EC4899" />
+          <PBXStatCard title="Webhook Issues" value={loading ? '—' : String(metrics.webhookFailures)} icon={<Wifi className="w-5 h-5" />} color={metrics.webhookFailures > 0 ? '#EF4444' : '#22D3EE'} />
+          <PBXStatCard title="Auth Failures" value={loading ? '—' : String(metrics.connectionFailures)} icon={<AlertTriangle className="w-5 h-5" />} color={metrics.connectionFailures > 0 ? '#EF4444' : '#22D3EE'} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -89,42 +64,42 @@ export default function PBXDashboardPage() {
                   View all <ArrowUpRight className="w-3 h-3" />
                 </Link>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs text-slate-500 border-b border-[rgba(255,255,255,0.04)]">
-                      <th className="pb-2 font-medium">Time</th>
-                      <th className="pb-2 font-medium">Direction</th>
-                      <th className="pb-2 font-medium">From</th>
-                      <th className="pb-2 font-medium">To</th>
-                      <th className="pb-2 font-medium">Status</th>
-                      <th className="pb-2 font-medium">Duration</th>
-                      <th className="pb-2 font-medium">AI</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentCalls.map((call, i) => (
-                      <tr key={i} className="border-b border-[rgba(255,255,255,0.02)] hover:bg-white/[0.02] cursor-pointer">
-                        <td className="py-2.5 text-slate-300 font-mono text-xs">{call.time}</td>
-                        <td className="py-2.5">
-                          <span className={`text-xs ${call.direction === 'inbound' ? 'text-[#10B981]' : 'text-[#8B5CF6]'}`}>
-                            {call.direction === 'inbound' ? '↓ In' : '↑ Out'}
-                          </span>
-                        </td>
-                        <td className="py-2.5 text-slate-300 font-mono text-xs">{call.from}</td>
-                        <td className="py-2.5 text-slate-300 font-mono text-xs">{call.to}</td>
-                        <td className="py-2.5"><PBXStatusBadge status={call.status} /></td>
-                        <td className="py-2.5 text-slate-400 font-mono text-xs">{call.duration}</td>
-                        <td className="py-2.5">
-                          <span className={`text-[10px] font-medium ${call.aiSummary === 'done' ? 'text-[#10B981]' : call.aiSummary === 'pending' ? 'text-[#F59E0B]' : 'text-slate-500'}`}>
-                            {call.aiSummary === 'done' ? '✓ Done' : call.aiSummary === 'pending' ? '⏳ Processing' : '—'}
-                          </span>
-                        </td>
+              {recentCalls.length === 0 ? (
+                <p className="text-sm text-slate-500 py-10 text-center">No call activity yet. Call logs appear once your provider connection is live.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-slate-500 border-b border-[rgba(255,255,255,0.04)]">
+                        <th className="pb-2 font-medium">Time</th>
+                        <th className="pb-2 font-medium">Direction</th>
+                        <th className="pb-2 font-medium">From</th>
+                        <th className="pb-2 font-medium">To</th>
+                        <th className="pb-2 font-medium">Status</th>
+                        <th className="pb-2 font-medium">Duration</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {recentCalls.map((call) => (
+                        <tr key={call.id} className="border-b border-[rgba(255,255,255,0.02)] hover:bg-white/[0.02]">
+                          <td className="py-2.5 text-slate-300 font-mono text-xs">{call.start_time ? new Date(call.start_time).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                          <td className="py-2.5">
+                            <span className={`text-xs ${call.direction === 'inbound' ? 'text-[#10B981]' : 'text-[#8B5CF6]'}`}>
+                              {call.direction === 'inbound' ? '↓ In' : '↑ Out'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-slate-300 font-mono text-xs">{call.from_number}</td>
+                          <td className="py-2.5 text-slate-300 font-mono text-xs">{call.to_number}</td>
+                          <td className="py-2.5"><PBXStatusBadge status={call.status} /></td>
+                          <td className="py-2.5 text-slate-400 font-mono text-xs">
+                            {call.duration_seconds != null ? `${Math.floor(call.duration_seconds / 60)}:${String(call.duration_seconds % 60).padStart(2, '0')}` : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div>
@@ -144,19 +119,22 @@ export default function PBXDashboardPage() {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <PBXSetupChecklist items={setupItems} comingSoon />
-
-            <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-5">
-              <h3 className="text-sm font-semibold text-white mb-4">Usage Overview</h3>
-              <div className="space-y-4">
-                <PBXUsageMeter label="Call Minutes" used={1240} total={2000} unit=" min" color="#06B6D4" />
-                <PBXUsageMeter label="SMS Messages" used={1240} total={2000} color="#8B5CF6" />
-                <PBXUsageMeter label="AI Tokens" used={18500} total={25000} color="#EC4899" warningThreshold={70} />
-                <PBXUsageMeter label="Numbers" used={5} total={10} color="#10B981" />
-                <PBXUsageMeter label="Users" used={8} total={15} color="#F97316" />
-              </div>
+          <div className="bg-[#1E293B] rounded-xl border border-[rgba(255,255,255,0.06)] p-5 h-fit">
+            <h3 className="text-sm font-semibold text-white mb-4">Integration Status</h3>
+            <div className="space-y-2.5">
+              {integrationStatus.map((s) => (
+                <div key={s.label} className="flex items-center justify-between py-1.5 border-b border-[rgba(255,255,255,0.03)] last:border-0">
+                  <span className="text-sm text-slate-300">{s.label}</span>
+                  <span className={`text-xs ${s.ready ? 'text-[#10B981]' : 'text-slate-500'}`}>
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${s.ready ? 'bg-[#10B981]' : 'bg-slate-600'}`} />
+                    {s.ready ? 'Ready' : 'Not Configured'}
+                  </span>
+                </div>
+              ))}
             </div>
+            <p className="text-[11px] text-slate-500 mt-4 leading-relaxed">
+              Provider credentials (Twilio, n8n) are configured by Digital-Footprint in Supabase Edge Function secrets. Until they are set, calls, SMS and recordings remain inactive.
+            </p>
           </div>
         </div>
       </div>

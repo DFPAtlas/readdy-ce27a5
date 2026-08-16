@@ -1,115 +1,181 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
-import { supabase, getSessionSafe } from '@/lib/supabase';
+import { useState, useEffect, useRef } from 'react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { verifyAdminAccess, getAccessDeniedMessage } from '@/lib/admin-access';
 import { Shield, Eye, EyeOff, ArrowLeft, Loader2, Mail, Check } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 function getResetRedirectUrl() {
-  if (typeof window !== 'undefined') return `${window.location.origin}/admin/reset-password`;
-  return `${process.env.NEXT_PUBLIC_SITE_URL || 'https://digital-footprint.uk'}/admin/reset-password`;
+  if (typeof window !== 'undefined') {
+    return window.location.origin + '/admin/reset-password';
+  }
+  return 'https://digital-footprint.uk/admin/reset-password';
 }
 
-function AdminLoginContent() {
+function readSearchParam(key: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return new URL(window.location.href).searchParams.get(key);
+  } catch {
+    return null;
+  }
+}
+
+export default function AdminLoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const justReset = searchParams.get('reset') === 'done';
   const mountedRef = useRef(true);
+  const loginInProgressRef = useRef(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [checking, setChecking] = useState(true);
-  const [initError, setInitError] = useState('');
   const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState('');
+  const [deniedSession, setDeniedSession] = useState(false);
+  const [configWarning, setConfigWarning] = useState('');
+  const [justReset, setJustReset] = useState(false);
+
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (!supabase) {
-      setInitError('Unable to connect to authentication service. Please refresh the page.');
-      setChecking(false);
+    if (!isSupabaseConfigured()) {
+      setConfigWarning('Authentication is temporarily unavailable because the application configuration could not be loaded.');
       return;
     }
+    setConfigWarning('');
+  }, []);
 
+  useEffect(() => {
+    if (readSearchParam('reset') === 'done') {
+      setJustReset(true);
+    }
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
-    (async () => {
-      const session = await getSessionSafe();
-      if (cancelled || !mountedRef.current) { return; }
-      if (session) {
-        try {
-          const { data: ap } = await supabase.from('admin_profiles').select('id').eq('id', session.user.id).maybeSingle();
-          if (cancelled || !mountedRef.current) return;
-          if (ap) {
-            router.replace('/admin');
-            return;
-          }
-          await supabase.auth.signOut();
-        } catch {}
+    const checkExisting = async () => {
+      if (readSearchParam('from') === 'gate') {
+        return;
       }
-      if (!cancelled && mountedRef.current) setChecking(false);
-    })();
+      if (!isSupabaseConfigured()) {
+        return;
+      }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (cancelled || !mountedRef.current) return;
-      if (event === 'SIGNED_IN' && session) {
-        router.replace('/admin');
+      try {
+        const { data } = await supabase?.auth.getSession();
+        const session = data?.session;
+
+        if (!session || cancelled || !mountedRef.current) {
+          return;
+        }
+
+        const result = await verifyAdminAccess(session);
+        if (!mountedRef.current || cancelled) return;
+
+        if (result.allowed) {
+          router.push('/admin');
+        } else {
+          setDeniedSession(true);
+        }
+      } catch {
       }
-    });
+    };
+
+    checkExisting();
 
     return () => {
       cancelled = true;
-      subscription.unsubscribe();
     };
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!supabase) {
       setError('Authentication service unavailable. Please refresh.');
       return;
     }
+    if (loginInProgressRef.current) {
+      return;
+    }
+    loginInProgressRef.current = true;
     setError('');
+    setDeniedSession(false);
     setLoading(true);
 
     try {
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) { loginInProgressRef.current = false; return; }
 
       if (signInError) {
         setLoading(false);
-        setError('Invalid email or password. Use Forgot Password below to reset.');
-        return;
-      }
-
-      if (signInData.session) {
-        const { data: ap } = await supabase.from('admin_profiles').select('id').eq('id', signInData.session.user.id).maybeSingle();
-        if (!mountedRef.current) return;
-        if (ap) {
-          router.replace('/admin');
-          return;
+        loginInProgressRef.current = false;
+        if (signInError.message?.includes('Invalid login credentials') || signInError.message?.includes('invalid')) {
+          setError('The email address or password was not recognised.');
+        } else if (signInError.message?.includes('rate') || signInError.message?.includes('too many')) {
+          setError('Too many attempts. Please wait a moment and try again.');
+        } else if (signInError.message?.includes('Email not confirmed')) {
+          setError('Email address not confirmed. Please check your inbox or contact an administrator.');
+        } else {
+          setError('Sign-in failed. Please try again.');
         }
-        setError('Your account does not have admin access.');
-        await supabase.auth.signOut();
-        setLoading(false);
         return;
       }
 
+      if (!signInData?.session) {
+        if (!mountedRef.current) { loginInProgressRef.current = false; return; }
+        setError('Session not established. Please try again.');
+        setLoading(false);
+        loginInProgressRef.current = false;
+        return;
+      }
+
+      const result = await verifyAdminAccess(signInData.session);
+
+      if (!mountedRef.current) { loginInProgressRef.current = false; return; }
+
+      if (result.allowed) {
+        setLoading(false);
+        loginInProgressRef.current = false;
+        router.push('/admin');
+        return;
+      }
+
+      const message = getAccessDeniedMessage(result.reason);
+      setError(message);
+      setDeniedSession(true);
       setLoading(false);
-      setError('Invalid email or password. Use Forgot Password below to reset.');
-    } catch {
-      setError('Something went wrong. Please try again.');
+      loginInProgressRef.current = false;
+    } catch (_err) {
+      if (mountedRef.current) {
+        setError('Something went wrong. Please try again.');
+        setLoading(false);
+        loginInProgressRef.current = false;
+      }
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (!supabase) return;
+    setLoading(true);
+    await supabase.auth.signOut();
+    if (mountedRef.current) {
+      setDeniedSession(false);
+      setError('');
       setLoading(false);
     }
   };
@@ -143,33 +209,6 @@ function AdminLoginContent() {
 
     if (mountedRef.current) setResetLoading(false);
   };
-
-  if (checking) {
-    return (
-      <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center gap-4">
-        <div className="w-10 h-10 border-[3px] border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin" />
-        <p className="text-sm text-slate-500">Checking session...</p>
-      </div>
-    );
-  }
-
-  if (initError) {
-    return (
-      <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center px-4">
-        <div className="bg-[#1E293B] border border-red-500/20 rounded-2xl p-8 max-w-md w-full text-center">
-          <Shield className="w-10 h-10 text-red-400 mx-auto mb-4" />
-          <h1 className="text-lg font-semibold text-white mb-2">Connection Error</h1>
-          <p className="text-sm text-slate-400 mb-6">{initError}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="w-full py-3 bg-gradient-to-r from-[#06B6D4] to-[#0891B2] rounded-xl font-bold text-white hover:shadow-lg transition-all cursor-pointer whitespace-nowrap"
-          >
-            Refresh Page
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#0F172A] flex flex-col">
@@ -211,7 +250,7 @@ function AdminLoginContent() {
                   </div>
                   <h2 className="text-lg font-semibold text-white">Check Your Email</h2>
                   <p className="text-sm text-slate-400">
-                    If an admin account exists for this email, a reset link has been sent. Check your inbox and spam folder.
+                    If an eligible account exists, password recovery instructions have been sent. Check your inbox and spam folder.
                   </p>
                   <button
                     onClick={() => { setShowReset(false); setResetSent(false); setResetEmail(''); setResetError(''); }}
@@ -277,6 +316,12 @@ function AdminLoginContent() {
                   <Shield className="w-7 h-7 text-white" />
                 </div>
               </div>
+
+              {configWarning && (
+                <div className="mb-5 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-sm text-amber-400">
+                  {configWarning}
+                </div>
+              )}
 
               {justReset && (
                 <div className="mb-5 p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-sm text-green-400 text-center">
@@ -345,6 +390,27 @@ function AdminLoginContent() {
                 </button>
               </form>
 
+              {deniedSession && (
+                <div className="mt-4 pt-4 border-t border-[rgba(255,255,255,0.08)] space-y-3">
+                  <p className="text-xs text-slate-500 text-center">Your account is signed in but does not have admin access.</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSignOut}
+                      disabled={loading}
+                      className="flex-1 py-2.5 rounded-xl font-medium text-sm text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                    >
+                      Sign Out
+                    </button>
+                    <Link
+                      href="/account/help"
+                      className="flex-1 py-2.5 rounded-xl font-medium text-sm text-slate-300 bg-white/5 border border-[rgba(255,255,255,0.1)] hover:bg-white/10 transition-colors cursor-pointer text-center whitespace-nowrap"
+                    >
+                      Account Help
+                    </Link>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-6 pt-5 border-t border-[rgba(255,255,255,0.08)] text-center">
                 <p className="text-xs text-slate-500">
                   One Contact. One Relationship. One Vision.
@@ -355,18 +421,5 @@ function AdminLoginContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function AdminLoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center gap-4">
-        <div className="w-10 h-10 border-[3px] border-[#06B6D4]/30 border-t-[#06B6D4] rounded-full animate-spin" />
-        <p className="text-sm text-slate-500">Loading...</p>
-      </div>
-    }>
-      <AdminLoginContent />
-    </Suspense>
   );
 }

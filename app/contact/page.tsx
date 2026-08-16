@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { trackConversion } from '@/lib/analytics';
+import { submitEnquiry, makeIdempotencyKey } from '@/lib/submit-enquiry';
 
 const needLabelMap: Record<string, string> = {
   website: 'I need a new website',
@@ -87,27 +88,25 @@ export default function ContactPage() {
     }
 
     try {
-      const response = await fetch('https://readdy.ai/api/form/d8k4kau0gbrp57rm5irg', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(payload).toString()
-      });
+      const result = await submitEnquiry('leads', {
+        name: payload.name,
+        email: payload.email,
+        phone: payload.phone || null,
+        company_name: payload.company || null,
+        service_interest: payload.service || null,
+        message: payload.message,
+        source: 'contact_page',
+        status: 'new',
+        stage: 'new',
+        consent_contact: true,
+        idempotency_key: makeIdempotencyKey(),
+      }, true);
 
-      const responseText = await response.text();
-      let parsed: unknown;
-      try { parsed = JSON.parse(responseText); } catch { parsed = null; }
-
-      const code = parsed && typeof parsed === 'object' && 'code' in parsed ? (parsed as { code: string }).code : null;
-      const metaMsg = parsed && typeof parsed === 'object' && 'meta' in parsed && parsed.meta && typeof (parsed as { meta: unknown }).meta === 'object' && 'message' in (parsed as { meta: Record<string, unknown> }).meta ? (parsed as { meta: { message: string } }).meta.message : '';
-      const metaDetail = parsed && typeof parsed === 'object' && 'meta' in parsed && parsed.meta && typeof (parsed as { meta: unknown }).meta === 'object' && 'detail' in (parsed as { meta: Record<string, unknown> }).meta ? (parsed as { meta: { detail: string } }).meta.detail : '';
-      const rawMsg = metaMsg || metaDetail || responseText;
-
-      if (response.ok && code === 'OK') {
+      if (result.code === 'OK') {
         setSubmitted(true);
         trackConversion('contact_form', `contact_${formData.email}_${Date.now()}`, { service_key: formData.service || undefined });
       } else {
-        const isSpam = rawMsg.toLowerCase().includes('spam') || rawMsg.toLowerCase().includes('form data is spam');
-        setErrorMsg(isSpam ? 'Submission failed. Please try again.' : (rawMsg || 'Submission failed. Please try again.'));
+        setErrorMsg(result.message);
       }
     } catch {
       setErrorMsg('Network error. Please check your connection and try again.');

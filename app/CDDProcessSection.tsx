@@ -101,6 +101,9 @@ export default function CDDProcessSection() {
   const [progress, setProgress] = useState(0);
   const sectionRef = useRef<HTMLDivElement>(null);
 
+  const safeStageIndex = Math.min(Math.max(activeStage, 0), stages.length - 1);
+  const currentStage = stages[safeStageIndex];
+
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (mq.matches) {
@@ -115,6 +118,7 @@ export default function CDDProcessSection() {
     const handleScroll = () => {
       const rect = el.getBoundingClientRect();
       const windowHeight = window.innerHeight;
+      if (!rect.height) return;
       const sectionProgress = Math.min(1, Math.max(0, (windowHeight * 0.5 - rect.top) / (rect.height * 0.55)));
       setProgress(sectionProgress);
       setActiveStage(Math.min(Math.floor(sectionProgress * stages.length), stages.length - 1));
@@ -203,8 +207,8 @@ export default function CDDProcessSection() {
               <div
                 className="w-4 h-4 rounded-full"
                 style={{
-                  backgroundColor: stages[Math.min(activeStage, stages.length - 1)].color,
-                  boxShadow: `0 0 14px ${stages[Math.min(activeStage, stages.length - 1)].color}60`,
+                  backgroundColor: currentStage.color,
+                  boxShadow: `0 0 14px ${currentStage.color}60`,
                   transition: 'background-color 0.5s ease, box-shadow 0.5s ease',
                 }}
               />

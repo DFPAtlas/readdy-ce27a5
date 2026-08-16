@@ -15,6 +15,7 @@ import {
   MessageCircle,
   MonitorSmartphone,
   Search,
+  SearchCheck,
   ShieldCheck,
   Trophy,
   UserRound,
@@ -174,7 +175,10 @@ export default function UATTestingPage() {
 
           <div className="mt-12 grid items-center gap-6 rounded-3xl bg-[#17325c] p-7 text-white lg:grid-cols-[1fr_auto] lg:p-10">
             <div><div className="flex items-center gap-3"><MonitorSmartphone className="h-7 w-7 text-sky-300" /><p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-200">Start testing today</p></div><h2 className="mt-3 font-serif text-3xl font-semibold">Ready to become a DFP UAT Tester?</h2><p className="mt-3 max-w-3xl text-slate-300">Apply now — no sign-in needed. Fill in your details and we will review your application.</p></div>
-            <Link href="/uat-testing/apply" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-4 font-semibold text-[#17325c] transition hover:bg-sky-50 whitespace-nowrap cursor-pointer">Start My Application <ArrowRight className="h-4 w-4" /></Link>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link href="/uat-testing/apply" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-4 font-semibold text-[#17325c] transition hover:bg-sky-50 whitespace-nowrap cursor-pointer">Start My Application <ArrowRight className="h-4 w-4" /></Link>
+              <Link href="/uat-testing/track" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-6 py-4 font-semibold text-white transition hover:bg-white/20 whitespace-nowrap cursor-pointer">Track Application <SearchCheck className="h-4 w-4" /></Link>
+            </div>
           </div>
         </div>
       </section>

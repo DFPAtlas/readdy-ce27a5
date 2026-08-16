@@ -16,6 +16,12 @@ export default function UATTesterTermsGate({ children }: UATTesterTermsGateProps
   const router = useRouter();
   const pathname = usePathname();
 
+  const safeReplace = (href: string) => {
+    setTimeout(() => {
+      if (mountedRef.current) router.replace(href);
+    }, 0);
+  };
+
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
@@ -62,7 +68,7 @@ export default function UATTesterTermsGate({ children }: UATTesterTermsGateProps
         if (cancelled || !mountedRef.current) return;
 
         if (!acceptance) {
-          router.replace('/uat-testing/terms');
+          safeReplace('/uat-testing/terms');
           return;
         }
       } catch {}

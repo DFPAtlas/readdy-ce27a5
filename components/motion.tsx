@@ -114,16 +114,22 @@ function MotionFactory(tag: keyof JSX.IntrinsicElements | 'i') {
     const [inView, setInView] = useState(false);
     const [mounted, setMounted] = useState(false);
     const mountedRef = useRef(false);
+    const rafRef = useRef<number | null>(null);
     const presence = useContext(PresenceContext);
 
     useEffect(() => {
       mountedRef.current = true;
-      const rafId = requestAnimationFrame(() => {
-        if (mountedRef.current && !mounted) setMounted(true);
+      rafRef.current = requestAnimationFrame(() => {
+        if (mountedRef.current) {
+          setMounted(true);
+        }
       });
       return () => {
         mountedRef.current = false;
-        cancelAnimationFrame(rafId);
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
       };
     }, []);
 
@@ -131,9 +137,10 @@ function MotionFactory(tag: keyof JSX.IntrinsicElements | 'i') {
       if (!whileInView) return;
       const el = innerRef.current;
       if (!el) return;
+      let observerDisconnected = false;
       const observer = new IntersectionObserver(
         ([entry]) => {
-          if (!mountedRef.current) return;
+          if (!mountedRef.current || observerDisconnected) return;
           if (entry.isIntersecting) {
             setInView(true);
             if (viewport?.once) observer.unobserve(el);
@@ -144,7 +151,10 @@ function MotionFactory(tag: keyof JSX.IntrinsicElements | 'i') {
         { threshold: viewport?.amount ?? 0.1 }
       );
       observer.observe(el);
-      return () => observer.disconnect();
+      return () => {
+        observerDisconnected = true;
+        observer.disconnect();
+      };
     }, [whileInView, viewport]);
 
     const shouldAnimate = animate !== undefined && mounted;
@@ -223,9 +233,10 @@ export function useInView(ref: React.RefObject<Element | null>, options?: { once
     mountedRef.current = true;
     const el = ref.current;
     if (!el) return;
+    let observerDisconnected = false;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || observerDisconnected) return;
         if (entry.isIntersecting) {
           setInView(true);
           observer.unobserve(el);
@@ -235,6 +246,7 @@ export function useInView(ref: React.RefObject<Element | null>, options?: { once
     );
     observer.observe(el);
     return () => {
+      observerDisconnected = true;
       mountedRef.current = false;
       observer.disconnect();
     };

@@ -40,7 +40,7 @@ export default function AdminClientsPage() {
 
   const fetchClients = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('clients').select('id, company_name, contact_name, email, phone, status, client_reference, account_manager, health_status, onboarding_state, portal_access_state, last_activity_at, created_at').order('created_at', { ascending: false });
     if (!error && data) { setClients(data as ClientRow[]); setFilteredClients(data as ClientRow[]); }
     setLoading(false); setRefreshing(false);
   };

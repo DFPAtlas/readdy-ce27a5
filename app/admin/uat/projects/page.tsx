@@ -68,8 +68,8 @@ export default function AdminUATProjectsPage() {
   }, []);
 
   const fetchData = async () => {
-    const { data: projData } = await supabase.from('uat_projects').select('*').order('created_at', { ascending: false });
-    const { data: envData } = await supabase.from('uat_environments').select('*').eq('is_active', true);
+    const { data: projData } = await supabase.from('uat_projects').select('id, name, client_company, description, live_url, status, admin_owner_id, created_at, updated_at').order('created_at', { ascending: false });
+    const { data: envData } = await supabase.from('uat_environments').select('id, project_id, environment_name, environment_type, base_url, is_active').eq('is_active', true);
 
     if (projData) {
       setProjects(projData as UatProject[]);

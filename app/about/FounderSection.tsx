@@ -54,6 +54,10 @@ export default function FounderSection() {
       }
     }, 8000);
 
+    if (!supabase) {
+      return;
+    }
+
     const promise = supabase.from('about_founder').select('*').maybeSingle();
     void Promise.resolve(promise).then(({ data }) => {
       if (!mountedRef.current) return;

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { SUPPLIER_CATEGORIES } from '@/lib/cms-definitions';
+import { submitEnquiry } from '@/lib/submit-enquiry';
 
 export default function SuppliersPage() {
   const [formState, setFormState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
@@ -23,30 +24,34 @@ export default function SuppliersPage() {
     setFormError('');
 
     try {
-      const payload = new URLSearchParams();
-      for (const [key, value] of formData.entries()) {
-        if (key !== 'phone_alt') {
-          payload.append(key, value as string);
-        }
-      }
-      payload.append('application_type', 'supplier_interest');
+      const result = await submitEnquiry('partner_applications', {
+        application_type: 'supplier_interest',
+        company_name: (formData.get('company_name') as string) || null,
+        applicant_name: (formData.get('applicant_name') as string) || null,
+        email: (formData.get('email') as string) || null,
+        website: (formData.get('website') as string) || null,
+        region: (formData.get('region') as string) || null,
+        experience_summary: (formData.get('experience_summary') as string) || null,
+        products_or_services: {
+          service_category: (formData.get('service_category') as string) || null,
+          products_supported: (formData.get('products_supported') as string) || null,
+        },
+        capabilities: {
+          business_type: (formData.get('business_type') as string) || null,
+          certifications: (formData.get('certifications') as string) || null,
+          insurance_confirmed: (formData.get('insurance_confirmed') as string) || null,
+          availability: (formData.get('availability') as string) || null,
+        },
+        privacy_acknowledged_at: formData.get('privacy_acknowledged') === 'on' ? new Date().toISOString() : null,
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+      }, true);
 
-      const response = await fetch('https://readdy.ai/api/form/d9engvmdn0rfb35c6780', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: payload.toString(),
-      });
-
-      const responseText = await response.text();
-      let parsed: any;
-      try { parsed = JSON.parse(responseText); } catch { parsed = null; }
-
-      if (response.ok && parsed?.code === 'OK') {
+      if (result.code === 'OK') {
         setFormState('success');
         form.reset();
       } else {
-        const serverMsg = parsed?.meta?.message || parsed?.message || responseText || 'Something went wrong. Please try again.';
-        setFormError(serverMsg);
+        setFormError(result.message);
         setFormState('error');
       }
     } catch {

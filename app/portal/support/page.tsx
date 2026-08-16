@@ -95,7 +95,6 @@ export default function SupportPage() {
       p_category: newCategory,
       p_priority: newPriority,
       p_project_id: newProjectId || null,
-      p_created_by: userId,
     });
 
     if (rpcErr || !rpcResult?.success) {

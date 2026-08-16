@@ -90,6 +90,8 @@ export default function AIWorkflowSection() {
   const [hasAutoPlayed, setHasAutoPlayed] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
   const playInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoPlayTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
   const currentNodes = workflows[activeWorkflow].nodes;
 
@@ -133,6 +135,11 @@ export default function AIWorkflowSection() {
   }, [isPlaying, currentStep, currentNodes.length]);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
     if (isPlaying) {
       playInterval.current = setInterval(() => {
         setCurrentStep(prev => {
@@ -162,7 +169,10 @@ export default function AIWorkflowSection() {
           if (!mq.matches) {
             setHasAutoPlayed(true);
             setCurrentStep(-1);
-            setTimeout(() => setIsPlaying(true), 150);
+            if (autoPlayTimeout.current) clearTimeout(autoPlayTimeout.current);
+            autoPlayTimeout.current = setTimeout(() => {
+              if (mountedRef.current) setIsPlaying(true);
+            }, 150);
           } else {
             setCurrentStep(currentNodes.length - 1);
           }
@@ -172,7 +182,10 @@ export default function AIWorkflowSection() {
       { threshold: 0.2 }
     );
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (autoPlayTimeout.current) clearTimeout(autoPlayTimeout.current);
+    };
   }, [hasAutoPlayed, currentNodes.length]);
 
   return (

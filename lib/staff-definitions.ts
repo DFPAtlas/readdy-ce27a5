@@ -4,6 +4,30 @@ export type StaffStatus = 'Invited' | 'Invitation Expired' | 'Pending Activation
 
 export type GlobalRole = 'Owner' | 'Super Administrator' | 'Administrator' | 'Department Head' | 'Team Lead' | 'Manager' | 'Staff Member' | 'Contractor' | 'Read-Only Auditor';
 
+export const GlobalRoleToCanonical: Record<string, string> = {
+  'Owner': 'owner',
+  'Super Administrator': 'super_admin',
+  'Administrator': 'admin',
+  'Department Head': 'department_head',
+  'Team Lead': 'team_lead',
+  'Manager': 'manager',
+  'Staff Member': 'staff',
+  'Contractor': 'contractor',
+  'Read-Only Auditor': 'auditor',
+};
+
+export const CanonicalToGlobalRole: Record<string, GlobalRole> = {
+  'owner': 'Owner',
+  'super_admin': 'Super Administrator',
+  'admin': 'Administrator',
+  'department_head': 'Department Head',
+  'team_lead': 'Team Lead',
+  'manager': 'Manager',
+  'staff': 'Staff Member',
+  'contractor': 'Contractor',
+  'auditor': 'Read-Only Auditor',
+};
+
 export type PermissionRiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
 export type ReviewDecision = 'Retain' | 'Modify' | 'Revoke' | 'Investigate';

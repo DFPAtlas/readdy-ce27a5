@@ -1,7 +1,11 @@
 import BackupDetailClient from './BackupDetailClient';
 
 export async function generateStaticParams() {
-  return [{ id: 'bak-001' }, { id: 'bak-002' }, { id: 'bak-003' }];
+  return [
+    { id: '1' },
+    { id: '2' },
+    { id: '3' },
+  ];
 }
 
 export default function BackupDetailPage() {

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 import {
   Shield, Globe, UserCheck, Server, TrendingUp, TrendingDown,
   AlertTriangle, CheckCircle2, XCircle, Clock, RefreshCw,
-  ArrowRight, Search, Filter, ExternalLink, Plus,
+  ArrowRight, Search,
   Thermometer, Activity, Zap, BarChart3, Radio,
 } from 'lucide-react';
 
@@ -21,57 +22,147 @@ const HEALTH_STATES: Record<string, { label: string; color: string; bg: string; 
   not_configured: { label: 'Not Configured', color: 'text-slate-600', bg: 'bg-slate-600/10', icon: Clock },
 };
 
-const MOCK_ASSETS = [
-  { id: '1', name: 'digital-footprint.uk', asset_type: 'sending_subdomain', brand: 'Digital Footprint', provider: 'Resend', health_state: 'healthy', delivery_rate: 99.2, bounce_rate: 0.3, complaint_rate: 0.02, daily_volume: 1240, authentication: { spf: true, dkim: true, dmarc: 'quarantine' } },
-  { id: '2', name: 'mail.digital-footprint.uk', asset_type: 'return_path_domain', brand: 'Digital Footprint', provider: 'Resend', health_state: 'healthy', delivery_rate: 99.1, bounce_rate: 0.4, complaint_rate: 0.01, daily_volume: 1240 },
-  { id: '3', name: 'notifications@digital-footprint.uk', asset_type: 'sender_profile', brand: 'Digital Footprint', provider: 'Resend', health_state: 'healthy', delivery_rate: 99.5, bounce_rate: 0.1, complaint_rate: 0.01, daily_volume: 890 },
-  { id: '4', name: 'marketing@digital-footprint.uk', asset_type: 'sender_profile', brand: 'Digital Footprint', provider: 'Resend', health_state: 'warming', delivery_rate: 97.8, bounce_rate: 1.2, complaint_rate: 0.08, daily_volume: 340 },
-  { id: '5', name: '192.168.1.100', asset_type: 'dedicated_ip', brand: 'Digital Footprint', provider: 'Resend', health_state: 'warming', delivery_rate: 96.5, bounce_rate: 1.8, complaint_rate: 0.12, daily_volume: 580 },
-  { id: '6', name: 'track.digital-footprint.uk', asset_type: 'tracking_domain', brand: 'Digital Footprint', provider: 'Resend', health_state: 'healthy', delivery_rate: null as null, bounce_rate: null as null, complaint_rate: null as null, daily_volume: 0 },
-  { id: '7', name: 'dfp-synqoro.co.uk', asset_type: 'sending_subdomain', brand: 'Synqoro', provider: 'Resend', health_state: 'needs_attention', delivery_rate: 94.2, bounce_rate: 3.1, complaint_rate: 0.25, daily_volume: 210 },
-  { id: '8', name: 'support@dfp-synqoro.co.uk', asset_type: 'sender_profile', brand: 'Synqoro', provider: 'Resend', health_state: 'degraded', delivery_rate: 91.5, bounce_rate: 4.8, complaint_rate: 0.45, daily_volume: 95 },
-];
+interface RepAsset {
+  id: string;
+  name: string;
+  asset_type: string;
+  brand: string | null;
+  provider: string | null;
+  health_state: string;
+  delivery_rate: number | null;
+  bounce_rate: number | null;
+  complaint_rate: number | null;
+  daily_volume: number | null;
+  authentication: Record<string, unknown> | null;
+}
 
-const MOCK_INCIDENTS = [
-  { id: 'inc-1', title: 'Elevated bounce rate on Synqoro domain', severity: 'sev-2', status: 'investigating', asset: 'dfp-synqoro.co.uk', detected: '2026-07-18T14:30:00Z' },
-  { id: 'inc-2', title: 'Complaint spike — marketing sender', severity: 'sev-3', status: 'contained', asset: 'marketing@digital-footprint.uk', detected: '2026-07-17T09:15:00Z' },
-  { id: 'inc-3', title: 'Blocklist listing detected', severity: 'sev-2', status: 'recovering', asset: '192.168.1.100', detected: '2026-07-16T22:00:00Z' },
-];
+interface Incident {
+  id: string;
+  title: string;
+  severity: string;
+  status: string;
+  asset_name: string | null;
+  detection_time: string | null;
+}
 
-const MOCK_WARMUP = [
-  { id: 'wp-1', name: 'Marketing IP Warm-up Q3', asset: '192.168.1.100', status: 'active', stage: 2, total_stages: 5, daily_cap: 500, current_count: 342, start_date: '2026-07-10', target: 2000 },
-  { id: 'wp-2', name: 'Synqoro Domain Warm-up', asset: 'dfp-synqoro.co.uk', status: 'paused', stage: 1, total_stages: 4, daily_cap: 100, current_count: 78, start_date: '2026-07-05', target: 800 },
-];
+interface Warmup {
+  id: string;
+  name: string;
+  asset_type: string;
+  asset_value: string;
+  status: string;
+  current_stage: number | null;
+  total_stages: number | null;
+  daily_cap: number | null;
+  current_daily_count: number | null;
+  start_date: string | null;
+  target_volume: number | null;
+}
 
-const MOCK_BLOCKLIST = [
-  { id: 'bl-1', blocklist_name: 'Spamhaus SBL', asset: '192.168.1.100', check_state: 'listed', listing_type: 'confirmed', first_detected: '2026-07-16T22:00:00Z', incident_id: 'inc-3' },
-  { id: 'bl-2', blocklist_name: 'Barracuda', asset: 'dfp-synqoro.co.uk', check_state: 'clear', listing_type: null, first_detected: null },
-  { id: 'bl-3', blocklist_name: 'SpamCop', asset: '192.168.1.100', check_state: 'clear', listing_type: null, first_detected: null },
-  { id: 'bl-4', blocklist_name: 'SURBL', asset: 'digital-footprint.uk', check_state: 'clear', listing_type: null, first_detected: null },
-];
+interface Blocklist {
+  id: string;
+  blocklist_name: string;
+  asset_value: string;
+  check_state: string;
+  listing_type: string | null;
+  first_detected: string | null;
+  incident_id: string | null;
+}
 
-const METRIC_CARDS = [
-  { key: 'assets', icon: Shield, label: 'Reputation Assets', value: '8', sub: '2 needing attention', color: 'text-[#06B6D4]' },
-  { key: 'delivery', icon: TrendingUp, label: 'Overall Delivery', value: '98.4%', sub: 'Last 30 days', color: 'text-emerald-400' },
-  { key: 'warmup', icon: Thermometer, label: 'Active Warm-ups', value: '1', sub: '1 paused', color: 'text-amber-400' },
-  { key: 'incidents', icon: AlertTriangle, label: 'Active Incidents', value: '3', sub: '1 SEV-2, 2 SEV-3', color: 'text-red-400' },
-  { key: 'blocklist', icon: XCircle, label: 'Blocklist Listings', value: '1', sub: '1 confirmed', color: 'text-orange-400' },
-  { key: 'auth', icon: CheckCircle2, label: 'Auth Status', value: 'SPF+DKIM+DMARC', sub: 'All domains passing', color: 'text-sky-400' },
-];
+function isDomainType(assetType: string): boolean {
+  return assetType.includes('domain');
+}
+function isSenderType(assetType: string): boolean {
+  return assetType.includes('sender');
+}
+function isIpType(assetType: string): boolean {
+  return assetType.includes('ip');
+}
+
+function authPassing(auth: Record<string, unknown> | null): boolean {
+  if (!auth) return false;
+  const spf = auth.spf;
+  const dkim = auth.dkim;
+  const dmarc = auth.dmarc;
+  return Boolean(spf) && Boolean(dkim) && Boolean(dmarc);
+}
 
 export default function ReputationDashboard() {
   const [search, setSearch] = useState('');
   const [healthFilter, setHealthFilter] = useState('all');
   const [assetFilter, setAssetFilter] = useState('all');
+  const [assets, setAssets] = useState<RepAsset[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [warmups, setWarmups] = useState<Warmup[]>([]);
+  const [blocklist, setBlocklist] = useState<Blocklist[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = MOCK_ASSETS.filter((a) => {
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const [assetsRes, incidentsRes, warmupsRes, blocklistRes] = await Promise.all([
+        supabase.from('email_reputation_assets').select('*').order('created_at', { ascending: false }).limit(200),
+        supabase.from('email_deliverability_incidents').select('id, title, severity, status, asset_name, detection_time').order('detection_time', { ascending: false }).limit(50),
+        supabase.from('email_warmup_plans').select('*').order('created_at', { ascending: false }).limit(50),
+        supabase.from('email_blocklist_checks').select('*').order('last_checked', { ascending: false }).limit(50),
+      ]);
+
+      setAssets((assetsRes.data || []) as RepAsset[]);
+      setIncidents((incidentsRes.data || []) as Incident[]);
+      setWarmups((warmupsRes.data || []) as Warmup[]);
+      setBlocklist((blocklistRes.data || []) as Blocklist[]);
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const filtered = assets.filter((a) => {
     if (healthFilter !== 'all' && a.health_state !== healthFilter) return false;
     if (assetFilter !== 'all' && a.asset_type !== assetFilter) return false;
-    if (search && !a.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !(a.name || '').toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const assetTypes = Array.from(new Set(MOCK_ASSETS.map((a) => a.asset_type)));
+  const assetTypes = Array.from(new Set(assets.map((a) => a.asset_type)));
+
+  const needingAttention = assets.filter((a) => ['needs_attention', 'degraded', 'blocked'].includes(a.health_state)).length;
+  const deliveryValues = assets.filter((a) => a.delivery_rate !== null).map((a) => a.delivery_rate as number);
+  const avgDelivery = deliveryValues.length > 0 ? deliveryValues.reduce((s, v) => s + v, 0) / deliveryValues.length : null;
+  const activeWarmups = warmups.filter((w) => w.status === 'active').length;
+  const pausedWarmups = warmups.filter((w) => w.status === 'paused').length;
+  const activeIncidents = incidents.filter((i) => ['open', 'investigating', 'contained', 'recovering'].includes(i.status));
+  const sev1Count = activeIncidents.filter((i) => i.severity === 'sev-1').length;
+  const sev2Count = activeIncidents.filter((i) => i.severity === 'sev-2').length;
+  const listedCount = blocklist.filter((b) => b.check_state === 'listed').length;
+  const confirmedListings = blocklist.filter((b) => b.check_state === 'listed' && b.listing_type === 'confirmed').length;
+  const authPassingCount = assets.filter((a) => authPassing(a.authentication)).length;
+  const allAuthPassing = assets.length > 0 && authPassingCount === assets.length;
+
+  const metricCards = [
+    { key: 'assets', icon: Shield, label: 'Reputation Assets', value: String(assets.length), sub: `${needingAttention} needing attention`, color: 'text-[#06B6D4]' },
+    { key: 'delivery', icon: TrendingUp, label: 'Overall Delivery', value: avgDelivery !== null ? `${avgDelivery.toFixed(1)}%` : '—', sub: 'Across tracked assets', color: 'text-emerald-400' },
+    { key: 'warmup', icon: Thermometer, label: 'Active Warm-ups', value: String(activeWarmups), sub: `${pausedWarmups} paused`, color: 'text-amber-400' },
+    { key: 'incidents', icon: AlertTriangle, label: 'Active Incidents', value: String(activeIncidents.length), sub: `${sev1Count} SEV-1, ${sev2Count} SEV-2`, color: 'text-red-400' },
+    { key: 'blocklist', icon: XCircle, label: 'Blocklist Listings', value: String(listedCount), sub: `${confirmedListings} confirmed`, color: 'text-orange-400' },
+    { key: 'auth', icon: CheckCircle2, label: 'Auth Status', value: allAuthPassing ? 'SPF+DKIM+DMARC' : `${authPassingCount}/${assets.length}`, sub: allAuthPassing ? 'All assets passing' : 'Assets fully authenticated', color: 'text-sky-400' },
+  ];
+
+  const recentWarmups = warmups.slice(0, 3);
+  const recentIncidents = activeIncidents.slice(0, 4);
+  const recentBlocklist = blocklist.slice(0, 5);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="h-24 bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-xl animate-pulse" />
+          ))}
+        </div>
+        <div className="h-72 bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -88,7 +179,7 @@ export default function ReputationDashboard() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {METRIC_CARDS.map((card) => {
+        {metricCards.map((card) => {
           const Icon = card.icon;
           return (
             <div key={card.key} className="bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-xl p-4 hover:border-[rgba(255,255,255,0.1)] transition-all">
@@ -110,7 +201,7 @@ export default function ReputationDashboard() {
               <div>
                 <h2 className="text-base font-bold text-white">Sender Asset Inventory</h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Domains, senders, IPs and provider accounts — {filtered.length} of {MOCK_ASSETS.length} shown
+                  Domains, senders, IPs and provider accounts — {filtered.length} of {assets.length} shown
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -146,50 +237,57 @@ export default function ReputationDashboard() {
                 </select>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-[rgba(255,255,255,0.04)]">
-                    <th className="text-left px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Asset</th>
-                    <th className="text-left px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Type</th>
-                    <th className="text-left px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Brand</th>
-                    <th className="text-left px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Health</th>
-                    <th className="text-right px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Delivery</th>
-                    <th className="text-right px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Bounce</th>
-                    <th className="text-right px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Complaint</th>
-                    <th className="text-right px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Daily Vol</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((asset) => {
-                    const health = HEALTH_STATES[asset.health_state] || HEALTH_STATES.unknown;
-                    const HIcon = health.icon;
-                    return (
-                      <tr key={asset.id} className="border-b border-[rgba(255,255,255,0.02)] hover:bg-white/[0.02] transition-colors">
-                        <td className="px-6 py-3">
-                          <div className="flex items-center gap-2">
-                            {asset.asset_type.includes('domain') ? <Globe className="w-3.5 h-3.5 text-slate-500" /> : asset.asset_type.includes('sender') ? <UserCheck className="w-3.5 h-3.5 text-slate-500" /> : asset.asset_type.includes('ip') ? <Server className="w-3.5 h-3.5 text-slate-500" /> : <Shield className="w-3.5 h-3.5 text-slate-500" />}
-                            <span className="text-sm text-white font-medium">{asset.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-3 text-xs text-slate-400 capitalize">{asset.asset_type.replace(/_/g, ' ')}</td>
-                        <td className="px-6 py-3 text-xs text-slate-400">{asset.brand}</td>
-                        <td className="px-6 py-3">
-                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium ${health.bg} ${health.color}`}>
-                            <HIcon className="w-3 h-3" />
-                            {health.label}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3 text-right text-xs font-medium text-white">{asset.delivery_rate !== null ? `${asset.delivery_rate}%` : '—'}</td>
-                        <td className="px-6 py-3 text-right text-xs">{asset.bounce_rate !== null ? <span className={asset.bounce_rate > 2 ? 'text-red-400' : 'text-slate-400'}>{asset.bounce_rate}%</span> : '—'}</td>
-                        <td className="px-6 py-3 text-right text-xs">{asset.complaint_rate !== null ? <span className={asset.complaint_rate > 0.2 ? 'text-red-400' : 'text-slate-400'}>{asset.complaint_rate}%</span> : '—'}</td>
-                        <td className="px-6 py-3 text-right text-xs text-slate-400">{asset.daily_volume.toLocaleString()}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            {filtered.length === 0 ? (
+              <div className="text-center py-16">
+                <Shield className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                <p className="text-sm text-slate-400">{assets.length === 0 ? 'No reputation assets recorded yet' : 'No assets match your filters'}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-[rgba(255,255,255,0.04)]">
+                      <th className="text-left px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Asset</th>
+                      <th className="text-left px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Type</th>
+                      <th className="text-left px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Brand</th>
+                      <th className="text-left px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Health</th>
+                      <th className="text-right px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Delivery</th>
+                      <th className="text-right px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Bounce</th>
+                      <th className="text-right px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Complaint</th>
+                      <th className="text-right px-6 py-3 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Daily Vol</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((asset) => {
+                      const health = HEALTH_STATES[asset.health_state] || HEALTH_STATES.unknown;
+                      const HIcon = health.icon;
+                      return (
+                        <tr key={asset.id} className="border-b border-[rgba(255,255,255,0.02)] hover:bg-white/[0.02] transition-colors">
+                          <td className="px-6 py-3">
+                            <div className="flex items-center gap-2">
+                              {isDomainType(asset.asset_type) ? <Globe className="w-3.5 h-3.5 text-slate-500" /> : isSenderType(asset.asset_type) ? <UserCheck className="w-3.5 h-3.5 text-slate-500" /> : isIpType(asset.asset_type) ? <Server className="w-3.5 h-3.5 text-slate-500" /> : <Shield className="w-3.5 h-3.5 text-slate-500" />}
+                              <span className="text-sm text-white font-medium">{asset.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-3 text-xs text-slate-400 capitalize">{asset.asset_type.replace(/_/g, ' ')}</td>
+                          <td className="px-6 py-3 text-xs text-slate-400">{asset.brand || '—'}</td>
+                          <td className="px-6 py-3">
+                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium ${health.bg} ${health.color}`}>
+                              <HIcon className="w-3 h-3" />
+                              {health.label}
+                            </span>
+                          </td>
+                          <td className="px-6 py-3 text-right text-xs font-medium text-white">{asset.delivery_rate !== null ? `${asset.delivery_rate}%` : '—'}</td>
+                          <td className="px-6 py-3 text-right text-xs">{asset.bounce_rate !== null ? <span className={asset.bounce_rate > 2 ? 'text-red-400' : 'text-slate-400'}>{asset.bounce_rate}%</span> : '—'}</td>
+                          <td className="px-6 py-3 text-right text-xs">{asset.complaint_rate !== null ? <span className={asset.complaint_rate > 0.2 ? 'text-red-400' : 'text-slate-400'}>{asset.complaint_rate}%</span> : '—'}</td>
+                          <td className="px-6 py-3 text-right text-xs text-slate-400">{asset.daily_volume !== null ? asset.daily_volume.toLocaleString() : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <div className="bg-[#121215] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
@@ -202,26 +300,34 @@ export default function ReputationDashboard() {
                 Manage Plans <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
-            <div className="p-4 space-y-3">
-              {MOCK_WARMUP.map((wp) => (
-                <div key={wp.id} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-[rgba(255,255,255,0.04)]">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-sm font-medium text-white">{wp.name}</p>
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${wp.status === 'active' ? 'bg-emerald-400/10 text-emerald-400' : 'bg-slate-400/10 text-slate-400'}`}>
-                        {wp.status}
-                      </span>
+            {recentWarmups.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-12">No warm-up plans recorded yet</p>
+            ) : (
+              <div className="p-4 space-y-3">
+                {recentWarmups.map((wp) => {
+                  const cap = wp.daily_cap || 0;
+                  const pct = cap > 0 ? Math.min(100, ((wp.current_daily_count || 0) / cap) * 100) : 0;
+                  return (
+                    <div key={wp.id} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-[rgba(255,255,255,0.04)]">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-medium text-white">{wp.name}</p>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${wp.status === 'active' ? 'bg-emerald-400/10 text-emerald-400' : 'bg-slate-400/10 text-slate-400'}`}>
+                            {wp.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500">{wp.asset_value} · Stage {wp.current_stage ?? '—'} of {wp.total_stages ?? '—'} · Target: {(wp.target_volume || 0).toLocaleString()}/day</p>
+                        <div className="mt-2 w-full h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+                          <div className="h-full bg-[#06B6D4] rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1">{wp.current_daily_count ?? 0} / {wp.daily_cap ?? 0} today</p>
+                      </div>
+                      <Link href="/admin/email/reputation/warm-up" className="text-xs text-[#06B6D4] hover:underline whitespace-nowrap cursor-pointer">View</Link>
                     </div>
-                    <p className="text-xs text-slate-500">{wp.asset} · Stage {wp.stage} of {wp.total_stages} · Target: {wp.target.toLocaleString()}/day</p>
-                    <div className="mt-2 w-full h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
-                      <div className="h-full bg-[#06B6D4] rounded-full transition-all" style={{ width: `${(wp.current_count / wp.daily_cap) * 100}%` }} />
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-1">{wp.current_count} / {wp.daily_cap} today</p>
-                  </div>
-                  <Link href="/admin/email/reputation/warm-up" className="text-xs text-[#06B6D4] hover:underline whitespace-nowrap cursor-pointer">View</Link>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -254,24 +360,28 @@ export default function ReputationDashboard() {
               <h2 className="text-base font-bold text-white">Active Incidents</h2>
             </div>
             <div className="p-4 space-y-3">
-              {MOCK_INCIDENTS.map((inc) => {
-                const sevClass = inc.severity === 'sev-1' ? 'bg-red-500/10 text-red-400 border-red-500/20' : inc.severity === 'sev-2' ? 'bg-orange-400/10 text-orange-400 border-orange-400/20' : 'bg-amber-400/10 text-amber-400 border-amber-400/20';
-                return (
-                  <Link key={inc.id} href="/admin/email/reputation/incidents" className="block p-3 rounded-xl bg-white/[0.02] border border-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)] transition-all cursor-pointer">
-                    <div className="flex items-start justify-between mb-1">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border ${sevClass}`}>{inc.severity}</span>
-                      <span className="text-[10px] text-slate-500">{new Date(inc.detected).toLocaleDateString('en-GB')}</span>
-                    </div>
-                    <p className="text-sm text-white font-medium">{inc.title}</p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-[10px] text-slate-500">{inc.asset}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${inc.status === 'investigating' ? 'bg-red-400/10 text-red-400' : inc.status === 'contained' ? 'bg-amber-400/10 text-amber-400' : 'bg-sky-400/10 text-sky-400'}`}>
-                        {inc.status}
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
+              {recentIncidents.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">No active incidents</p>
+              ) : (
+                recentIncidents.map((inc) => {
+                  const sevClass = inc.severity === 'sev-1' ? 'bg-red-500/10 text-red-400 border-red-500/20' : inc.severity === 'sev-2' ? 'bg-orange-400/10 text-orange-400 border-orange-400/20' : 'bg-amber-400/10 text-amber-400 border-amber-400/20';
+                  return (
+                    <Link key={inc.id} href="/admin/email/reputation/incidents" className="block p-3 rounded-xl bg-white/[0.02] border border-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.1)] transition-all cursor-pointer">
+                      <div className="flex items-start justify-between mb-1">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border ${sevClass}`}>{inc.severity}</span>
+                        <span className="text-[10px] text-slate-500">{inc.detection_time ? new Date(inc.detection_time).toLocaleDateString('en-GB') : '—'}</span>
+                      </div>
+                      <p className="text-sm text-white font-medium">{inc.title}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="text-[10px] text-slate-500">{inc.asset_name || '—'}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${inc.status === 'investigating' ? 'bg-red-400/10 text-red-400' : inc.status === 'contained' ? 'bg-amber-400/10 text-amber-400' : 'bg-sky-400/10 text-sky-400'}`}>
+                          {inc.status}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
               <Link href="/admin/email/reputation/incidents" className="block text-center text-xs text-[#06B6D4] hover:underline py-1 cursor-pointer">
                 View all incidents
               </Link>
@@ -283,20 +393,24 @@ export default function ReputationDashboard() {
               <h2 className="text-base font-bold text-white">Blocklist Status</h2>
             </div>
             <div className="p-4 space-y-3">
-              {MOCK_BLOCKLIST.map((bl) => (
-                <div key={bl.id} className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02]">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {bl.check_state === 'listed' ? <XCircle className="w-4 h-4 text-red-400 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
-                    <div className="min-w-0">
-                      <p className="text-xs text-white truncate">{bl.blocklist_name}</p>
-                      <p className="text-[10px] text-slate-500 truncate">{bl.asset}</p>
+              {recentBlocklist.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">No blocklist checks recorded yet</p>
+              ) : (
+                recentBlocklist.map((bl) => (
+                  <div key={bl.id} className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {bl.check_state === 'listed' ? <XCircle className="w-4 h-4 text-red-400 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                      <div className="min-w-0">
+                        <p className="text-xs text-white truncate">{bl.blocklist_name}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{bl.asset_value}</p>
+                      </div>
                     </div>
+                    <span className={`text-[10px] font-medium whitespace-nowrap ${bl.check_state === 'listed' ? 'text-red-400' : 'text-emerald-400'}`}>
+                      {bl.check_state === 'listed' ? 'Listed' : 'Clear'}
+                    </span>
                   </div>
-                  <span className={`text-[10px] font-medium whitespace-nowrap ${bl.check_state === 'listed' ? 'text-red-400' : 'text-emerald-400'}`}>
-                    {bl.check_state === 'listed' ? 'Listed' : 'Clear'}
-                  </span>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
