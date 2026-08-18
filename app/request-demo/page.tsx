@@ -91,7 +91,7 @@ function RequestDemoContent() {
 
   if (formState === 'success') {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center" data-testid="form-success">
         <div className="text-center px-6 max-w-md">
           <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-5">
             <i className="ri-check-line w-8 h-8 text-emerald-500 flex items-center justify-center" />
@@ -300,13 +300,14 @@ function RequestDemoContent() {
           />
 
           {formState === 'error' && formError && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <div data-testid="form-error" className="bg-red-50 border border-red-200 rounded-xl p-4">
               <p className="text-sm text-red-700">{formError}</p>
             </div>
           )}
 
           <button
             type="submit"
+            data-testid="request-demo-submit"
             disabled={formState === 'submitting'}
             className="w-full px-6 py-3.5 rounded-xl bg-[#06B6D4] text-white font-semibold text-sm hover:bg-[#0891B2] transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
           >

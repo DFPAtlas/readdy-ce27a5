@@ -290,7 +290,7 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
               </button>
             </div>
             {formStatus === 'success' ? (
-              <div className="text-center py-8">
+              <div className="text-center py-8" data-testid="form-success">
                 <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
                   <i className="ri-check-line w-8 h-8 text-emerald-500 flex items-center justify-center" />
                 </div>
@@ -326,8 +326,8 @@ export default function ProductDetail({ slug }: ProductDetailProps) {
                   <input type="checkbox" name="consent" required id="interest-consent" className="mt-1 shrink-0" />
                   <label htmlFor="interest-consent" className="text-xs text-slate-500">I agree to Digital Footprint processing my data in accordance with the Privacy Policy.</label>
                 </div>
-                {formError && <p className="text-xs text-red-500">{formError}</p>}
-                <button type="submit" disabled={formStatus === 'submitting'} className="w-full px-6 py-3 rounded-xl font-semibold text-sm text-white bg-[#06B6D4] hover:bg-[#0891B2] transition-all cursor-pointer whitespace-nowrap disabled:opacity-50">
+                {formError && <p data-testid="form-error" className="text-xs text-red-500">{formError}</p>}
+                <button type="submit" data-testid="product-enquiry-submit" disabled={formStatus === 'submitting'} className="w-full px-6 py-3 rounded-xl font-semibold text-sm text-white bg-[#06B6D4] hover:bg-[#0891B2] transition-all cursor-pointer whitespace-nowrap disabled:opacity-50">
                   {formStatus === 'submitting' ? 'Submitting...' : 'Submit Interest'}
                 </button>
               </form>

@@ -225,7 +225,7 @@ export default function ApprovalDetail({ approvalId }: { approvalId: string }) {
   if (error || !approval) {
     return (
       <PortalShell>
-        <div className="text-center py-20">
+        <div className="text-center py-20" data-testid="access-denied">
           <ShieldAlert className="w-12 h-12 text-slate-500 mx-auto mb-4" />
           <p className="text-slate-400 font-medium">{error || 'Approval not found'}</p>
           <Link href="/portal/approvals" className="text-sm text-[#06B6D4] hover:underline mt-2 inline-block">Back to Approvals</Link>

@@ -492,7 +492,7 @@ export default function UATApplyPage() {
         </div>
 
         {serverError && (
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 flex items-start gap-3">
+          <div data-testid="form-error" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 flex items-start gap-3">
             <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-red-700">{serverError}</p>
           </div>
@@ -504,7 +504,7 @@ export default function UATApplyPage() {
           </button>
           {step === 1 && <button onClick={handleNext} className="inline-flex items-center gap-2 rounded-xl bg-[#2878d0] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 hover:bg-[#1e68b9] transition whitespace-nowrap">Start My Application <ArrowRight className="h-4 w-4" /></button>}
           {step > 1 && step < TOTAL_STEPS && <button onClick={handleNext} className="inline-flex items-center gap-2 rounded-xl bg-[#2878d0] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 hover:bg-[#1e68b9] transition whitespace-nowrap">Continue <ArrowRight className="h-4 w-4" /></button>}
-          {step === TOTAL_STEPS && <button onClick={handleSubmit} disabled={submitting} className="inline-flex items-center gap-2 rounded-xl bg-[#2878d0] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 hover:bg-[#1e68b9] transition disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap">{submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</> : <>Submit My Application</>}</button>}
+          {step === TOTAL_STEPS && <button onClick={handleSubmit} data-testid="uat-application-submit" disabled={submitting} className="inline-flex items-center gap-2 rounded-xl bg-[#2878d0] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 hover:bg-[#1e68b9] transition disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap">{submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</> : <>Submit My Application</>}</button>}
         </div>
 
         {step >= 2 && (

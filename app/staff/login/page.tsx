@@ -141,6 +141,7 @@ function StaffLoginContent() {
                 <label className="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
                 <input
                   type="email"
+                  data-testid="login-email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@digital-footprint.uk"
@@ -154,6 +155,7 @@ function StaffLoginContent() {
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    data-testid="login-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
@@ -176,7 +178,7 @@ function StaffLoginContent() {
                 </motion.div>
               )}
 
-              <button type="submit" disabled={loading}
+              <button type="submit" disabled={loading} data-testid="login-submit"
                 className="w-full py-3 bg-[#06B6D4] hover:bg-[#0891B2] rounded-xl font-bold text-white hover:shadow-lg hover:shadow-[#06B6D4]/20 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap"
               >
                 {loading ? (

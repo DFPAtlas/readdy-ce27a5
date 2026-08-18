@@ -162,7 +162,7 @@ export default function SupportPage() {
 
   return (
     <PortalShell>
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-5xl" data-testid="client-support-list">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-2xl lg:text-3xl font-bold text-white">Support</h1>

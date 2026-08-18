@@ -533,7 +533,7 @@ export default function DashboardPage() {
 
   return (
     <PortalShell>
-      <div className="mx-auto max-w-[1460px] space-y-5">
+      <div className="mx-auto max-w-[1460px] space-y-5" data-testid="client-dashboard">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="pb-1">
           <h1 className="text-3xl font-bold tracking-tight text-white lg:text-[34px]">{greeting()}, {userName}</h1>
           <p className="mt-1 text-sm text-slate-400 sm:text-base">Here&apos;s what&apos;s happening across your Digital Footprint projects.</p>

@@ -141,6 +141,7 @@ function PortalLoginContent() {
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       type="email"
+                      data-testid="login-email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Enter your email address"
@@ -160,6 +161,7 @@ function PortalLoginContent() {
 
                 <button
                   type="submit"
+                  data-testid="login-submit"
                   disabled={loading || !email}
                   className="w-full px-6 py-3 bg-[#06B6D4] hover:bg-[#0891B2] text-white font-semibold text-sm rounded-xl transition-all cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >

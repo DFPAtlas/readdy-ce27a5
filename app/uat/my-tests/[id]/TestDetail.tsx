@@ -280,7 +280,7 @@ export default function TestDetail({ assignmentId }: { assignmentId: string }) {
               <AlertCircle className="w-8 h-8 text-red-400" />
             </div>
             <h3 className="text-xl font-bold text-[#17325c] mb-2">Assignment Not Available</h3>
-            <p className="text-slate-500 mb-6">This test assignment does not exist or does not belong to you.</p>
+            <p className="text-slate-500 mb-6" data-testid="access-denied">This test assignment does not exist or does not belong to you.</p>
             <button onClick={() => router.push('/uat/my-tests')} className="px-5 py-2.5 bg-[#2878d0] rounded-xl text-sm font-semibold text-white cursor-pointer whitespace-nowrap">Back to My Tests</button>
           </div>
         </div>
@@ -298,7 +298,7 @@ export default function TestDetail({ assignmentId }: { assignmentId: string }) {
               <Ban className="w-8 h-8 text-red-400" />
             </div>
             <h3 className="text-xl font-bold text-[#17325c] mb-2">Access Revoked</h3>
-            <p className="text-slate-500 mb-6">{blockedMessage}</p>
+            <p className="text-slate-500 mb-6" data-testid="access-denied">{blockedMessage}</p>
             <button onClick={() => router.push('/uat/my-tests')} className="px-5 py-2.5 bg-[#2878d0] rounded-xl text-sm font-semibold text-white cursor-pointer whitespace-nowrap">Back to My Tests</button>
           </div>
         </div>
@@ -335,7 +335,7 @@ export default function TestDetail({ assignmentId }: { assignmentId: string }) {
     <>
       <UATPortalBreadcrumbs items={[{ label: 'My Tests', href: '/uat/my-tests' }, { label: assignment.job_title || 'Test' }]} />
 
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex items-center gap-2" data-testid="uat-assignment-detail">
         {assignment.project_name && (
           <span className="text-xs font-medium text-[#2878d0] bg-[#edf5ff] px-2 py-0.5 rounded-lg">{assignment.project_name}</span>
         )}

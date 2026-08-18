@@ -356,7 +356,7 @@ export default function MessagesPage() {
 
   return (
     <PortalShell>
-      <div className="mx-auto max-w-6xl h-[calc(100vh-8rem)]">
+      <div className="mx-auto max-w-6xl h-[calc(100vh-8rem)]" data-testid="client-message-list">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl lg:text-3xl font-bold text-white">Messages</h1>

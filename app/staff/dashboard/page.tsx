@@ -418,7 +418,7 @@ export default function StaffDashboardPage() {
 
   return (
     <StaffShell>
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6" data-testid="staff-dashboard">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>

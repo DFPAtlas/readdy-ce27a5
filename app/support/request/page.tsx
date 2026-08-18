@@ -91,7 +91,7 @@ export default function SupportRequestPage() {
 
   if (formState === 'success') {
     return (
-      <main className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+      <main className="min-h-screen bg-[#F8FAFC] flex items-center justify-center" data-testid="form-success">
         <div className="max-w-md mx-auto px-6 text-center py-16">
           <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-5">
             <i className="ri-check-line w-8 h-8 text-emerald-500 flex items-center justify-center" />
@@ -143,7 +143,7 @@ export default function SupportRequestPage() {
             />
 
             {formError && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+              <div data-testid="form-error" className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
                 <i className="ri-error-warning-line w-5 h-5 text-red-500 flex-shrink-0 mt-0.5 flex items-center justify-center" />
                 <p className="text-sm text-red-700">{formError}</p>
               </div>
@@ -274,6 +274,7 @@ export default function SupportRequestPage() {
               </Link>
               <button
                 type="submit"
+                data-testid="support-submit"
                 disabled={formState === 'submitting'}
                 className="px-6 py-2.5 bg-[#06B6D4] text-white text-sm font-semibold rounded-xl hover:bg-[#0891B2] disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer whitespace-nowrap"
               >

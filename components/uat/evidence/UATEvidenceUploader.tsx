@@ -175,7 +175,7 @@ export default function UATEvidenceUploader({
         </div>
       ))}
 
-      <button onClick={() => setShowDrop(!showDrop)}
+      <button onClick={() => setShowDrop(!showDrop)} data-testid="uat-evidence-upload"
         className="w-full py-3 border-2 border-dashed border-slate-200 hover:border-[#2878d0]/40 rounded-xl flex items-center justify-center gap-2 text-xs font-medium text-slate-400 hover:text-[#2878d0] cursor-pointer transition-colors">
         <Paperclip className="w-3.5 h-3.5" /> Add Files
       </button>

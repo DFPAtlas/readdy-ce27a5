@@ -256,7 +256,7 @@ export default function TestCaseDetailPanel({
   const priorityLabel = detail.priority.charAt(0).toUpperCase() + detail.priority.slice(1);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col" data-testid="uat-test-case">
       <div className="p-4 border-b border-slate-100 shrink-0">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-mono font-bold text-[#2878d0] bg-[#edf5ff] px-2 py-0.5 rounded-md">{detail.reference}</span>

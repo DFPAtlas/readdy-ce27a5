@@ -287,7 +287,7 @@ function FeedbackFormInner({ assignmentId }: { assignmentId: string }) {
     return (
       <>
         <UATPortalBreadcrumbs items={[{ label: 'My Tests', href: '/uat/my-tests' }, { label: 'Access Denied' }]} />
-        <div className="flex items-center justify-center py-16"><div className="bg-white border border-slate-100 rounded-3xl p-12 shadow-sm text-center max-w-md"><div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-6"><AlertCircle className="w-8 h-8 text-amber-500" /></div><h3 className="text-xl font-bold text-[#17325c] mb-2">Access Denied</h3><p className="text-slate-500 mb-6">{blockMessage}</p><button onClick={() => router.push('/uat/my-tests')} className="px-5 py-2.5 bg-[#2878d0] rounded-xl text-sm font-semibold text-white cursor-pointer whitespace-nowrap">Back to My Tests</button></div></div>
+        <div className="flex items-center justify-center py-16" data-testid="access-denied"><div className="bg-white border border-slate-100 rounded-3xl p-12 shadow-sm text-center max-w-md"><div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-6"><AlertCircle className="w-8 h-8 text-amber-500" /></div><h3 className="text-xl font-bold text-[#17325c] mb-2">Access Denied</h3><p className="text-slate-500 mb-6">{blockMessage}</p><button onClick={() => router.push('/uat/my-tests')} className="px-5 py-2.5 bg-[#2878d0] rounded-xl text-sm font-semibold text-white cursor-pointer whitespace-nowrap">Back to My Tests</button></div></div>
       </>
     );
   }

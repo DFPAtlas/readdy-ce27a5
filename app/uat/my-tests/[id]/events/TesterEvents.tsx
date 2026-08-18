@@ -161,7 +161,7 @@ export default function TesterEvents({ assignmentId }: { assignmentId: string })
               <Ban className="w-8 h-8 text-amber-500" />
             </div>
             <h3 className="text-xl font-bold text-[#17325c] mb-2">Not Available</h3>
-            <p className="text-slate-500 mb-6">{blockMessage}</p>
+            <p className="text-slate-500 mb-6" data-testid="access-denied">{blockMessage}</p>
             <button onClick={() => router.push(`/uat/my-tests/${assignmentId}`)}
               className="px-5 py-2.5 bg-[#2878d0] rounded-xl text-sm font-semibold text-white cursor-pointer whitespace-nowrap">
               Back to Test

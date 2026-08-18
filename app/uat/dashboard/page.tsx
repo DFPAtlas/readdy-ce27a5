@@ -155,7 +155,7 @@ export default function TesterDashboard() {
 
   return (
     <>
-      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
+      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start" data-testid="uat-dashboard">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#789265]">Tester Dashboard</p>
           <h1 className="mt-2 font-serif text-4xl font-semibold tracking-tight sm:text-5xl text-[#17325c]">

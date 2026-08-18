@@ -106,7 +106,7 @@ export default function MyTestsPage() {
         <p className="mt-2 text-slate-500">Your assigned UAT test assignments</p>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8" data-testid="uat-assignment-list">
         {assignments.length === 0 ? (
           <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
             <UATEmptyState icon={FileText} title="No Test Assignments" description="You haven't been assigned to any tests yet. Browse available jobs and apply to get started." actionLabel="Browse Jobs" actionHref="/uat/jobs" />

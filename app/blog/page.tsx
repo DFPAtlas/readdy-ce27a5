@@ -77,7 +77,7 @@ export default function BlogPage() {
                 <h2 className="text-3xl font-bold mb-4 text-slate-900">Stay Updated</h2>
                 <p className="text-slate-500 mb-8 max-w-xl mx-auto">Subscribe to our newsletter for the latest insights on technology, automation and digital transformation.</p>
                 {formStatus === 'success' ? (
-                  <div className="max-w-md mx-auto text-center py-4">
+                  <div className="max-w-md mx-auto text-center py-4" data-testid="form-success">
                     <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
                       <i className="ri-check-line w-7 h-7 text-emerald-500 flex items-center justify-center" />
                     </div>
@@ -87,12 +87,12 @@ export default function BlogPage() {
                   <form data-readdy-form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row items-center gap-3 max-w-md mx-auto">
                     <input type="text" name="website_alt" tabIndex={-1} autoComplete="off" aria-hidden="true" readOnly className="absolute opacity-0 pointer-events-none" />
                     <input type="email" name="email" placeholder="Enter your email" required className="flex-1 w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#06B6D4] transition-colors text-sm" />
-                    <button type="submit" disabled={formStatus === 'submitting'} className="px-6 py-3 rounded-xl font-semibold text-sm text-white bg-[#06B6D4] hover:bg-[#0891B2] transition-colors cursor-pointer whitespace-nowrap hover:shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-50">
+                    <button type="submit" data-testid="newsletter-submit" disabled={formStatus === 'submitting'} className="px-6 py-3 rounded-xl font-semibold text-sm text-white bg-[#06B6D4] hover:bg-[#0891B2] transition-colors cursor-pointer whitespace-nowrap hover:shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-50">
                       {formStatus === 'submitting' ? 'Subscribing...' : 'Subscribe'}
                     </button>
                   </form>
                 )}
-                {formError && <p className="text-xs text-red-500 mt-3">{formError}</p>}
+                {formError && <p data-testid="form-error" className="text-xs text-red-500 mt-3">{formError}</p>}
               </div>
             </motion.div>
           </div>

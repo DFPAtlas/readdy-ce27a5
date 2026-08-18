@@ -219,6 +219,7 @@ export default function ContactPage() {
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
+                      data-testid="form-success"
                       className="text-center py-12"
                     >
                       <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#F97316]/10 to-[#EA580C]/10 flex items-center justify-center mx-auto mb-6">
@@ -235,7 +236,7 @@ export default function ContactPage() {
                       </Link>
                     </motion.div>
                   ) : (
-                    <form data-readdy-form id="contact-form" onSubmit={handleSubmit} className="space-y-5">
+                    <form data-readdy-form id="contact-form" data-testid="contact-form" onSubmit={handleSubmit} className="space-y-5">
                       <div>
                         <p className="text-sm text-slate-500 mb-6">
                           Fill in the form below and we&apos;ll get back to you within one business day. All fields marked with * are required.
@@ -360,13 +361,14 @@ export default function ContactPage() {
                       )}
 
                       {errorMsg && (
-                        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} data-testid="form-error" className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                           {errorMsg}
                         </motion.div>
                       )}
 
                       <button
                         type="submit"
+                        data-testid="contact-submit"
                         disabled={submitting || formData.message.length > 500}
                         className="group relative w-full px-6 py-4 rounded-xl font-semibold text-white overflow-hidden whitespace-nowrap cursor-pointer transition-all duration-300 bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] hover:to-[#C2410C] shadow-lg shadow-[#F97316]/15 hover:shadow-xl hover:shadow-[#F97316]/25 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                       >

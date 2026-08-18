@@ -210,7 +210,7 @@ export default function TicketDetail({ ticketId }: { ticketId: string }) {
   if (notFound || !ticket) {
     return (
       <PortalShell>
-        <div className="flex min-h-[55vh] flex-col items-center justify-center">
+        <div className="flex min-h-[55vh] flex-col items-center justify-center" data-testid="access-denied">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#8B5CF6]/10 mb-4">
             <Headphones className="h-7 w-7 text-[#A78BFA]" />
           </div>

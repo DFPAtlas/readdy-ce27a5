@@ -262,7 +262,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   if (error || !project) {
     return (
       <PortalShell>
-        <div className="text-center py-20">
+        <div className="text-center py-20" data-testid="access-denied">
           <FolderKanban className="w-12 h-12 text-slate-500 mx-auto mb-4" />
           <p className="text-slate-400 font-medium">{error || 'Project not found'}</p>
           <Link href="/portal/projects" className="text-[#06B6D4] text-sm hover:underline mt-2 inline-block">Back to Projects</Link>
@@ -283,7 +283,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
 
   return (
     <PortalShell>
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-5xl mx-auto" data-testid="client-project-detail">
         <div className="mb-6">
           <Link href="/portal/projects" className="flex items-center gap-2 text-sm text-slate-400 hover:text-[#06B6D4] transition-colors cursor-pointer mb-3">
             <ArrowLeft className="w-4 h-4" /> Back to Projects

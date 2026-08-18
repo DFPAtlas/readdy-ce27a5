@@ -36,7 +36,7 @@ export default function UATEvidenceList({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-testid="uat-evidence-list">
       {evidence.length === 0 ? (
         <div className="text-center py-6">
           <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-3">

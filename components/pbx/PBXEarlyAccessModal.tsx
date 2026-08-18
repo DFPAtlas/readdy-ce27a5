@@ -106,7 +106,7 @@ export default function PBXEarlyAccessModal({ open, onClose }: PBXEarlyAccessMod
             </div>
 
             {success ? (
-              <div className="p-8 flex flex-col items-center text-center">
+              <div className="p-8 flex flex-col items-center text-center" data-testid="form-success">
                 <div className="w-14 h-14 rounded-2xl bg-[#10B981]/10 flex items-center justify-center mb-4">
                   <CheckCircle2 className="w-7 h-7 text-[#10B981]" />
                 </div>
@@ -218,7 +218,7 @@ export default function PBXEarlyAccessModal({ open, onClose }: PBXEarlyAccessMod
                 />
 
                 {error && (
-                  <div className="p-3 rounded-lg bg-[#EF4444]/10 border border-[#EF4444]/20">
+                  <div data-testid="form-error" className="p-3 rounded-lg bg-[#EF4444]/10 border border-[#EF4444]/20">
                     <p className="text-xs text-[#EF4444]">{error}</p>
                   </div>
                 )}
@@ -233,6 +233,7 @@ export default function PBXEarlyAccessModal({ open, onClose }: PBXEarlyAccessMod
                   </button>
                   <button
                     type="submit"
+                    data-testid="pbx-early-access-submit"
                     disabled={submitting}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] transition-all cursor-pointer whitespace-nowrap shadow-lg shadow-[#F59E0B]/10 disabled:opacity-50 disabled:cursor-not-allowed"
                   >

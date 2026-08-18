@@ -380,7 +380,7 @@ export default function SessionPanel({
                   {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />} Resume Session
                 </button>
               )}
-              <button onClick={() => setFinishModal(true)}
+              <button onClick={() => setFinishModal(true)} data-testid="uat-complete"
                 className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-500 hover:bg-red-600 rounded-xl text-xs font-semibold text-white transition-colors cursor-pointer whitespace-nowrap">
                 <CheckCircle className="w-3.5 h-3.5" /> Finish Session
               </button>

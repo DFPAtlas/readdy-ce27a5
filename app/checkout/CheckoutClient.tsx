@@ -485,6 +485,10 @@ function CheckoutFormInner() {
               <ProgressIndicator step={step} />
             </div>
 
+            <div className="mb-6">
+              <StripeTestModeBadge />
+            </div>
+
             <form ref={formRef} onSubmit={handleSubmit} noValidate>
               {/* Customer details */}
               <div className="mb-8">
@@ -860,6 +864,10 @@ function CheckoutFormInner() {
             <ProgressIndicator step={step} />
           </div>
 
+          <div className="mb-6">
+            <StripeTestModeBadge />
+          </div>
+
           <form ref={formRef} onSubmit={handleSubmit} noValidate>
             <div className="mb-6">
               <h2 className="text-sm font-semibold text-[#F5F7FA] mb-4 flex items-center gap-2">
@@ -993,6 +1001,19 @@ function CheckoutFormInner() {
         </div>
       </div>
     </>
+  );
+}
+
+function StripeTestModeBadge() {
+  if (process.env.NEXT_PUBLIC_STRIPE_TEST_MODE !== 'true') return null;
+  return (
+    <div
+      data-testid="stripe-test-mode"
+      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 text-amber-300 text-xs font-semibold whitespace-nowrap"
+    >
+      <i className="ri-flask-line w-3.5 h-3.5 flex items-center justify-center" />
+      Stripe Test Mode
+    </div>
   );
 }
 

@@ -193,7 +193,7 @@ export default function CareersApplyClient({ slug }: { slug: string }) {
         <section className="relative -mt-6 pb-20">
           <div className="max-w-2xl mx-auto px-6">
             {formState === 'success' ? (
-              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-slate-200 rounded-2xl p-8 text-center">
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} data-testid="form-success" className="bg-white border border-slate-200 rounded-2xl p-8 text-center">
                 <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
                   <i className="ri-check-line w-7 h-7 text-emerald-500 flex items-center justify-center" />
                 </div>
@@ -355,13 +355,14 @@ export default function CareersApplyClient({ slug }: { slug: string }) {
                 />
 
                 {formError && (
-                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+                  <div data-testid="form-error" className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
                     {formError}
                   </div>
                 )}
 
                 <button
                   type="submit"
+                  data-testid="career-submit"
                   disabled={formState === 'submitting'}
                   className="w-full py-3 rounded-xl bg-[#06B6D4] text-white font-semibold text-sm hover:bg-[#0891B2] transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                 >

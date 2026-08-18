@@ -322,7 +322,7 @@ export default function TesterSandboxPage({ assignmentId }: { assignmentId: stri
           <div className="bg-white border border-slate-100 rounded-3xl p-12 shadow-sm text-center max-w-md">
             <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-[#17325c] mb-2">Not Available</h3>
-            <p className="text-slate-500">This assignment does not exist or does not belong to you.</p>
+            <p className="text-slate-500" data-testid="access-denied">This assignment does not exist or does not belong to you.</p>
           </div>
         </div>
       </>

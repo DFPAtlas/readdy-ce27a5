@@ -65,7 +65,7 @@ export function AdminPortalContent() {
 
   return (
     <AdminShell>
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto" data-testid="admin-dashboard">
         <DashboardHeader
           dateRangeLabel={dateRange.label}
           lastRefreshed={data.lastRefreshed}

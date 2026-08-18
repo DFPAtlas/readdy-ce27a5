@@ -100,7 +100,7 @@ export default function TesterMailboxPage({ assignmentId }: { assignmentId: stri
               <AlertCircle className="w-8 h-8 text-red-400" />
             </div>
             <h3 className="text-xl font-bold text-[#17325c] mb-2">Assignment Not Available</h3>
-            <p className="text-slate-500 mb-6">This mailbox does not exist or does not belong to you.</p>
+            <p className="text-slate-500 mb-6" data-testid="access-denied">This mailbox does not exist or does not belong to you.</p>
             <button onClick={() => router.push('/uat/my-tests')} className="px-5 py-2.5 bg-[#2878d0] rounded-xl text-sm font-semibold text-white cursor-pointer whitespace-nowrap">Back to My Tests</button>
           </div>
         </div>
@@ -118,7 +118,7 @@ export default function TesterMailboxPage({ assignmentId }: { assignmentId: stri
               <Ban className="w-8 h-8 text-red-400" />
             </div>
             <h3 className="text-xl font-bold text-[#17325c] mb-2">Access Revoked</h3>
-            <p className="text-slate-500 mb-6">{blockedMessage}</p>
+            <p className="text-slate-500 mb-6" data-testid="access-denied">{blockedMessage}</p>
             <button onClick={() => router.push('/uat/my-tests')} className="px-5 py-2.5 bg-[#2878d0] rounded-xl text-sm font-semibold text-white cursor-pointer whitespace-nowrap">Back to My Tests</button>
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function TesterMailboxPage({ assignmentId }: { assignmentId: stri
         { label: 'Mailbox' },
       ]} />
 
-      <div className="mt-6">
+      <div className="mt-6" data-testid="uat-mailbox">
         <MailboxPanel
           assignmentId={assignmentId}
           messages={messages}

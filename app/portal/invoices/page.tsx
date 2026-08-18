@@ -165,7 +165,7 @@ export default function InvoicesPage() {
           </button>
         </div>
       )}
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6" data-testid="client-invoice-list">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl lg:text-3xl font-bold text-white">Billing Centre</h1>
           <p className="text-slate-400 mt-1">Manage your invoices and payments</p>
@@ -271,7 +271,7 @@ export default function InvoicesPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setSelectedInvoice(null)}>
               <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()} className="bg-[#1E293B] rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-[rgba(255,255,255,0.08)]">
+                onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()} data-testid="client-invoice-detail" className="bg-[#1E293B] rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-[rgba(255,255,255,0.08)]">
                 <div className="flex items-center justify-between p-5 border-b border-[rgba(255,255,255,0.08)]">
                   <h3 className="text-lg font-bold text-white">Invoice Details</h3>
                   <button onClick={() => setSelectedInvoice(null)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"><X className="w-4 h-4" /></button>

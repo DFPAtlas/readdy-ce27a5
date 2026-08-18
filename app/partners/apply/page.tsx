@@ -65,7 +65,7 @@ function ApplyForm() {
   if (formState === 'success') {
     return (
       <main className="min-h-screen bg-white">
-        <section className="pt-32 pb-16 px-6">
+        <section className="pt-32 pb-16 px-6" data-testid="form-success">
           <div className="max-w-xl mx-auto text-center">
             <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center mx-auto mb-6">
               <i className="ri-check-line text-emerald-600 w-7 h-7 flex items-center justify-center" />
@@ -249,13 +249,14 @@ function ApplyForm() {
             <input type="text" name="contact_alt" tabIndex={-1} autoComplete="off" aria-hidden="true" readOnly className="absolute opacity-0 pointer-events-none" style={{ position: 'absolute', left: '-9999px' }} />
 
             {formError && (
-              <div className="p-4 rounded-xl bg-red-50 border border-red-200">
+              <div data-testid="form-error" className="p-4 rounded-xl bg-red-50 border border-red-200">
                 <p className="text-sm text-red-700">{formError}</p>
               </div>
             )}
 
             <button
               type="submit"
+              data-testid="partner-submit"
               disabled={formState === 'submitting'}
               className="w-full py-3 rounded-xl bg-[#06B6D4] text-white font-semibold hover:bg-[#0891B2] transition-all cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
             >
