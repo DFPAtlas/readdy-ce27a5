@@ -10,6 +10,7 @@ import {
   type WebsitePackage,
 } from '@/lib/website-packages';
 import LeftPanel from './LeftPanel';
+import SubscriptionCheckout from './SubscriptionCheckout';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
@@ -272,6 +273,8 @@ function PackageSelector() {
           Talk to us
         </Link>
       </p>
+
+      <SubscriptionCheckout />
     </div>
   );
 }

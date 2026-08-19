@@ -38,16 +38,18 @@ function createSafeStorage() {
   }
 }
 
-export const supabase: SupabaseClient | null = isSupabaseConfigured()
-  ? createClient(supabaseUrl!, supabaseKey!, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        storage: createSafeStorage() as never,
-      },
-    })
-  : null;
+if (!isSupabaseConfigured()) {
+  throw new Error(getSupabaseConfigurationError() ?? 'Supabase is not configured.');
+}
+
+export const supabase: SupabaseClient = createClient(supabaseUrl!, supabaseKey!, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: createSafeStorage() as never,
+  },
+});
 
 let sessionReady = false;
 let sessionReadyCallbacks: Array<() => void> = [];
@@ -58,16 +60,13 @@ function notifySessionReady() {
   sessionReadyCallbacks = [];
 }
 
-if (supabase) {
-  supabase.auth.onAuthStateChange((event) => {
-    if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-      notifySessionReady();
-    }
-  });
-}
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+    notifySessionReady();
+  }
+});
 
 export async function getSessionSafe() {
-  if (!supabase) return null;
   try {
     const { data } = await supabase.auth.getSession();
     return data.session;
@@ -77,7 +76,6 @@ export async function getSessionSafe() {
 }
 
 export function waitForAuthReady(timeoutMs = 6000): Promise<boolean> {
-  if (!supabase) return Promise.resolve(false);
   if (sessionReady) return Promise.resolve(true);
   return new Promise((resolve) => {
     const cb = () => resolve(true);

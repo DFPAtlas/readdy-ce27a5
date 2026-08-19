@@ -4,6 +4,7 @@ import { supabase, getSessionSafe } from '@/lib/supabase';
 import {
   normaliseAdminRole,
   isFullAdminRole,
+  type AdminRoleKey,
 } from '@/lib/admin-roles';
 
 export {
@@ -33,7 +34,7 @@ export type AdminAccessResult =
   | {
       allowed: true;
       userId: string;
-      role: 'owner' | 'super_admin' | 'admin';
+      role: AdminRoleKey;
       profile: AdminProfileAccessRecord;
     }
   | {
