@@ -158,7 +158,7 @@ export default function FeaturedExperience() {
                       <div key={n}>
                         <div className="mb-1 flex justify-between text-[9px]"><span className="text-slate-400">{n}</span><span className="text-slate-500">{w}%</span></div>
                         <div className="h-1.5 rounded-full bg-slate-800">
-                          <div className={`h-1.5 rounded-full transition-all duration-1000 ${w < 70 ? 'bg-orange-300' : 'bg-cyan-300'}`} style={{ width: `${w}%` }} />
+                          <div className={`h-1.5 rounded-full transition-all duration-1000 ${Number(w) < 70 ? 'bg-orange-300' : 'bg-cyan-300'}`} style={{ width: `${w}%` }} />
                         </div>
                       </div>
                     ))}
