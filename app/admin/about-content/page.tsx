@@ -79,8 +79,8 @@ export default function AboutContentPage() {
       supabase.from('about_founder').select('id, name, title, bio, image_url, linkedin_url, twitter_url, sort_order, created_at, updated_at').maybeSingle(),
       supabase.from('about_team_members').select('id, name, title, bio, image_url, linkedin_url, twitter_url, sort_order, created_at').order('sort_order'),
     ]);
-    if (fData) setFounder(fData as Founder);
-    if (tData) setTeam(tData as TeamMember[]);
+    if (fData) setFounder(fData as unknown as Founder);
+    if (tData) setTeam(tData as unknown as TeamMember[]);
     setLoading(false);
   };
 
