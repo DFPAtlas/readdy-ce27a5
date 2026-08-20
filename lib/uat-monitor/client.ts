@@ -62,7 +62,7 @@ export function createUATMonitor(config: UATMonitorConfig): UATMonitor {
     const path = sanitizePath(window.location.href);
     enqueueWithCount({
       event_type: 'heartbeat',
-      page_path: path,
+      page_path: path || undefined,
       page_title: document.title.substring(0, 500),
     });
   }
@@ -71,10 +71,10 @@ export function createUATMonitor(config: UATMonitorConfig): UATMonitor {
     if (!getSettings().capture_visibility) return;
     const path = sanitizePath(window.location.href);
     if (document.hidden) {
-      enqueueWithCount({ event_type: 'page_hidden', page_path: path });
+      enqueueWithCount({ event_type: 'page_hidden', page_path: path || undefined });
     } else {
       currentPage = path;
-      enqueueWithCount({ event_type: 'page_visible', page_path: path });
+      enqueueWithCount({ event_type: 'page_visible', page_path: path || undefined });
     }
   }
 
@@ -176,7 +176,7 @@ export function createUATMonitor(config: UATMonitorConfig): UATMonitor {
       event_type: 'tester_checkpoint',
       event_name: safeLabel,
       message: metadata?.note ? String(metadata.note).substring(0, 2000) : undefined,
-      page_path: path,
+      page_path: path || undefined,
       safe_metadata: metadata || {},
       assignment_test_case_id: config.assignmentTestCaseId || undefined,
     });
