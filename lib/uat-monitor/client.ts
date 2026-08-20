@@ -6,6 +6,8 @@ import { createNetworkTracker } from './network';
 import { createPerformanceTracker } from './performance';
 import { sanitizePath, isValidOrigin } from './sanitise';
 
+export type { UATMonitor } from './types';
+
 const HEARTBEAT_INTERVAL = 60000;
 
 export function createUATMonitor(config: UATMonitorConfig): UATMonitor {
@@ -60,7 +62,7 @@ export function createUATMonitor(config: UATMonitorConfig): UATMonitor {
     const path = sanitizePath(window.location.href);
     enqueueWithCount({
       event_type: 'heartbeat',
-      page_path: path,
+      page_path: path || undefined,
       page_title: document.title.substring(0, 500),
     });
   }
@@ -69,10 +71,10 @@ export function createUATMonitor(config: UATMonitorConfig): UATMonitor {
     if (!getSettings().capture_visibility) return;
     const path = sanitizePath(window.location.href);
     if (document.hidden) {
-      enqueueWithCount({ event_type: 'page_hidden', page_path: path });
+      enqueueWithCount({ event_type: 'page_hidden', page_path: path || undefined });
     } else {
       currentPage = path;
-      enqueueWithCount({ event_type: 'page_visible', page_path: path });
+      enqueueWithCount({ event_type: 'page_visible', page_path: path || undefined });
     }
   }
 
@@ -100,7 +102,7 @@ export function createUATMonitor(config: UATMonitorConfig): UATMonitor {
     enqueueWithCount({
       event_type: 'page_view',
       page_url: window.location.href,
-      page_path: currentPage,
+      page_path: currentPage || undefined,
       page_title: document.title.substring(0, 500),
     });
 
@@ -156,7 +158,7 @@ export function createUATMonitor(config: UATMonitorConfig): UATMonitor {
     enqueueWithCount({
       event_type: 'page_view',
       page_url: window.location.href,
-      page_path: currentPage,
+      page_path: currentPage || undefined,
       page_title: document.title.substring(0, 500),
     });
 
@@ -174,7 +176,7 @@ export function createUATMonitor(config: UATMonitorConfig): UATMonitor {
       event_type: 'tester_checkpoint',
       event_name: safeLabel,
       message: metadata?.note ? String(metadata.note).substring(0, 2000) : undefined,
-      page_path: path,
+      page_path: path || undefined,
       safe_metadata: metadata || {},
       assignment_test_case_id: config.assignmentTestCaseId || undefined,
     });

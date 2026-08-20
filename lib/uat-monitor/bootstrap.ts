@@ -1,5 +1,6 @@
 import { createUATMonitor } from './client';
-import type { UATMonitor, MonitoringTokenResponse } from './types';
+import type { UATMonitor } from './types';
+import type { MonitoringTokenResponse } from '@/lib/uat-monitoring-definitions';
 
 const TOKEN_ENDPOINT = '/functions/v1/create-uat-monitoring-token';
 

@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase';
 import type { CommunicationSettings, InterceptResult } from '../types';
 
+export { maskEmail } from '../email';
+export { maskPhone } from '../sms';
+
 export interface ProjectAdapter {
   projectId: string;
   environmentId?: string;

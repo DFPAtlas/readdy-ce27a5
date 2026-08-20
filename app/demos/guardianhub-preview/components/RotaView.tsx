@@ -66,7 +66,7 @@ export default function RotaView({ shifts, availableGuards, onAssignGuard }: Rot
                 })}
                 {shift.assignedGuards.length < shift.requiredGuards && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.02] border border-white/[0.06] px-2.5 py-1 text-[10px] text-slate-500">
-                    {shift.requiredGuards - shift.assignedGuards} slot{shift.requiredGuards - shift.assignedGuards > 1 ? 's' : ''} open
+                    {shift.requiredGuards - shift.assignedGuards.length} slot{shift.requiredGuards - shift.assignedGuards.length > 1 ? 's' : ''} open
                   </span>
                 )}
               </div>

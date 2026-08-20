@@ -6,8 +6,8 @@ import {
   formatMessageTypeLabel, formatStatusLabel, getStatusColor,
   maskEmail, maskPhone,
 } from '@/lib/uat-communications/adapters/base';
-import type { UATSandboxMessage, MailboxStats, MessageFilter } from '@/lib/uat-communications/types';
-import { filterMessages } from '@/hooks/useMailbox';
+import type { UATSandboxMessage, MailboxStats } from '@/lib/uat-communications/types';
+import { filterMessages, type MessageFilter } from '@/hooks/useMailbox';
 import {
   Mail, MessageSquare, Webhook, Ban, CheckCircle, XCircle,
   Search, RefreshCw, Inbox, ArrowLeft, Link2, Flag,
@@ -202,10 +202,10 @@ export default function MailboxPanel({
                         <Clock className="w-3 h-3" />
                         {new Date(msg.intercepted_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                       </span>
-                      {msg.linked_cases > 0 && (
+                      {(msg.linked_cases ?? 0) > 0 && (
                         <span className="text-[10px] text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">Case linked</span>
                       )}
-                      {msg.linked_feedback > 0 && (
+                      {(msg.linked_feedback ?? 0) > 0 && (
                         <span className="text-[10px] text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">Bug linked</span>
                       )}
                     </div>
@@ -328,7 +328,7 @@ export default function MailboxPanel({
                 )}
 
                 {/* Attachments placeholder */}
-                {selectedMessage.attachment_count > 0 && (
+                {(selectedMessage.attachment_count ?? 0) > 0 && (
                   <div className="mb-4">
                     <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Attachments</h4>
                     <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-100 rounded-xl">
