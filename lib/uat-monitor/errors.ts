@@ -38,9 +38,9 @@ export function createErrorTracker(
     enqueue({
       event_type: 'javascript_error',
       message: msg,
-      source_file: file,
-      source_line: event.lineno || null,
-      source_column: event.colno || null,
+      source_file: file || undefined,
+      source_line: event.lineno || undefined,
+      source_column: event.colno || undefined,
       severity: 'error',
       event_name: event.error?.name || 'Error',
     });
