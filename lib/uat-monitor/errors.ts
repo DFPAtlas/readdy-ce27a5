@@ -37,7 +37,7 @@ export function createErrorTracker(
 
     enqueue({
       event_type: 'javascript_error',
-      message: msg,
+      message: msg || undefined,
       source_file: file || undefined,
       source_line: event.lineno || undefined,
       source_column: event.colno || undefined,
@@ -58,7 +58,7 @@ export function createErrorTracker(
 
     enqueue({
       event_type: 'unhandled_rejection',
-      message: msg,
+      message: msg || undefined,
       severity: 'error',
     });
   }
