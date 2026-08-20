@@ -218,7 +218,7 @@ export default function TestCaseDetailPanel({
     debouncedSave();
   }, [testerNotes, actualResult]);
 
-  const canModify = sessionId && sessionStatus === 'active';
+  const canModify = Boolean(sessionId && sessionStatus === 'active');
   const isFinal = detail?.status && ['passed', 'failed', 'blocked', 'skipped'].includes(detail.status);
 
   if (!assignmentTestCaseId) {
