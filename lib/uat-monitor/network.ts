@@ -41,7 +41,7 @@ export function createNetworkTracker(
       event_type: failed ? 'api_failure' : 'api_slow',
       request_method: method,
       request_path: path,
-      response_status: status || undefined,
+      response_status: status || null,
       duration_ms: duration,
       severity: failed ? 'error' : 'warning',
       message: failed ? `Request failed: ${method} ${path}` : `Slow request: ${method} ${path} (${duration}ms)`,
@@ -81,7 +81,7 @@ export function createNetworkTracker(
       (this as any).__uat_method = method;
       (this as any).__uat_url = typeof url === 'string' ? url : url.href;
       (this as any).__uat_start = 0;
-      return originalXHROpen.call(this, method, url, rest[0], rest[1], rest[2]);
+      return originalXHROpen.call(this, method, url, ...rest);
     };
 
     XMLHttpRequest.prototype.send = function (this: XMLHttpRequest, ...args: any[]) {

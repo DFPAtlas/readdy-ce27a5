@@ -100,7 +100,7 @@ export default function AdminSandboxPage() {
       project_name: projectMap[i.project_id] || 'Unknown',
       tester_name: testerMap[i.tester_id]?.full_name || 'Unknown',
       tester_email: testerMap[i.tester_id]?.email || '',
-      environment_name: i.environment_id ? envMap[i.environment_id] : undefined,
+      environment_name: i.environment_id ? envMap[i.environment_id] : null,
     }));
 
     setInstances(merged);

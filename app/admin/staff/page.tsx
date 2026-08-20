@@ -153,8 +153,8 @@ export default function StaffHub() {
                           filteredStaff.map((s: any) => {
                             const status = s.status || 'Active';
                             const mfa = s.mfa_state || 'Unknown';
-                            const mfaCfg: any = MFA_STATE_CONFIG[mfa as keyof typeof MFA_STATE_CONFIG] || MFA_STATE_CONFIG.Unknown;
-                            const statusCfg: any = (STAFF_STATUS_CONFIG as any)[status] || STAFF_STATUS_CONFIG.Active;
+                            const mfaCfg = MFA_STATE_CONFIG[mfa as keyof typeof MFA_STATE_CONFIG] || MFA_STATE_CONFIG.Unknown;
+                            const statusCfg = (STAFF_STATUS_CONFIG as any)[status] || STAFF_STATUS_CONFIG.Active;
                             const identityType = s.identity_type || 'internal';
                             return (
                               <tr key={`${s.source}-${s.id}`} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02] transition-colors">

@@ -123,7 +123,7 @@ export default function GuardDashboard({
               <h2 className="mt-2 text-lg font-bold text-white">{job.location}</h2>
               <p className="text-sm text-slate-400">{job.securityType} · {job.city}</p>
             </div>
-            <span className="text-xs text-slate-500">2.8 miles</span>
+            <span className="text-xs text-slate-500">{job.distance || '2.8'} miles</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-5">

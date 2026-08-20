@@ -8,7 +8,6 @@ interface DataStateProps {
   onRetry?: () => void;
   actionLabel?: string;
   onAction?: () => void;
-  onBack?: () => void;
 }
 
 export function LoadingState({ className = '' }: DataStateProps) {

@@ -269,7 +269,6 @@ export default function LeadWorkspace({
             onGenerateReply={onGenerateReply}
             onApproveReply={onApproveReply}
             onBuildProposal={onBuildProposal}
-            onApproveProposal={onApproveProposal}
             onActivity={onActivity}
           />
         )}
@@ -326,7 +325,6 @@ function OverviewContent({
   onGenerateReply,
   onApproveReply,
   onBuildProposal,
-  onApproveProposal,
   onActivity,
 }: {
   lead: Lead;
@@ -336,7 +334,6 @@ function OverviewContent({
   onGenerateReply: () => void;
   onApproveReply: () => void;
   onBuildProposal: () => void;
-  onApproveProposal: () => void;
   onActivity: (m: string) => void;
 }) {
   const researched = state.stage !== 'New';

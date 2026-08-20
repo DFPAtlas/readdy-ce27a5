@@ -34,7 +34,7 @@ function ProtectedAdminAccessGate({ children }: { children: React.ReactNode }) {
     const result = await verifyAdminAccess(session);
     return {
       allowed: result.allowed,
-      reason: result.allowed ? undefined : result.reason,
+      reason: result.reason,
     };
   }, []);
 
